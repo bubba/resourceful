@@ -1,0 +1,563 @@
+\chapter{A Formal Definition}
+
+To formalize the system of heaped monads, I introduce a toy language
+and type system implementing the basic principles. The semantics are
+mainly based off of the Hilney-Damas-Milner type system \cite{damasmilner}
+
+The heap is very similar to the heap used in \cite{krishnaswami}
+
+\section{Syntax}
+
+\newcommand{\IO}{\mathsf{IO}}
+\newcommand{\bind}{>\!\!>\!\!=} \newcommand{\concbind}{>\!\!>\!>\!\!=}
+\newcommand{\subtyp}{\geq:}
+\newcommand{\notsubtyp}{\ngeq:}
+\newcommand{\lift}[1]{\ensuremath{\llbracket#1\rrbracket}}
+
+\setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
+\setlength{\grammarindent}{12em} % increase separation between LHS/RHS
+\renewcommand{\syntleft}{}
+\renewcommand{\syntright}{}
+
+
+\def\defaultHypSeparation{\hskip .05in}
+
+We begin by giving the grammar for our monadic language.
+It is an extension of the lambda calculus with let-polymorphism.
+We use $x$, $\lambda x . e$ and $e \ e'$ to refer to variable lookup,
+abstraction and application respectively, whilst we use the ML style
+$\letin{x = e}{e'}$ for polymorphically binding $e$ to $x$ inside
+$e'$.
+
+More interestingly we have the monadic additions. Unlike
+Krishnaswami~\cite{krishnaswami2006} we do not separate the language
+into two expression and computation languages.
+$\llbracket e \rrbracket$ lifts a regular expression into a monad (\texttt{return} in Haskell), and $e \bind e'$ is
+the standard monadic sequencing or binding operation.
+
+However what is new to our language is the $e \curlyvee e'$ operator, which
+joins two monadic computations together into one that uses both
+resources -- provided that their resources do not overlap.
+
+\begin{grammar}
+
+  <type $\tau$> ::= () | bool | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\sigma \tau$
+  <type scheme $\sigma$> ::= $\forall \alpha . \sigma$ | $\tau$
+
+<expression $e$> ::= () | $e \times e'$
+\alt $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x = e}{e'}$
+%\alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
+\alt $\lift{e}$ | $e \bind e'$ | $e \curlyvee e'$
+\alt $\textsf{readFile}$
+\alt $\textsf{readNetwork}$
+% how do we specify what resources what functions use? add an explicit
+% type annotation expression?
+% \alt $e : \tau$
+
+<resource $\rho$> ::= \textsf{File} | \textsf{Network} | \textsf{World}
+
+<heap $\sigma$> ::= $\rho$ | $\sigma \cup \sigma'$
+
+\end{grammar}
+
+\subsection{Substitution}
+Substitution on types is defined as usual, but extended to include the
+new types in our system. That is, a substitution is a map from type
+variables to types, written in the form $[\tau/\alpha]$. 
+\begin{align*}
+  () [\tau/\alpha] &= () \\
+  \alpha' [\tau/\alpha] &=
+             \begin{cases}
+               \tau & \mathsf{if} \ \alpha' = \alpha \\
+               \alpha' & \mathsf{otherwise}
+             \end{cases} \\
+  (\tau_1 \rightarrow \tau_2)[\tau/\alpha] &= (\tau_1[\tau/\alpha] \rightarrow \tau_2[\tau/\alpha]) \\
+  (IO_\sigma \tau')[\tau/\alpha] &= \IO_\sigma \tau'[\tau/\alpha]
+\end{align*}
+
+\section{Static Semantics}
+
+Our static semantics, or typing rules, begin with the syntax-directed
+rules of the Hindley-Damas-Milner system.
+\begin{mathpar}
+    \inferrule*[Right=Var]{e : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash e : \tau} \and
+    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
+    \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
+    \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e' : \tau}
+    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
+  \end{mathpar}
+We also introduce the typing rule for $()$ expressions, to give us a
+concrete type, as well as a rule for products which are constructed
+through $e \times e'$.
+\begin{mathpar}
+  \inferrule*[Right=Unit]{ }{\Gamma \vdash () : ()} \and
+  \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
+    {\Gamma \vdash e \times e' : \tau \times \tau'}
+\end{mathpar}
+
+Now we introduce the monadic parts of the language. Our language only
+has one monad, the $\IO$ monad, which is parameterised by both its
+\textit{heap} and its encapsulated type. Monadic values are introduced
+into the language with either $\lift{e}$
+$\textsf{readFile}$ or $\textsf{readNet}$.
+\begin{mathpar}
+  \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \lift{e} : \IO_\sigma \tau} \and
+    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} ()} \and
+    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} ()}
+\end{mathpar}
+
+$\textsf{readFile}$ and $\textsf{readNet}$ are examples of typical
+operations that can consume a specific resource -- their heap consists
+of just a single resource. The typing rule for $\lift{e}$, on the
+other hand, allows a pure expression (or possibly another monad) to be
+``lifted'' into a $\IO$ for any heap $\sigma$.
+
+Once we have an $\IO$ value, we can sequence computation by binding
+it with a function that returns another $\IO$.
+\begin{mathpar}
+  \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\sigma
+    \tau'}{\Gamma \vdash e \bind e' : \IO_\sigma \tau'}
+\end{mathpar}
+Note that the types of the two $\IO$s must use the same
+resources. However, we want expressions such as
+$$ readFile \bind readNet $$
+to be well typed. In particular, we want the above expression to be of
+type $\IO_{\textsf{File} \cup \textsf{Net}} ()$. But if \textsc{Bind}
+requires the resources to be the same, we must first somehow ``cast''
+$\textsf{readFile}$ and $\textsf{readNet}$ to this type.
+
+Thus serves the purpose of the \textsc{Subsumption} rule.
+\begin{mathpar}
+  \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
+  {\Gamma \vdash e : \IO_{\sigma'} \tau}
+\end{mathpar}
+It allows something of type $\IO_\sigma \tau$ monad to be typed as $\IO_{\sigma'} \tau$, provided
+that the heap $\sigma$ is a \textit{subtype} of $\sigma'$. The subtyping
+rules for heaps, shown in figure~\ref{fig:subtyping}, define the
+$\subtyp$ relation.
+
+Intuitively, a heap $\sigma$ can thought of being a subtype of another heap
+$\sigma'$, if $\sigma'$ subsumes $\sigma$. For example, $\textsf{Net} \subtyp
+\textsf{Net} \cup \textsf{File}$, since $\textsf{Net} \cup \textsf{File}$
+``overlaps'' with the heap $\textsf{Net}$.
+
+If one views this relation as an ordering, then we have
+$\textsf{World}$ defined as the least upper bound -- this represents
+using all possible resources, and thus $\IO_{\textsf{World}}$ can be
+thought of as the $IO$ monad in Haskell, where sequencing interacts
+with the state of the entire world.
+
+By constraining subtyping to only resources and not actual types, we
+avoid the various issues associated with undecidability subtyping
+gives us~\ref{????}.
+
+The union of resources, for example,
+$\textsf{Net} \cup \textsf{File}$, allows us to reason about using more
+than one resource simultaneously. In fact, the purpose of this type
+system is to help reason about using multiple resources in a safe
+manner, by rejecting programs that use the same resource twice
+simultaneously. In this light, the \textsc{Conc} rule is then the
+heart and soul of this type system, by combining together heaps and
+maintaining the invariant that the resources in the heap are all
+unique.
+\begin{mathpar}
+  \inferrule*[Right=Conc]{\Gamma \vdash e_1 : \IO_\sigma \tau_1 \\ \Gamma \vdash e_2 : \IO_{\sigma'}
+    \tau_2 \\
+    \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
+  {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2}
+\end{mathpar}
+The combined premises $\sigma \notsubtyp \sigma'$ and
+$\sigma' \notsubtyp \sigma$ ensure that the two heaps are distinct, as proved
+in lemma~\ref{lem:distinctheap}. This restriction exists as we do not
+want to allow programs that try to use the same resource concurrently,
+such as
+$$\textsf{readFile} \curlyvee \textsf{readFile}$$
+We do however, want to allow programs that run two expressions that do
+not share any resources, like
+$$\textsf{readFile} \curlyvee \textsf{readNet}$$
+
+The result of running two separate $\IO$ actions concurrently produces
+an expression whose type is also an $\IO$ monad, but with the two
+separate heaps joined. In the above example, we would be inferred the
+type $\IO_{\textsf{File} \cup \textsf{Net}}$.
+
+\begin{lemma}
+  For any two heaps $\sigma$ and $\sigma'$, if $\sigma \notsubtyp \sigma'$ and $\sigma'
+  \notsubtyp \sigma$ then the two heaps contain distinct resources.
+\end{lemma}
+
+\begin{figure}
+
+\begin{mathpar}
+
+\inferrule*[Right=Top]{ }{\sigma \subtyp \textsf{World}} \and
+\inferrule*[Right=Refl]{ }{\sigma \subtyp \sigma} \and
+\inferrule*[Right=Union1]{\sigma \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''} \and
+\hskip 1em
+\inferrule*[Right=Union2]{\sigma' \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''}
+
+\end{mathpar}
+
+\caption{Resource subtyping rules}
+\label{fig:subtyping}
+\end{figure}
+
+
+\begin{figure}
+  \begin{mathpar}
+    \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
+    \inferrule*[Right=App]{\Gamma \vdash e : \tau \rightarrow \tau' \\ \Gamma \vdash e' : \tau}{\Gamma \vdash e \ e' : \tau'} \and
+    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
+      \tau'} \and
+    \inferrule*[Right=Let]{\Gamma \vdash e : \tau \\ \Gamma,x : \bar{\Gamma}(\tau) \vdash e' : \tau'}
+    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau'} \and
+    % \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
+    % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
+    % e_3 : \tau} \and
+
+
+    \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
+    {\Gamma \vdash e \times e' : \tau \times \tau'} \and
+
+    \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \llbracket e \rrbracket : \IO_\sigma \tau} \and
+    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\sigma
+      \tau'}{\Gamma \vdash e \bind e' : \IO_\sigma \tau'} \and
+    \inferrule*[Right=Conc]{\Gamma \vdash e_1 : \IO_\sigma \tau_1 \\ \Gamma \vdash e_2 : \IO_{\sigma'}
+      \tau_2 \\
+      \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
+    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2} \and
+    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} ()} \and
+    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNet} : \IO_{\mathsf{Net}} ()} \and
+
+    \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
+    {\Gamma \vdash e : \IO_{\sigma'} \tau} \and
+    \inferrule*[Right=Unit]{ }{\Gamma \vdash () : ()}
+  \end{mathpar}
+
+  \caption{Typing rules}
+\end{figure}
+
+\section{Dynamic semantics}
+Dynamic semantics model how the program actually executes at
+runtime. It plays a crucial part in how we prove that the type system
+is sound, as we can only guarantee that our type system ensures
+error-free programs if we model what constitutes an error, and how it
+propagates.
+
+As shown in chapter~\ref{chapter:background}, the original work carried out in the Hindley-Damas-Milner systems were
+based on denotational semantics.
+
+\begin{figure}
+  \begin{mathpar}
+    % \inferrule*{x \in \eta}{\eta \vdash x \leadsto \Gamma(x)} \and
+    % \inferrule*{x \notin \eta}{\eta \vdash x \leadsto \textsf{wrong}} \and
+    % \inferrule*{ }{\eta \vdash \lambda x . e \leadsto [x,e,\eta]} \and
+    % \inferrule*{\eta \vdash e_1 \leadsto [x,e_0,\eta'] \\
+    %   \eta \vdash e_2 \leadsto v \\
+    %   \eta', x \mapsto v \vdash e_0 \leadsto r}
+    % {\eta \vdash e_1 e_2 \leadsto r } \and
+    % \inferrule*{\eta \vdash e_1 \leadsto \llbracket v \rrbracket \\
+    %   \eta \vdash e_2 \leadsto [x, e_0, \eta'] \\
+    %   \eta, x \mapsto v \vdash e_0 \leadsto }{
+    %   \eta \vdash e_1 \bind e_2 \leadsto \llbracket \rrbracket}
+    \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
+    \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
+    \inferrule{ }{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
+    \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
+    \inferrule{e_1 \leadsto \llbracket v \rrbracket}{e_1 \bind e_2 \leadsto e_2 v} \and
+    \inferrule{e_1 \leadsto \llbracket v \rrbracket \\ e_2 \leadsto \llbracket w \rrbracket}{e_1 \curlyvee e_2 \leadsto \llbracket v \times w \rrbracket}
+  \end{mathpar}
+  \caption{Semantics}
+\end{figure}
+
+\begin{figure}
+  \begin{mathpar}
+    \inferrule{ }{ () \ \textsf{value}} \and
+    \inferrule{ }{ e_1 \times e_2 \ \textsf{value} } \and
+    \inferrule{ }{ \lift{e} \ \textsf{value} } \and
+    \inferrule{ }{ \lambda x. e \ \textsf{value} }
+  \end{mathpar}
+  \caption{Terminal values}
+\end{figure}
+
+% Note that the subsumption is limited to only the heap of the $\IO$
+% monad.
+
+% The motivating example for the subtyping rules is that the program
+
+% \begin{math}
+%   \mathsf{if} \ x \ \mathsf{then} \ \mathsf{readFile} \ \mathsf{else} \
+%   \mathsf{readNetwork}
+% \end{math}
+
+% Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} ()$
+
+
+% \section{Semantics}
+
+% A denotational semantics is provided to prove certain properties of
+% the language and its type inference.
+
+% We want to be able to prove that the type system is sound -- that is
+% that if our system infers the type for an expression $e : \tau$, then the
+% expression does indeed semantically evaluate to a value in $\tau$.
+
+% All values are modelled with an element inside the set of
+% $\mathbb{V}$.
+% It consists of values from various other sets, such as
+% $\mathbb{B}_{\mathsf{Bool}}$, the set of values for a the
+% $\mathsf{Bool}$ type.
+
+% Semantic domain:
+
+% \begin{align*}
+%   \mathbb{V} &= \mathbb{B}_{()} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
+%                \mathbb{W} \\
+%   \mathbb{B}_{()} &= \{ \ () \ \} \\
+%   \mathbb{B}_{\mathsf{Bool}} &=
+%                                \{ \textsf{True}, \textsf{False},
+%                                \bot_{\textsf{Bool}} \} \\
+%   \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
+%   \mathbb{W} &= \{ \ . \ \}
+% \end{align*}
+
+
+% We can use the syntax for semantic entailment, $\Vdash v : \tau$, which is
+% defined as
+
+% \begin{math}
+%   v \in \mathbb{V}^\tau \iff \Vdash v : \tau
+% \end{math}
+
+% Whilst on the syntactic side, $\Gamma$ is the type environment, we also
+% define a semantic environment $\rho$. It is is a map of variable
+% identifiers to values.
+
+% \begin{math}
+%   \rho : \textsf{Id} \rightarrow \mathbb{V}
+% \end{math}
+
+
+% We use $\llbracket e \rrbracket$ notation to represent passing a
+% syntactic argument $e$ to a semantic function.
+
+% We say an environment respects a type environment $\rho : \Gamma$ if:
+% \begin{math}
+%   \rho : \Gamma \iff \forall x : \tau \in \Gamma \rho \llbracket x \rrbracket : \tau
+% \end{math}
+
+
+% $\mathbb{B}_{Bool} = \{ \textsf{true} \textsf{false} \bot_{bool} \}$
+
+% Semantic function $\mathbb{E} : \mathsf{Expr} \rightarrow \mathsf{Env} \rightarrow \mathbb{V}$
+
+
+% There is a conditional operator $\hookrightarrow : \mathbb{B}_{\textsf{Bool}} \rightarrow \mathbb{V} \rightarrow \mathbb{V} \rightarrow \mathbb{V}$, defined as follows.
+
+% \begin{align*}
+%   t \hookrightarrow v, v' =
+%   \begin{cases}
+%     v & \textsf{if} \ t = \textsf{true} \\
+%     v' & \textsf{if} \ t = \textsf{false} \\
+%     \bot_v & \textsf{if} \ t = \bot_t
+%   \end{cases}
+% \end{align*}
+
+% \begin{align*}
+%   \mathbf{E} \llbracket x \rrbracket \rho &= \rho(x) \\
+%   \mathbf{E} \llbracket e \ e' \rrbracket \rho &= \textsf{isF} v_1 \hookrightarrow
+%                                               {v_1}_{|F} v_2 \\
+%   \mathbf{E} \llbracket \lambda x . \ e \rrbracket \rho &=
+%   (\lambda v . \ \mathbf{E} \llbracket e \rrbracket \rho \{ v / x \} ) \
+%                                                  \textsf{in} \ \mathbb{V}
+% \end{align*}
+
+% Semantic domain + semantic function = semantic algebra
+
+\section{Type safety}
+
+\begin{lemma}
+  If $\sigma' > \sigma$ and $\Gamma,x : \sigma' \vdash e : \tau$, then $\Gamma, x : \sigma \vdash e : \tau$.
+  \label{lem:generalInContext}
+\end{lemma}
+\begin{proof}
+  Proved by Milner and Damas. Need to extend to this system?
+\end{proof}
+
+\begin{lemma}
+  If $\Gamma \vdash e : \tau'$ and $\tau' > \tau$, then $\Gamma \vdash e : \tau$.
+\end{lemma}
+\begin{proof}
+  We prove this by induction on the proof for $\Gamma \vdash e : \tau'$.
+  \begin{description}
+  \item[\textmd{\boxed{\textsc{Var}}}]
+    From the premise we have some $\tau''$ where $x : \tau'' \in \Gamma$ and $\tau'' >
+    \tau'$. By transitivity we then have $\tau'' > \tau$. And thus we apply
+    \textsc{Var} again with $x : \tau'' \in \Gamma$ and $\tau'' > \tau$ to get $\Gamma
+    \vdash e : \tau$. 
+  \item[\textmd{\boxed{\textsc{App}}}]
+    With $\Gamma \vdash e e' : \tau'$, the premises for this rule are $\Gamma \vdash e : \tau'' \rightarrow \tau'$ and $\Gamma \vdash e' :
+    \tau''$.
+    The definition of $\tau' > \tau$ is that there exists a
+    substitution $S$ that replaces any bound type variables, such that
+    $S(\tau') = \tau$.
+    Therefore if $\tau' > \tau$, then $\tau'' \rightarrow \tau' > \tau'' \rightarrow \tau$ as we can use the
+    same substitution $S$. 
+    Now that we have $\tau'' \rightarrow \tau' > \tau'' \rightarrow \tau$ and $\Gamma \vdash e : \tau'' \rightarrow
+    \tau'$, we can use the induction hypothesis to obtain $\Gamma \vdash e : \tau'' \rightarrow
+    \tau$. From here we reapply \textsc{App} to get $\Gamma \vdash e e' : \tau$ as
+    needed.
+  \item[\textmd{\boxed{\textsc{Abs}}}]
+    Our proof tree will look like
+    \begin{mathpar}
+      \inferrule{\Gamma,x : \tau_1' \vdash e : \tau_2'}{\Gamma \vdash \lambda x . e : \tau_1' \rightarrow \tau_2'}
+    \end{mathpar}
+    and we will have $\tau' = \tau_1' \rightarrow \tau_2'$. When we think of $\tau' > \tau$, we
+    have $\tau_1' \rightarrow \tau_2' > \tau$. So there is some substitution that will
+    bring us to $\tau$.
+
+    But if you look at the structure of $\tau_1' \rightarrow \tau_2'$, the
+    substitution must bring us to another type of
+    $\tau_1 \rightarrow \tau_2$.  The substitution will either replace something in
+    $\tau_1'$, something in $\tau_2'$, or both, but since $>$ is reflexive
+    with an empty substitution, both $\tau_1' > \tau_1$ and
+    $\tau_2' > \tau_2$ hold. Therefore it is enough to prove $\Gamma \vdash \lambda x . e :
+    \tau_1 \rightarrow \tau_2$.
+
+    We can proceed to use lemma~\ref{lem:generalInContext} with
+    $\tau_1' > \tau_1$ and $\Gamma,x : \tau_1' \vdash e : \tau_2'$, to get
+    $\Gamma, x : \tau_1 \vdash e : \tau_2'$.  And by applying the induction hypothesis
+    with $\tau_2' > \tau_2$, we get $\Gamma, x : \tau_1 \vdash e : \tau_2$. From here we
+    proceed by reapplying \textsc{Abs} to get $\Gamma \vdash \lambda x . e : \tau_1 \rightarrow
+    \tau_2$.
+  \item[\textmd{\boxed{\textsc{Let}}}]
+    For $\tau' > \tau$, we have
+    \begin{mathpar}
+      \inferrule{\Gamma \vdash e_1 : \tau'' \\ \Gamma, x : \bar{\Gamma}(\tau'') \vdash e_2 :
+        \tau'}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau'}
+    \end{mathpar}
+    We just need to apply the induction hypothesis on the second
+    premise, obtaining
+    $\Gamma, x : \bar{\Gamma}(\tau'') \vdash e_2 : \tau$, and thus
+    $\Gamma \vdash \letin{x = e_1}{e_2} : \tau$.
+  \item[\textmd{\boxed{\textsc{Product}}}]
+    Our expression will have some type $\Gamma \vdash e_1 \times e_2 : \tau_1' \times \tau_2'$, where $\tau_1' \times
+    \tau_2' < \tau$. Similar to the case for \textsc{Abs}, due to the
+    structure of $\tau_1' \times \tau_2'$, any substitution that will change it
+    to $\tau$ will result in a type of $\tau_1 \times \tau_2$, for some $\tau_1$ and
+    $\tau_2$ where $\tau_1' < \tau_1$ and $\tau_2' < \tau_2$. 
+    Therefore if we can prove $\Gamma \vdash e_1 \times e_2 : \tau_1 \times \tau_2$, we will
+    have proved $\Gamma \vdash e_1 \times e_2 : \tau$.
+    
+    Taking the premises of \textsc{Product}, we get $\Gamma \vdash e_1 : \tau_1'$
+    and $\Gamma \vdash e_2 : \tau_2'$. Apply the induction hypothesis on both, giving
+    $\Gamma \vdash e_1 : \tau_1$ and $\Gamma \vdash e_2 : \tau_2$, and reapply \textsc{Product} to
+    arrive at $\Gamma \vdash e_1 \times e_2 : \tau_1 \times \tau_2$.
+  \item[\textmd{\boxed{\textsc{Lift}}}]
+    If we have $\Gamma \vdash \lift{e} : \IO_\sigma \tau'$ and $\tau' > \tau$, then we need to
+    show $\Gamma \vdash \lift{e} : \IO_\sigma \tau$. Take the premise $\Gamma \vdash e : \tau'$,
+    and use the induction hypothesis to get $\Gamma \vdash e : \tau$, and therefore
+    the desired result.
+  \item[\textmd{\boxed{\textsc{Bind}}}]
+    Similarly to \textsc{Lift}, we need to show $\Gamma \vdash e \bind e' :
+    \IO_\sigma \tau$, given $\Gamma \vdash e \bind e' : \IO_\sigma \tau'$ and $\tau' > \tau$.
+    We have $\IO_\sigma \tau' > \IO_\sigma \tau$ as per the previous cases, and the
+    premise $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau'$. Because there exists a
+    substitution from $\IO_\sigma \tau'$ to $\IO_\sigma \tau$, there also exists a
+    substitution from $\tau'' \rightarrow \IO_\sigma \tau'$ to $\tau'' \rightarrow \IO_\sigma \tau$, thus
+    $\tau'' \rightarrow \IO_\sigma \tau' > \tau'' \rightarrow \IO_\sigma \tau$.
+
+    Applying the induction hypothesis to the premise $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau'$,
+    we get $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau$, and can then use \textsc{Bind}
+    again to get $\Gamma \vdash e \bind e' : \IO_\sigma \tau$ as needed.
+  \item[\textmd{\boxed{\textsc{Conc}}}]
+    Our conclusion for this rule is $\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \tau_1'
+    \times \tau_2'$. As per always, if $\IO_{\sigma \cup \sigma'} \tau_1' \times \tau_2' = \tau' > \tau$,
+    then the only substitutions possible would have to fit into
+    $\IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2 = \tau$. And with this, $\tau_1' > \tau_1$ as well
+    as $\tau_2' > \tau_2$. We then just need to apply the induction
+    hypothesis to $\Gamma \vdash e_1 : \IO_\sigma \tau_1'$ and $\Gamma \vdash e_2 : \IO_\sigma \tau_2'$
+    which will allow us to use \textsc{Conc} to arrive at $\Gamma \vdash e_1 \curlyvee
+    e_2 : \IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2$ as needed.
+  \item[\textmd{\boxed{\textsc{Unit}}}]
+    We have $\Gamma \vdash () : ()$. If $() = \tau'$ and $\tau' > \tau$, all
+    substitutions on $()$ will result in $()$. Thus $\tau = ()$, and we
+    have already shown $\Gamma \vdash () : ()$.
+  \item[\textmd{\boxed{\textsc{ReadFile}, \textsc{ReadNet}}}]
+    The same principle for \textsc{Unit} applies here to prove these
+    cases.
+  \item[\textmd{\boxed{\textsc{Subsumption}}}]
+    For the conclusion $\Gamma \vdash e : \IO_{\sigma'} \tau'$, we again have that
+    $\IO_{\sigma'} \tau' > \IO_{\sigma'} \tau$. Therefore there exists a substitution $S$
+    from the former type to the latter, and by the definition of
+    substitution on $\IO$, must be a substitution from $\tau'$ to $\tau$.
+
+    Thus we can take the premise $\Gamma \vdash e : \IO_\sigma \tau'$, and knowing that
+    $\tau' > \tau$ apply the induction hypothesis and \textsc{Subsumption}
+    to arrive at $\Gamma \vdash e : \IO_{\sigma'} \tau$ as needed.
+  \end{description}
+\end{proof}
+
+\begin{lemma}
+  If $\Gamma \vdash e' : \tau'$ and $\Gamma, x : \tau' \vdash e : \tau$ then $\Gamma \vdash e [e' / x] : \tau$
+\end{lemma}
+\begin{proof}
+  asdf
+\end{proof}
+
+\begin{theorem}[Preservation]
+  If $\Gamma \vdash e : \tau$ and $e \leadsto e'$, then $\Gamma \vdash e' : \tau$
+\end{theorem}
+
+\begin{proof}
+  We prove this via structural induction on $e \leadsto e'$:
+  \begin{description}
+  \item[\boxed{e_1 \ e_2 \leadsto e_1' \ e_2}] We know that
+    $\Gamma \vdash e_1 \ e_2 : \tau$, now we need to prove
+    $\Gamma \vdash e_1' \ e_2 : \tau$. For
+    $e_1 \ e_2 \leadsto e_1' \ e_2$, we only have one small-step rule for it
+    , which has the premise $e_1 \leadsto e_1'$. Also since
+    $\Gamma \vdash e_1 \ e_2 : \tau$, the typing rule \textsc{App} gives us
+    $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$.
+
+    Now that we have $\Gamma \vdash e_1: \tau' \rightarrow \tau$ and $e_1 \leadsto e_1'$, we can use
+    the induction hypothesis to show $\Gamma \vdash e_1' : \tau' \rightarrow \tau$. And once
+    again by applying \textsc{App}, we end up with $\Gamma \vdash e_1' \ e_2 :
+    \tau$ as needed.
+
+  \item[\boxed{e_1 \ e_2 \leadsto e_1 \ e_2'}] This can be proved with the
+    same method above.
+
+  \item[\boxed{(\lambda x . e_1) e_2 \leadsto e_1 [e_2 / x]}] Our type is
+    $\Gamma \vdash (\lambda x . e_1) e_2 : \tau$, and we need to show that
+    $\Gamma \vdash e_1 [e_2 / x] : \tau$. 
+    By applying \textsc{App} the premises
+    are $\Gamma \vdash \lambda x . e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$. We can then apply
+    \textsc{Abs} to get $\Gamma, x : \tau' \vdash e_1 : \tau$.
+    Lemma~\ref{lemma:1} then gives us $\Gamma \vdash e_1 [e_2 / x] : \tau$ as
+    needed.
+    
+  \end{description}
+\end{proof}
+
+\begin{theorem}[Progress]
+  If $. \vdash e : \tau$ then either $e \textsf{val}$, or there exists an $e'$
+  such that $e \leadsto e'$.
+\end{theorem}
+
+
+\begin{theorem}[Soundness]
+  If $e$ is inferred type $\tau$, $e$ evaluates to a value in $\tau$. \\
+  $\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau$
+\end{theorem}
+
+Theorem 2, completeness $\Gamma \Vdash e : \tau \rightarrow \Gamma \vdash e : \tau$
+
+Theorem 3, principal types
+
+Theorem 4, most specific heap for monad?
+%%% Local Variables:
+%%% TeX-master: "report"
+%%% TeX-engine: luatex
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:

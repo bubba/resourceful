@@ -1,0 +1,7 @@
+This tar file contains the Coq files described in both papers
+
+Catherine Dubois, Proving ML Type Soundness in Coq, Theorem Proving in Higher Order Logics :  13th International Conference, TPHOLs 2000, Lecture Notes in Computer Science, vol 1869, 2000, Springer-Verlag, 126-144, Portland, Oregon, USA
+
+and  
+
+Catherine Dubois, Valerie Menissier-Morain, Certification of a type inference tool for ML: Damas-Milner within Coq. Journal of Automated Reasoning,Kluwer Academic Publishers, 1999, vol 23, No 3-4, 319-346. 

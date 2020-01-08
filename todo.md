@@ -1,0 +1,1 @@
+- Research algebraic data structures to get rid of oversequencing

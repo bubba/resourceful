@@ -1,0 +1,82 @@
+% -*- fill-column: 80; TeX-command-extra-options: "-shell-escape" -*-
+\documentclass{report}
+\usepackage{minted}
+\usepackage{syntax}
+\usepackage{mathpartir}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{tikz}
+\usetikzlibrary{graphs,graphdrawing}
+\usegdlibrary{layered}
+\begin{document}
+
+\newcommand{\llbracket}{[\![}
+\newcommand{\rrbracket}{]\!]}
+
+\chapter{Introduction}
+The immutability and pureness of certain functional languages make them seem
+like a perfect fit for parallelism and concurrency.
+However, in real world applications code is very rarely completely pure -- State
+and IO interactions.
+
+The most popular solution today is to capture the entire state of the outside
+universe and write functions that operate on state. That way any particle that
+may have been perturbed by writing to \texttt{stdout} is appropriately reflected.
+
+Concurrent Clean models this by threading the World in and out of
+functions. Uniqueness types guarantee that the same world is only used once, so
+that the programmer does create an alternative timeline by duplicating it.
+
+\begin{minted}{clean}
+readFile :: !String !*World -> (!MaybeError FileError String,!*World)
+\end{minted}
+
+Haskell, Idris (ML?) treat the World as state. Any function that interacts with
+the World returns a function, which returns a new version of the World alongside
+the function result.
+\footnote{The actual definition in GHC is \\ \mintinline{haskell}{newtype IO a = IO (State# RealWorld -> (# State# RealWorld, a #))}}
+
+\mint{haskell}|type IO a = World -> (World, a)|
+
+This can then be easily fit into a monad, allowing for sequencing of multiple IO
+actions.
+
+\begin{minted}{haskell}
+class Monad IO where
+  return x = \w -> (w, x)
+  x >>= f = \w -> let (w', y) = x w in f y w'
+\end{minted}
+
+Now IO actions can be easily chained together in a type-safe way that ensures
+their ordering. 
+
+\inputminted{haskell}{motivating.hs}
+
+However it feels as if we have lost something here. This sequential style brings
+us back to the imperative mindset, where instructions are executed one after
+another, and we have lost the...
+
+In this report we will explore the design space to solve two problems:
+
+The first is breaking free of the imposed over-sequencing
+that come with monadic data structures.
+
+The second is embedding additional information at the type level about what
+monadic actions need to be sequenced together, and what do not.
+
+\include{background}
+
+\include{System}
+
+Extensions: Dependently typed
+
+\bibliographystyle{plain}
+\bibliography{report}
+
+\end{document}
+
+% LocalWords: stdout LocalWords Idris haskell
+%%% Local Variables:
+%%% TeX-engine: luatex
+%%% End:

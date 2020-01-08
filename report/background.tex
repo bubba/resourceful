@@ -1,0 +1,402 @@
+\chapter{Background}
+
+In this chapter, we are going to look at the Hindley-Damas-Milner type
+system. It is one of the de-facto formalisations of a polymorphic type
+system, based off of the ML programming language. It was heavily
+influential at the time and still continues to be so today, inspiring
+the design of Haskell, O-Caml and many programming languages.
+
+\section{Hindley-Damas-Milner}
+\subsection{Syntax}
+
+\def\defaultHypSeparation{\hskip .05in}
+\newcommand{\letin}[2]{\mathsf{let} \ #1 \ \mathsf{in} \ #2}
+
+\begin{figure}
+  \begin{grammar}
+
+    <type $\tau$> ::= $()$ | $\alpha$ | $\tau \rightarrow \tau'$
+    
+    <type scheme $\sigma$> ::= $\tau$ | $\forall \alpha . \sigma$
+
+    <expression $e$> ::= $x$
+    \alt $\lambda x . e$
+    \alt $e \ e'$
+    \alt $\mathsf{let} \ x = e \ \mathsf{in} \ e'$
+
+    <context $\Gamma$> ::= $\centerdot$ | $\Gamma, x : \centerdot$
+
+  \end{grammar}
+  \caption{Grammar of the applicative language}
+  \label{grm:applang}
+\end{figure}
+
+We define the grammar for a simple applicative language in
+figure~\ref{grm:applang}.
+It defines expressions, types and type schemes. The distinguishment
+between type and type scheme is necessary so that quantifiers can only
+appear at the top level. Quantifiers bind type variables.
+
+Free type variables are type variables which have not be bound.
+\begin{align*}
+  \mathrm{fv}(\forall \alpha . \tau) &= \mathrm{fv}(\tau) \\
+  \mathrm{fv}(()) &= \{ \} \\
+  \mathrm{fv}(\alpha) &= \{ \alpha \} \\
+  \mathrm{fv}(\tau \rightarrow \tau') &= \mathrm{fv}(\tau) \cup \mathrm{fv}(\tau')
+\end{align*}
+
+A \textit{type environment} is a mapping from variables to type schemes. 
+$$\Gamma : \mathsf{Variable} \ \rightarrow \sigma$$
+
+A substitution $S$ maps type variables to types. A substitution of the
+form $[\tau/\alpha]$ maps $\alpha$ to $\tau$.
+
+It is extended to operate on types, such that every occurance of a
+type variable in a type is substituted.
+For instance, $(\alpha \rightarrow \alpha)[\tau/\alpha] = \tau \rightarrow \tau$ can be read as ``$(\alpha \rightarrow \alpha)$,
+replacing every $\alpha$ with $\tau$.''
+
+% \begin{minipage}{1.0\linewidth}
+  Substitution is \textbf{associative}. It is defined on types as
+  \begin{align*}
+    () [\tau/\alpha] &= () \\
+    \alpha' [\tau/\alpha] &=
+                            \begin{cases}
+                              \tau & \mathsf{if} \ \alpha' = \alpha \\
+                              \alpha' & \mathsf{otherwise}
+                            \end{cases} \\
+    (\tau_1 \rightarrow \tau_2)[\tau/\alpha] &= (\tau_1[\tau/\alpha] \rightarrow \tau_2[\tau/\alpha])
+  \end{align*}
+% \end{minipage}
+
+And on type schemes as
+$$(\forall \alpha . \sigma)[\tau/\alpha] = \forall \tau . \sigma[\tau/\alpha]$$
+
+We may write $S(\sigma)$ to apply an arbitrary substitution to a type
+scheme.
+
+$[\tau_1/\alpha_1, \ldots, \tau_n/\alpha_n]$ may be used to notate the composition of
+substitutions $S_1 = [\tau_1/\alpha_1], \ldots, S_n = [\tau_n/\alpha_n]$, $S_1(\ldots(S_n(\sigma)))$.
+
+We say a type $\tau$ is an \textit{instance} of a type $\tau'$,
+written as $t > \tau'$ if there exists a substitution $S$ such that
+
+$$ \tau > \tau' \rightarrow \exists S. S(\tau) = \tau' $$
+
+Intuitively, this can be thought of as $\tau$ being more general than
+type $\tau'$. For example,
+$$ \alpha \rightarrow \beta > \alpha \rightarrow \alpha $$
+with the subsitution $[\alpha/\beta]$, but there exists no substitution for
+$$ \alpha \rightarrow \alpha \ngtr \alpha \rightarrow \beta$$
+
+\section{Static semantics}
+
+Static semantics define the typing rules.
+
+Before we look at the Hindley-Damas-Milner system, designed for
+type-inference, we should take a look at a simpler variant.
+
+The simply-typed lambda caclulus is a variant of the lambda
+calculus, and very much a pre-cursor to what we will be building up
+to. It defined three typing rules:
+\begin{mathpar}
+  \inferrule{x : \tau \in \Gamma}{\Gamma \vdash x : \tau} \and
+  \inferrule{\Gamma, x : \tau' \vdash e : \tau}{\Gamma \vdash \lambda x : \tau . e : \tau' \rightarrow \tau} \and
+  \inferrule{\Gamma \vdash e_1 : \tau' \rightarrow \tau \\ \Gamma \vdash e_2 : \tau'}{\Gamma \vdash e_1 e_2 : \tau}
+\end{mathpar}
+These rules consist of some \textit{judgements} above and below a line. There
+are some regular judgements you might have seen in regular set theory,
+such as $x : \tau \in \Gamma$ -- $x : \tau$ is in $\Gamma$. But there are also typing
+judgements, which tell us what type a term has in what context. For
+example, $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ can be read as ``given the context
+$\Gamma$, the expression $e_1$ is of type $:\tau' \rightarrow \tau$''.
+
+A typing rule tell us that from the judgements above the line,
+called \textit{premises}, we are allowed to derive the judgement
+below the line, known as the \textit{conclusion}. So to put it all
+together, the rule
+\begin{mathpar}
+  \inferrule{\Gamma \vdash e_1 : \tau' \rightarrow \tau \\ \Gamma \vdash e_2 : \tau'}{\Gamma \vdash e_1 e_2 : \tau}
+\end{mathpar}
+can be read as: ``If $e_1$ has the type $\tau' \rightarrow \tau$ in the context $\Gamma$,
+and if $e_2$ has the type $\tau'$ in the context $\Gamma$, then we can derive
+that $e_1 e_2$ has the type $\tau$ also in $\Gamma$.
+
+This particular rule defines how application of two terms should be
+typed in the simply-typed lambda calculus. 
+
+\subsubsection{Let polymorphism}
+
+Consider the below expression with the context $\Gamma = \{ a :
+\textsf{Int} \rightarrow \textsf{Bool}, b : \textsf{Int} \}$
+$$ \lambda x . (x (a (x \ b)))$$
+
+What type should be inferred for $x$? It is used as both an
+$\textsf{Int} \rightarrow \textsf{Int}$ and a $\textsf{Bool} \rightarrow \alpha$, where $\alpha$ is
+the type of the entire expression. One possibility is $x : \alpha \rightarrow \alpha$.
+
+$$ \letin{x = \lambda y. y}{x (a (x \ b))} $$
+
+In the original definition by Milner there exited separate rules for
+instantiation and generalisation. In our system we have combined them
+into \textsc{Var} and \textsc{Let} respectively, so that they are
+\textit{syntax-directed} -- there is exactly one rule for each form of
+expression. This will make it easier to prove soundness later on.
+
+As a part of this, we define $\bar{\Gamma}$ to generalize a type $\tau$,
+binding over any free type variables.
+$$ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
+\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \mathrm{fv}(\tau) \setminus \mathrm{fv}(\Gamma)$$
+
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \inferrule*[Right=Var]{e : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash e : \tau} \and
+    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
+    \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
+    \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e' : \tau}
+    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
+  \end{mathpar}
+  \caption{Type inference rules}
+  \label{rules:hmtypeinference}
+\end{figure}
+
+
+\subsection{Dynamic Semantics}
+
+Milner and Damas created a denotational semantics for the language.
+
+The semantics is defined by a semantic algebra, which itself is
+comprised of a \textit{semantic domain} and \textit{semantic
+  equation}.
+
+The semantic domain defines the possible values an expression in our
+language can have. It is a \textbf{complete partial order} (often referred to
+as a \textit{cpo}): A pair $(D, \sqsubseteq)$ of a set $D$ and a partial order
+$\sqsubseteq$ (a function that orders elements in $D$, but not necessarily all
+of them, hence the term \textit{partial}), such that:
+
+\begin{enumerate}
+\item there is a least element $\bot$
+\item each directed subset $x_0 \sqsubseteq \ldots \sqsubseteq x_n \sqsubseteq \ldots$ has a least upper bound
+  (lub)
+\end{enumerate}
+
+\begin{align*}
+  \mathbb{V} &= \mathbb{B}_{()} + \mathbb{B}_{bool} + \mathbb{F} + \mathbb{W} \\
+  \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
+  \mathbb{W} &= \{ . \}
+\end{align*}
+
+Or visually,
+
+\begin{center}
+  \tikz \graph[layered layout] { "$\mathbb{V}$" ->
+    { "$\mathbb{B}_{()}$" -> "$()$",
+      "$\mathbb{B}_{\textrm{Bool}}$" -> {true, false},
+      I} ->
+    "$\bot$"; };
+\end{center}
+
+
+Function space $D \rightarrow E$
+
+Coalesced sum $D + E$
+
+Since this cpo $\mathbb{V}$ represents all possibly data values, we
+can extract a subset of it to model the values of certain
+types~\ref{shamirwadge77}.
+A subset $I$ of our cpo $\mathbb{V}$ is called an ideal, iff it
+satisfies the following properties:
+
+\begin{enumerate}
+\item it is downwards closed: $\forall v_0 \in V, v_1 \in V, v_0, v_0 \sqsubseteq v_1 \rightarrow
+  v_0 \in I \rightarrow \v_1 \in I$.
+  
+\item it is closed under lubs of \omega-chains.
+\end{enumerate}
+
+Our function domain $\mathbb{F}$ is a map from $\mathbb{V}$ to
+$\mathbb{V}$. Maps over ideals are defined as
+$I \rightarrow I' \equiv \{ v \in V | v \in \mathbb{F} \ \mathsf{and} \ \forall v' \in I \
+(v_{|\mathbb{F}})v' \in I' \}$.
+
+With all the mechanisms in place, we can now define what it means for
+a value to semantically be a type:
+
+$$v \in \mathbb{V}^\tau \iff \vDash v : \tau$$
+
+Note that $v : \tau$ is a relation, not a function -- a value can be a
+member of multiple types, and this should be read as ``$v$ is a $\tau$''.
+
+\subsubsection{Bottom}
+$\bot$ ends up being very useful to represent values that don't exist.
+Take for example the following program which doesn't terminate. 
+
+$$\letin{x = \lambda y. y}{x x}$$
+
+What type does should this program have? It should assume the
+type of whatever is needed. For instance, we would expect this program
+to have a type of $()$ as the argument is not used.
+
+$$(\lambda z. ()) (\letin{x = \lambda y. y}{x x}) : ()$$
+
+Since $\bot$ is a member of all ideals, this program is well typed.
+
+\subsubsection{Some notation}
+
+If $\mathbb{D} \subset \mathbb{V}$, and $d \in \mathbb{D}$, we will say $d \ \mathsf{in} \
+\mathbb{V}$ to represent $d$ but treated as if its in $\mathbb{V}$. \\
+We will then define the reverse
+
+$$v | \mathbb{D} =
+\begin{cases}
+  d & \textsf{if} \ v = d \ \textsf{in} \ \mathbb{V} \ \textsf{for
+    some} \ d \in \mathbb{D} \\
+  \bot_{\mathbb{D}} & \textsf{otherwise}
+\end{cases}
+$$
+
+
+\subsubsection{Evaluation function}
+The semantic equation $\mathcal{E} : \mathsf{Expression} \rightarrow
+\mathsf{Environment} \rightarrow \mathbb{V}$ lies at the heart of the semantics,
+and defines how the syntax is evaluated.
+
+\begin{align*}
+  \mathcal{E} \llbracket x \rrbracket \eta
+  &= \eta \llbracket x \rrbracket \\
+  \mathcal{E} \llbracket e_1 e_2 \rrbracket \eta
+  &=
+    \begin{cases}
+      \bot & \mathsf{if} \ v_1 = \bot \\
+      (v_1 | \mathbb{F}) v_2 & \mathsf{if} \ v_1 \in \mathbb{F} \\
+      \mathsf{wrong} & \mathsf{otherwise}
+    \end{cases}
+  \\
+  & \quad \textsf{where} \ v_i = \mathcal{E} \llbracket e_i \rrbracket \eta , \ i = \{
+    1, 2\} \\
+  \mathcal{E} \llbracket \lambda x . \ e \rrbracket \eta
+  &=
+    (\lambda v . \ \mathcal{E} \llbracket e \rrbracket \eta [v / x ])
+    \ \mathsf{in} \ \mathbb{V} \\
+  \mathcal{E} \llbracket \textsf{let} \ x = e_1 \ \textsf{in} \ e_2 \rrbracket \eta
+  &=
+    \mathcal{E} \llbracket e_2 \rrbracket \ \eta [ \mathcal{E} \llbracket e_1 \rrbracket\rho / x ]
+\end{align*}
+
+Note that these evaluation rules are not as strict as the semantics
+defined by Milner~\cite{milner78} -- namely, that the second argument
+of application and let binding is not checked if it is a \textsf{wrong}.
+
+We introduce the notion of an environment $\eta : \mathsf{Variable} \rightarrow
+\mathbb{V}$. It is a map of variables bound to values.
+
+An environment $\eta$ can be said to \textit{respect} a type environment
+$\Gamma$ if all bindings in $\Gamma$ can be found in $\eta$ with the same type.
+$$\eta : \Gamma \iff \forall x : \tau \in \Gamma. \ \eta \llbracket x \rrbracket : \tau$$
+
+$$\Gamma \vDash e : \tau \iff
+\forall \eta. \ \eta : \Gamma \rightarrow \mathcal{E} \llbracket e \rrbracket \eta : \tau $$
+
+An assertion of the form above is said to be \textit{closed} if there
+are no free type variables in $\Gamma$ or $\tau$, and an assertion only holds
+iff its closed instances hold.
+
+Let $\overline{\mathbb{V}}$ be the set of all ideals in $\mathbb{V}$
+that do not contain $\mathsf{wrong}$.
+
+There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
+\rightarrow \mathsf{Valuation} \rightarrow \overline{\mathbb{V}}$
+
+\begin{align*}
+  \mathcal{T}\llbracket () \rrbracket\psi &= \mathbb{B}_{()} \\
+  \mathcal{T}\llbracket \mathsf{Bool} \rrbracket \psi &= \mathbb{B}_{\mathsf{Bool}} \\
+  \mathcal{T}\llbracket \alpha \rrbracket \psi &= \psi \llbracket \alpha \rrbracket \\
+  \mathcal{T} \llbracket \tau \rightarrow \tau' \rrbracket \psi &= \mathcal{T}\llbracket \tau \rrbracket \psi \ \rightarrow \
+                             \mathcal{T} \llbracket \tau' \rrbracket \psi
+\end{align*}
+
+\subsection{Correctness}
+
+Both Milner~\cite{Milner1978} and Damas~\cite{Damas1982} proved semantic
+soundness for the system.
+
+TODO: Is this too trivial to be a lemma? The proof is pretty vacuous
+\newtheorem{lemma}{Lemma}
+\begin{lemma}[to be named]
+  If $v : \tau$ and $\eta : \Gamma$, then $\eta[v/x] : \Gamma,x : \tau$
+  \label{lem:1}
+\end{lemma}
+\begin{proof}
+  If $\eta : \Gamma$, then $\forall x : \tau \in \Gamma \ \eta\llbracket x \rrbracket : \tau$.
+  And if $v : \tau$ then $\eta[v/x] \llbracket x \rrbracket : \tau$.
+  So $\eta[v/x] : \Gamma,x : \tau$, because for all $y : \tau' \in \Gamma,x : \tau$, either $y =
+  x$ and the substitution evaluates to the right type, or $y \neq x$ but
+  because $\eta : \Gamma$, we have $\eta \llbracket y \rrbracket : \tau'$.
+\end{proof}
+
+\newtheorem{theorem}{Theorem}
+\begin{theorem}[Semantic Soundness]
+  $\Gamma \vdash e : \tau \rightarrow \Gamma \vDash e : \tau$ \\
+  If $e$ has type $\tau$, $e$ does actually evaluate to a value in $\tau$.
+\end{theorem}
+\begin{proof}
+  We need to prove $\forall \eta. \eta : \Gamma \rightarrow \mathcal{E} \llbracket e \rrbracket \eta : \tau$. We can do
+  this via induction on $e$:
+
+  \begin{description}
+  \item[\boxed{x}] This is the base case of the induction. Since
+    $\Gamma \vdash x : \tau$ , the rule \textsc{Var} gives us
+    $x : \tau \in \Gamma$. The evaluation function produces
+    $\mathcal{E} \llbracket x \rrbracket \eta = \eta \llbracket x \rrbracket$, but because
+    $\eta : \Gamma$, $x : \tau \in \eta$, so $\eta \llbracket x \rrbracket : \tau$.
+  \item[\boxed{e_1 e_2}] The type given is
+    $\Gamma \vdash e_1 e_2 : \tau$, and via \textsc{App} we have
+    $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and
+    $\Gamma \vdash e_2 : \tau'$.  By applying the induction hypothesis, we get
+    $\Gamma \vDash e_1 : \tau' \rightarrow \tau$ and $\Gamma \vDash e_2 : \tau'$, so
+    $v_1 \in \tau' \rightarrow \tau$ and therefore $v_1 \in \mathbb{F}$. \\
+    This brings us to
+    $\mathcal{E} \llbracket e_1 e_2 \rrbracket \eta = (v_1 | \mathbb{F}) v_2$. We can tell
+    what the application of the $v_2$ will give us by looking at the
+    definition for the ideal of $v_1$:
+    ${\tau' \rightarrow \tau = \{ v \in \mathbb{V} | v \in \mathbb{F} \wedge \forall v' \in \tau' (v |
+      \mathbb{F}) v' \in \tau \}}$.  So
+    $(v_1 | \mathbb{F}) v_2 \in \tau$, as is required to show
+    $\Gamma \vDash e_1 e_2 : \tau$.
+  \item[\boxed{\lambda x . e}] Our type is
+    $\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau$ and our typing rule \textsc{Abs} tells us
+    the antecedent is $\Gamma,x:\tau' \vdash e :
+    \tau$. Evaluating our expression gives
+    $\mathcal{E} \llbracket \lambda x . e \rrbracket \eta = (\lambda v. \mathcal{E} \llbracket e \rrbracket \eta[v / x]) \
+    in \ \mathbb{V}$. \\
+    If we can prove
+    $\mathcal{E} \llbracket e \rrbracket \eta [v/x] : \tau$ where
+    $v : \tau'$, then we can prove that
+    ${\lambda v . \mathcal{E} \llbracket e \rrbracket \eta [v/x] : \tau' \rightarrow \tau}$. But note that for
+    $\Gamma, x : \tau' \vdash e : \tau$, lemma~\ref{lem:1} tells us $\eta[v/x] : \Gamma,x : \tau'$.
+    And with this fact, $\Gamma,x : \tau' \vDash e : \tau$ from the
+    induction hypothesis gives us $\mathcal{E} \llbracket e \rrbracket \eta [v/x] : \tau$
+    where $v : \tau'$, as needed.
+  \item[\boxed{\letin{x = e_1}{e_2}}] $\Gamma \vdash \letin{x = e_1}{e_2} : \tau$, and
+    \textsc{Let} tells us $\Gamma \vdash e_1 : \tau'$ and $\Gamma,x : \tau' \vdash e_2 : \tau$. The
+    evaluation function for let expressions is
+    ${\mathcal{E} \llbracket \letin{x = e_1}{e_2} \rrbracket \eta
+    = \mathcal{E} \llbracket e_2 \rrbracket (\eta [\mathcal{E} \llbracket e_1 \rrbracket \eta / x ])}$. We know that
+  $\mathcal{E} \llbracket e_1 \rrbracket \eta : \tau'$ because of the induction hypothesis on
+  $\Gamma \vdash e_1 : \tau'$, and will refer to this value as $v_1 : \tau'$. \\
+  From lemma~\ref{lem:1}, in $\Gamma,x : \tau' \vdash e_2 : \tau$ the substituted environment
+  respects the type environment $\eta[v_1/x] : \Gamma,x : \tau'$.
+  Therefore $\Gamma,x : \tau' \vDash e_2 : \tau$ tells us that
+  $\mathcal{E} \llbracket e_2 \rrbracket (\eta [v_1/x]) : \tau$. This is
+  identical to our hypothesis, and our proof is done.
+  \end{description}
+  
+\end{proof}
+
+%%% Local Variables:
+%%% TeX-master: "report"
+%%% TeX-engine: luatex
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:

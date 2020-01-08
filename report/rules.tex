@@ -1,0 +1,271 @@
+\chapter{A Formal Definition}
+
+To formalize the system of heaped monads, I introduce a toy language
+and type system implementing the basic principles. The semantics are
+mainly based off of the Hilney-Damas-Milner type system \cite{damasmilner}
+
+The heap is very similar to the heap used in \cite{krishnaswami}
+
+\section{Syntax}
+
+\newcommand{\IO}{\mathsf{IO}}
+\newcommand{\bind}{>\!\!>\!\!=} \newcommand{\concbind}{>\!\!>\!>\!\!=}
+\newcommand{\subtyp}{\geq:}
+
+\setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
+\setlength{\grammarindent}{12em} % increase separation between LHS/RHS
+\renewcommand{\syntleft}{}
+\renewcommand{\syntright}{}
+
+
+\def\defaultHypSeparation{\hskip .05in}
+
+\begin{grammar}
+
+<type $\tau$> ::= () | bool | $\tau \rightarrow \tau'$ | $(\tau, \tau')$ | $\textsf{IO}_\sigma \tau$
+
+<expression $e$> ::= ()
+\alt $x$
+\alt $(e, e')$
+\alt $\lambda x . e$
+\alt $e \ e'$
+\alt $\textsf{let} x = e \textsf{in} e'$ 
+\alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
+\alt $e \bind e'$
+\alt $\textsf{readFile}$
+\alt $\textsf{readNetwork}$
+% how do we specify what resources what functions use? add an explicit
+% type annotation expression?
+% \alt $e : \tau$
+
+<resource $\rho$> ::= \textsf{File} | \textsf{Network} | \textsf{World}
+
+<heap $\sigma$> ::= $\rho$ | $\sigma \cup \sigma'$
+
+\end{grammar}
+
+\begin{figure}
+\begin{mathpar}
+
+\inferrule*[Right=Top]{ }{\sigma \subtyp \textsf{World}} \and
+\inferrule*[Right=Refl]{ }{\sigma \subtyp \sigma} \and
+\inferrule*[Right=Union1]{\sigma \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''} \and
+\hskip 1em
+\inferrule*[Right=Union2]{\sigma' \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''}
+
+\end{mathpar}
+
+  \caption{Resource subtyping rules}
+\end{figure}
+
+
+\begin{figure}
+  \begin{mathpar}
+    \inferrule*[Right=Var]{e : \tau \in \Gamma}{\Gamma \vdash e : \tau} \and
+    \inferrule*[Right=App]{\Gamma \vdash e : \tau \rightarrow \tau' \\ \Gamma \vdash e' : \tau}{\Gamma \vdash e \ e' : \tau'} \and
+    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
+      \tau'} \and
+    \inferrule*[Right=Let]{\Gamma \vdash e : \tau \\ \Gamma,x : \tau \vdash e' : \tau'}
+    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau'} \and
+    \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
+    {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \ e_3 : \tau} \and
+    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\sigma \tau'}{\Gamma \vdash e \bind e' : \IO_\sigma \tau'} \and
+    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} ()} \and
+    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} ()} \and
+
+    \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
+    {\Gamma \vdash e : \IO_{\sigma'} \tau}
+  \end{mathpar}
+
+  \caption{Typing rules}
+\end{figure}
+
+Note that the subsumption is limited to only the heap of the $\IO$
+monad.
+
+The motivating example for the subtyping rules is that the program
+
+\begin{math}
+  \mathsf{if} \ x \ \mathsf{then} \ \mathsf{readFile} \ \mathsf{else} \
+  \mathsf{readNetwork}
+\end{math}
+
+Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} ()$
+
+
+\section{Semantics}
+
+A denotational semantics is provided to prove certain properties of
+the language and its type inference.
+
+We want to be able to prove that the type system is sound -- that is
+that if our system infers the type for an expression $e : \tau$, then the
+expression does indeed semantically evaluate to a value in $\tau$.
+
+All values are modelled with an element inside the set of
+$\mathbb{V}$.
+It consists of values from various other sets, such as
+$\mathbb{B}_{\mathsf{Bool}}$, the set of values for a the
+$\mathsf{Bool}$ type.
+
+Semantic domain:
+
+\begin{align*}
+  \mathbb{V} &= \mathbb{B}_{()} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
+               \mathbb{W} \\
+  \mathbb{B}_{()} &= \{ \ () \ \} \\
+  \mathbb{B}_{\mathsf{Bool}} &=
+                               \{ \textsf{True}, \textsf{False},
+                               \bot_{\textsf{Bool}} \} \\
+  \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
+  \mathbb{W} &= \{ \ . \ \}
+\end{align*}
+
+
+We can use the syntax for semantic entailment, $\Vdash v : \tau$, which is
+defined as
+
+\begin{math}
+  v \in \mathbb{V}^\tau \iff \Vdash v : \tau
+\end{math}
+
+Whilst on the syntactic side, $\Gamma$ is the type environment, we also
+define a semantic environment $\rho$. It is is a map of variable
+identifiers to values.
+
+\begin{math}
+  \rho : \textsf{Id} \rightarrow \mathbb{V}
+\end{math}
+
+
+We use $\llbracket e \rrbracket$ notation to represent passing a
+syntactic argument $e$ to a semantic function.
+
+We say an environment respects a type environment $\rho : \Gamma$ if:
+\begin{math}
+  \rho : \Gamma \iff \forall x : \tau \in \Gamma \rho \llbracket x \rrbracket : \tau
+\end{math}
+
+
+$\mathbb{B}_{Bool} = \{ \textsf{true} \textsf{false} \bot_{bool} \}$
+
+Semantic function $\mathbb{E} : \mathsf{Expr} \rightarrow \mathsf{Env} \rightarrow \mathbb{V}$
+
+
+There is a conditional operator $\hookrightarrow : \mathbb{B}_{\textsf{Bool}} \rightarrow \mathbb{V} \rightarrow \mathbb{V} \rightarrow \mathbb{V}$, defined as follows.
+
+\begin{align*}
+  t \hookrightarrow v, v' =
+  \begin{cases}
+    v & \textsf{if} \ t = \textsf{true} \\
+    v' & \textsf{if} \ t = \textsf{false} \\
+    \bot_v & \textsf{if} \ t = \bot_t
+  \end{cases}
+\end{align*}
+
+\begin{align*}
+  \mathbf{E} \llbracket x \rrbracket \rho &= \rho(x) \\
+  \mathbf{E} \llbracket e \ e' \rrbracket \rho &= \textsf{isF} v_1 \hookrightarrow
+                                              {v_1}_{|F} v_2 \\
+  \mathbf{E} \llbracket \lambda x . \ e \rrbracket \rho &=
+  (\lambda v . \ \mathbf{E} \llbracket e \rrbracket \rho \{ v / x \} ) \
+                                                 \textsf{in} \ \mathbb{V}
+\end{align*}
+
+Semantic domain + semantic function = semantic algebra
+
+
+\begin{theorem}[Soundness]
+  If $e$ is inferred type $\tau$, $e$ evaluates to a value in $\tau$. \\
+  $\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau$
+\end{theorem}
+
+Theorem 2, completeness $\Gamma \Vdash e : \tau \rightarrow \Gamma \vdash e : \tau$
+
+Theorem 3, principal types
+
+Theorem 4, most specific heap for monad?
+
+% \begin{figure}
+
+%   \centering
+%   \AxiomC{}
+%   \UnaryInfC{$. \ \textsf{ok}$}
+%   \DisplayProof
+%   \hskip 1.5em
+  
+%   \AxiomC{$\sigma \ \textsf{ok}$}
+%   \AxiomC{$. \vdash v : \tau$}
+%   \AxiomC{$v \notin \sigma$}
+%   \TrinaryInfC{$\sigma,v \ \textsf{ok}$}
+%   \DisplayProof
+
+%   \caption{Heap Well Formed Rules}
+
+% \end{figure}
+
+
+
+%   \AxiomC{$\Gamma \vdash e_1 : \textsf{IO}_\sigma \tau$}
+%   \AxiomC{$\Gamma \vdash e_2 : \tau \rightarrow \textsf{IO}_{\sigma'} \tau'$}
+%   \AxiomC{$\sigma \cup \sigma' \ \textsf{ok}$}
+%   \TrinaryInfC{$\Gamma \vdash e_1 \concbind e_2 : \textsf{IO}_{\sigma\cup\sigma'} \tau'$}
+%   \DisplayProof
+%   \hskip 2em
+%   \AxiomC{$\Gamma \vdash e_1 : \textsf{IO}_\sigma \tau$}
+%   \AxiomC{$\Gamma \vdash e_2 : \textsf{IO}_{\sigma'} \tau'$}
+%   \AxiomC{$\sigma \cup \sigma' \ \textsf{ok}$}
+%   \TrinaryInfC{$\Gamma \vdash e_1 \ \textrm{join} \ e_2 : \textsf{IO}_{\sigma\cup\sigma'} (\tau, \tau')$}
+%   \DisplayProof
+%   \hskip 2em
+%   \RightLabel{\textsc{Var}}
+%   \AxiomC{$e : \tau \in \Gamma$}
+%   \UnaryInfC{$\Gamma \vdash e : \tau$}
+%   \DisplayProof
+%   \hskip 2em
+%   \RightLabel{\textsc{App}}
+%   \AxiomC{$\Gamma \vdash e_1 : \tau \rightarrow \tau'$}
+%   \AxiomC{$\Gamma \vdash e_2 : \tau$}
+%   \BinaryInfC{$\Gamma \vdash e_1 e_2 : \tau'$}
+%   \DisplayProof
+%   \hskip 2em
+%   \RightLabel{\textsc{Abs}}
+%   \AxiomC{$\Gamma,x : \tau \vdash e : \tau'$}
+%   \UnaryInfC{$\Gamma \vdash \lambda x . \tau \rightarrow e : \tau \rightarrow \tau'$}
+%   \DisplayProof
+%   \hskip 2em
+
+% % if statement
+%   \RightLabel{\textsc{If}}
+%   \AxiomC{$\Gamma \vdash e_1 : \mathrm{bool}$}
+%   \AxiomC{$\Gamma \vdash e_2 : \tau$}
+%   \AxiomC{$\Gamma \vdash e_3 : \tau$}
+%   \TrinaryInfC{$\Gamma \vdash \textsf{if} \ e_1 \ \textsf{then} \ e_2 \
+%     \textsf{else} \ e_3 : \tau$}
+%   \DisplayProof
+
+  % ??? should this be a reduction rule?
+  % \RightLabel{\textsc{Inferbind}}
+  % \AxiomC{$\Gamma \vdash e_1 : \IO_\sigma$}
+  % \AxiomC{$\Gamma \vdash e_2 : \IO_\sigma'$}
+  % \AxiomC{$\sigma \cup \sigma' \ \textsf{ok}$}
+  % \TrinaryInfC{$\Gamma \vdash e_1 >>>? e_2 : \IO_{\sigma\cup\sigma'}$}
+  % % \UnaryInf
+
+
+% \begin{prooftree}
+%   \AxiomC{$\Gamma \vdash e_1 : \IO_x t$}
+%   \AxiomC{$\Gamma \vdash e_2 : (t \rightarrow \IO_y u)$}
+%   \BinaryInfC{$\Gamma \vdash e_1 \bind e_2 : IO_{x * y} u$}
+% \end{prooftree}
+
+% \begin{prooftree}
+%   \AxiomC{$\Gamma \vdash e_1 : \IO_x t$}
+%   \AxiomC{$\Gamma \vdash e_2 : t \rightarrow \IO_x u$}
+%   \BinaryInfC{$\Gamma \vdash e_1 \bind e_2 : \IO_x u$}
+% \end{prooftree}
+
+%%% Local Variables:
+%%% TeX-master: "report"
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:
