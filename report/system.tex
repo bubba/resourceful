@@ -41,7 +41,7 @@ resources -- provided that their resources do not overlap.
 
 \begin{grammar}
 
-  <type $\tau$> ::= () | bool | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\sigma \tau$
+  <type $\tau$> ::= () | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\sigma \tau$
   <type scheme $\sigma$> ::= $\forall \alpha . \sigma$ | $\tau$
 
 <expression $e$> ::= () | $e \times e'$
@@ -206,7 +206,7 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 \begin{figure}
   \begin{mathpar}
     \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
-    \inferrule*[Right=App]{\Gamma \vdash e : \tau \rightarrow \tau' \\ \Gamma \vdash e' : \tau}{\Gamma \vdash e \ e' : \tau'} \and
+    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
     \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
       \tau'} \and
     \inferrule*[Right=Let]{\Gamma \vdash e : \tau \\ \Gamma,x : \bar{\Gamma}(\tau) \vdash e' : \tau'}
@@ -220,8 +220,8 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
     {\Gamma \vdash e \times e' : \tau \times \tau'} \and
 
     \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \llbracket e \rrbracket : \IO_\sigma \tau} \and
-    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\sigma
-      \tau'}{\Gamma \vdash e \bind e' : \IO_\sigma \tau'} \and
+    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\sigma
+      \tau}{\Gamma \vdash e \bind e' : \IO_\sigma \tau} \and
     \inferrule*[Right=Conc]{\Gamma \vdash e_1 : \IO_\sigma \tau_1 \\ \Gamma \vdash e_2 : \IO_{\sigma'}
       \tau_2 \\
       \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
@@ -264,8 +264,13 @@ based on denotational semantics.
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
     \inferrule{ }{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
     \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
-    \inferrule{e_1 \leadsto \llbracket v \rrbracket}{e_1 \bind e_2 \leadsto e_2 v} \and
-    \inferrule{e_1 \leadsto \llbracket v \rrbracket \\ e_2 \leadsto \llbracket w \rrbracket}{e_1 \curlyvee e_2 \leadsto \llbracket v \times w \rrbracket}
+    \inferrule{e_1 \leadsto e_1'}{e_1 \bind e_2 \leadsto e_1' \bind e_2} \and
+    \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 v} \and
+    \inferrule{e_1 \leadsto e_1'}{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2} \and
+    \inferrule{e_2 \leadsto e_2'}{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'} \and
+    \inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket} \and
+    \inferrule{ }{\textsf{readFile} \leadsto \lift{()}} \and
+    \inferrule{ }{\textsf{readNet} \leadsto \lift{()}}
   \end{mathpar}
   \caption{Semantics}
 \end{figure}
@@ -500,6 +505,7 @@ based on denotational semantics.
 
 \begin{lemma}
   If $\Gamma \vdash e' : \tau'$ and $\Gamma, x : \tau' \vdash e : \tau$ then $\Gamma \vdash e [e' / x] : \tau$
+  \label{lemma:substitution}
 \end{lemma}
 \begin{proof}
   asdf
@@ -510,17 +516,17 @@ based on denotational semantics.
 \end{theorem}
 
 \begin{proof}
-  We prove this via structural induction on $e \leadsto e'$:
+  We prove this via structural induction on the proof for $e \leadsto e'$:
   \begin{description}
   \item[\boxed{e_1 \ e_2 \leadsto e_1' \ e_2}] We know that
     $\Gamma \vdash e_1 \ e_2 : \tau$, now we need to prove
     $\Gamma \vdash e_1' \ e_2 : \tau$. For
-    $e_1 \ e_2 \leadsto e_1' \ e_2$, we only have one small-step rule for it
+    $e_1 \ e_2 \leadsto e_1' \ e_2$, we only have one small-step rule for it,
     , which has the premise $e_1 \leadsto e_1'$. Also since
     $\Gamma \vdash e_1 \ e_2 : \tau$, the typing rule \textsc{App} gives us
     $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$.
 
-    Now that we have $\Gamma \vdash e_1: \tau' \rightarrow \tau$ and $e_1 \leadsto e_1'$, we can use
+    Now that we have $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $e_1 \leadsto e_1'$, we can use
     the induction hypothesis to show $\Gamma \vdash e_1' : \tau' \rightarrow \tau$. And once
     again by applying \textsc{App}, we end up with $\Gamma \vdash e_1' \ e_2 :
     \tau$ as needed.
@@ -530,13 +536,85 @@ based on denotational semantics.
 
   \item[\boxed{(\lambda x . e_1) e_2 \leadsto e_1 [e_2 / x]}] Our type is
     $\Gamma \vdash (\lambda x . e_1) e_2 : \tau$, and we need to show that
-    $\Gamma \vdash e_1 [e_2 / x] : \tau$. 
-    By applying \textsc{App} the premises
+    $\Gamma \vdash e_1 [e_2 / x] : \tau$.
+    Unfortunately, the small-step rule for this proof does not contain any
+    premises.
+    However the only typing rule that can give us $\Gamma \vdash (\lambda x . e_1) e_2
+    : \tau$ is \textsc{App}. The premises for it are
     are $\Gamma \vdash \lambda x . e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$. We can then apply
-    \textsc{Abs} to get $\Gamma, x : \tau' \vdash e_1 : \tau$.
-    Lemma~\ref{lemma:1} then gives us $\Gamma \vdash e_1 [e_2 / x] : \tau$ as
-    needed.
+    \textsc{Abs} to get $\Gamma, x : \tau' \vdash e_1 : \tau$. The proof tree like this:
+
+    $$\inferrule*[Right=App]{
+      \inferrule*[Right=Abs]{\Gamma, x : \tau' \vdash e_1 : \tau}{\Gamma \vdash (\lambda x . e_1) : \tau' \rightarrow \tau} \\ \Gamma \vdash e_2 : \tau
+    }
+      {\Gamma \vdash (\lambda x . e_1) e_2 : \tau}
+    $$
     
+    With $\Gamma, x : \tau' \vdash e_1 : \tau$ and $e_2 : \tau'$,
+    lemma~\ref{lemma:substitution} then gives us
+    $\Gamma \vdash e_1 [e_2 / x] : \tau$ as needed.
+
+  \item[\boxed{\letin{x = e_1}{e_2} \leadsto e_2[e_1/x]}]
+    $$
+    \inferrule*[Right=Let]{\Gamma \vdash e_1 : \tau' \\ \Gamma, x : \bar{\Gamma}(\tau') \vdash e_2 : \tau}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau}
+    $$
+    As $\bar{\Gamma}(\tau') = \forall \alpha_1 \ldots \alpha_n \tau'$ where $\{\alpha_1,\ldots,\alpha_n\} =
+    \textsf{FTV}(\tau') \backslash \textsf{FTV}(\Gamma)$, we know that $\{\alpha_1,\ldots,\alpha_n\} \cap
+    \textsf{FTV}(\Gamma) = \emptyset$.
+    So by lemma~\ref{lemma:substitution} we have $\Gamma \vdash e_2 [e_1/x] : \tau$.
+
+  \item[\boxed{\lift{e_1} \bind e_2 \leadsto e_1' \bind e_2}]
+    The premise for this small-step rule is $e_1 \leadsto e_1'$. We have $\Gamma
+    \vdash e_1 \bind e_2 : \tau$, but because we know the type more
+    specifically because of the rule \textsc{Bind}, it must be of
+    the form $\Gamma \vdash e_1 \bind e_2 : \IO_\sigma \tau$. Thus we need to show $\Gamma
+    \vdash e_1' \bind e_2 : \IO_\sigma \tau$.
+
+    We have the typing premises $\Gamma \vdash e_1 : \IO_\sigma \tau'$. We can just
+    apply the induction hypothesis on $e_1 \leadsto e_1'$ to get $\Gamma \vdash e_1'
+    : \IO_\sigma \tau'$ and reapply \textsc{Bind} to obtain $\Gamma \vdash e_1' \bind
+    e_2 : \IO_\sigma \tau$.
+
+  \item[\boxed{\lift{v} \bind e \leadsto e \ v}]
+    Using the same observation as the previous case, we can prove this
+    by showing $\Gamma \vdash e \ v : \IO_\sigma \tau$.
+    We can get $\Gamma \vdash v : \tau'$ via the following proof tree:
+    $$\inferrule*[Right=Bind]{\inferrule*[Right=Lift]{\Gamma \vdash v : \tau'}
+      {\Gamma \vdash \lift{v} : \IO_\sigma \tau'} \\ \Gamma \vdash e : \tau' \rightarrow \IO_\sigma \tau}
+    {\Gamma \vdash \lift{v} \bind e : \IO_\sigma \tau}$$
+    And then by applying \textsc{App}, we arrive at $\Gamma \vdash e \ v : \IO_\sigma
+    \tau$.
+
+  \item[\boxed{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2}]
+    We need to show $\Gamma \vdash e_1' \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \tau \times
+    \tau'$. \textsc{Conc} provides us with the premise $\Gamma \vdash e_1 : \IO_\sigma
+    \tau$, which by applying the induction hypothesis with $e_1 \leadsto e_2$
+    gives $\Gamma \vdash e_1' : \IO_\sigma \tau$. Reapply \textsc{Conc} to get the
+    result needed.
+  \item[\boxed{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'}]
+    This proof is the same as the case above.
+    
+  \item[\boxed{\lift{v} \curlyvee \lift{w} \leadsto \lift{v \times w}}]
+    The aim is to show $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$.
+    We have this proof tree:
+    $$\inferrule*[Right=Conc]{
+      \inferrule*[Right=Lift]{\Gamma \vdash v : \tau}{\Gamma \vdash \lift{v} : \IO_\sigma \tau} \\
+      \inferrule*[Right=Lift]{\Gamma \vdash w : \tau'}{\Gamma \vdash \lift{w} : \IO_\sigma \tau'}
+      \\
+      \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
+    {\Gamma \vdash \lift{v} \curlyvee \lift{w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'}$$
+    Use \textsc{Product} to get $\Gamma \vdash v \times w : \tau \times \tau'$, and then
+    \textsc{Lift} to get $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$
+    (Note that \textsc{Lift} can lift into $\IO_\sigma$ for any $\sigma$)
+
+  \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{()}}}]
+    We know $\Gamma \vdash
+    \textsf{readFile} : \IO_{\textsf{File}} ()$, and we can just use
+    \textsc{Lift} to show that $\Gamma \vdash \lift{()} : \IO_{\textsf{File}}
+    ()$.
+  \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{()}}}]
+    This is the same for above, except the heap is replaced with the
+    singular resource $\textsf{Net}$.
   \end{description}
 \end{proof}
 
@@ -550,6 +628,7 @@ based on denotational semantics.
   If $e$ is inferred type $\tau$, $e$ evaluates to a value in $\tau$. \\
   $\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau$
 \end{theorem}
+
 
 Theorem 2, completeness $\Gamma \Vdash e : \tau \rightarrow \Gamma \vdash e : \tau$
 
