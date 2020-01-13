@@ -3,3 +3,11 @@
 *.o
 *.hi
 *.ibc
+*.dvi
+*.log
+*.aux
+_minted*
+*.pdf
+_region_*
+\#*\#
+.\#*
