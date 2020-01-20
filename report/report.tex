@@ -49,21 +49,117 @@ class Monad IO where
 \end{minted}
 
 Now IO actions can be easily chained together in a type-safe way that ensures
-their ordering. 
+their ordering.
 
-\inputminted{haskell}{motivating.hs}
+This ordering however, imposes limitations. One of the main benefits of pure
+functional languages, is that since expressions do not have side effects, there
+is no restriction on what order they need to be evaluated in.
 
-However it feels as if we have lost something here. This sequential style brings
-us back to the imperative mindset, where instructions are executed one after
-another, and we have lost the...
+Take for example the following snippet.
+\begin{minted}{haskell}
+f, g, h :: Int -> Int
+f x = g x + h x
+\end{minted}
 
-In this report we will explore the design space to solve two problems:
+\texttt{g} could be evaluted before \texttt{h}, or \texttt{h} could
+be evaluted before \texttt{g}. It wouldn't make a difference because there
+are no side effects. One might be tempted then to evaluate the two expressions
+concurrently -- and that would be safe.
 
-The first is breaking free of the imposed over-sequencing
-that come with monadic data structures.
+The same cannot be said for impure IO actions -- and the type system prevents that.
+\begin{minted}{haskell}
+f, g, h :: Int -> IO Int
+f x = g x >>= \y -> y + h x
+\end{minted}
+We need to explicitly bind the actions and sequence evaluation.
+Does this mean that concurrency is not possible for IO actions? No, as many
+languages provide primitives to run these actions concurrently in a type safe
+way. Haskell has \mintinline{haskell}{forkIO}, but for simpliclty we are going
+to assume a higher level function for running two IO actions simultaneously and
+collecting the results.
 
-The second is embedding additional information at the type level about what
-monadic actions need to be sequenced together, and what do not.
+\begin{minted}{haskell}
+concurrently :: IO a -> IO b -> IO (a, b)
+\end{minted}
+
+Now we can use it to run our two IO actions side by side safely. 
+\begin{minted}{haskell}
+f, g, h :: Int -> IO Int
+f x = g x `concurrently` h x >>= \(a, b) -> return (a + b)
+\end{minted}
+
+But what if \texttt{g} and \texttt{h} actually looked like this?
+
+\begin{minted}{haskell}
+readFile :: FilePath -> IO String
+writeFile :: FilePath -> String -> IO ()
+
+g x = do
+  txt <- readFile "foo.txt"
+  return (x + (read txt))
+h x = do
+  writeFile "foo.txt" "hello"
+  return (42 - x)
+\end{minted}
+
+Running these two functions concurrently could be disastrous as the order in
+which they execute could affect the outcome of the program, and all of a sudden
+some innocuous looking IO functions end up introducing non-determinism and
+tricky race conditions into our program.
+
+We know statically, that a program such as \mint{haskell}|g x `concurrently` h
+x| should probably not be allowed. But then why did the type system allow it?
+Has it failed us? The goal of the type system is to disallow as many incorrect
+programs as possible while allowing as many correct programs as possible. It is
+a fine line as to what programs are defined correct and what are defined as
+incorrect -- a type system too lenient and buggy programs will creep through. A
+type system too strict and the programmer will end up wasting time fighting the
+type checker.
+
+In this piece of research however, we are going to investigate the point in the
+design space that rejects such programs. We do \textbf{not} want to allow
+programs that have glaring race conditions, where we can see that there is a
+contentious access of resources.
+
+The genesis of the rest of this work is based around the idea of modelling the
+resources in use at the type level. We begin by adding another type parameter to
+our IO type to represent what resource an IO action uses:
+
+\mint{haskell}|type IO r a = World -> (World, a)|
+
+Now our type signatures could look like this, annotating the API with what
+resources it might use.
+
+\begin{minted}{haskell}
+data Resource = FileSystem | Net | Database | OpenGL | ...
+readFile :: FilePath -> IO FileSystem ()
+writeFile :: FilePath -> IO FileSystem String
+readSocket :: Socket -> IO Net ()
+runQuery :: Query a -> IO Database a
+swapBuffers :: IO OpenGL ()
+\end{minted}
+
+Keep in mind we are painting in broad strokes when we use the word
+``resource''. In the running example the resource is a file,
+\texttt{foo.txt}. But the notion of a resource can be as broad or as specific as
+the author of a function needs it to be. For simplicity in our example we will
+consider the entire file system as a single resource.
+
+Now that we know what resources each $\IO$ action is using, we would like to
+change the type of our concurrent function to take advantage of this new
+information. Perhaps we would like to reject any two functions that use the same
+resource, i.e. it only accepts $\IO$ actions with distinct resources.
+
+\mint{haskell}|concurrently :: r /~ s => IO r a -> IO s b -> IO ? (a, b)|
+
+You can read $r /~ s$ as ``r is distinct from s'', or the opposite of a
+\texttt{r ~ s} equality constraint that one might see in a type signature. This
+of course however, does not exist in Haskell, and seems to be very imprecisely
+defined. 
+
+\subsection{Resources}
+
+
 
 \include{background}
 
