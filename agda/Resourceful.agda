@@ -72,11 +72,19 @@ data _↝_ : Term → Term → Set where
           -------------------
         → ⟦ v ⟧ >>= e ↝ e · v
 
+data Resource : Set where
+  Net : Resource
+  File : Resource
+
+infixr 9 _∪_
+data Heap : Set where
+  `_ : Resource → Heap
+  _∪_ : Resource → Resource → Heap
 
 infixr 7 _⇒_
 data Type : Set where
   _⇒_ : Type → Type → Type
-  IO _ : Type → Type
+  IO : Heap → Type → Type
   □ : Type
 
 infixl 5 _,_⦂_
@@ -115,16 +123,16 @@ data _⊢_⦂_ : Context → Term → Type → Set where
        --------------
      → Γ ⊢ e · e' ⦂ τ
 
-  ⊢⟦⟧ : ∀ {Γ e τ}
+  ⊢⟦⟧ : ∀ {Γ e τ σ}
       → Γ ⊢ e ⦂ τ
         ----------------
-      → Γ ⊢ ⟦ e ⟧ ⦂ IO τ
+      → Γ ⊢ ⟦ e ⟧ ⦂ IO σ τ
   
-  ⊢>>= : ∀ {Γ e e' τ τ'}
-       → Γ ⊢ e ⦂ IO τ'
-       → Γ ⊢ e' ⦂ τ' ⇒ IO τ
+  ⊢>>= : ∀ {Γ e e' τ τ' σ}
+       → Γ ⊢ e ⦂ IO σ τ'
+       → Γ ⊢ e' ⦂ τ' ⇒ IO σ τ
          -------------------
-       → Γ ⊢ e >>= e' ⦂ IO τ
+       → Γ ⊢ e >>= e' ⦂ IO σ τ
 
   ⊢□ : ∀ {Γ}
        

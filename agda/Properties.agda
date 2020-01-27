@@ -31,10 +31,10 @@ data Canonical_⦂_ : Term → Type → Set where
 
   C-□ : Canonical □ ⦂ □
 
-  C-⟦⟧ : ∀ {e τ}
+  C-⟦⟧ : ∀ {e τ σ}
        → ∅ ⊢ e ⦂ τ
          ----------------------
-       → Canonical ⟦ e ⟧ ⦂ IO τ
+       → Canonical ⟦ e ⟧ ⦂ IO σ τ
 
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
