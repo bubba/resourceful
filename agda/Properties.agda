@@ -23,18 +23,18 @@ V¬-↝ V-⟦⟧ ()
 
 infix 4 Canonical_⦂_
 
-data Canonical_⦂_ : Term → Type → Set where
+data Canonical_⦂_ : Term → TypeScheme → Set where
   C-ƛ : ∀ {x e τ τ'}
-      → ∅ , x ⦂ τ' ⊢ e ⦂ τ
+      → ∅ , x ⦂ ` τ' ⊢ e ⦂ ` τ
         ------------------
-      → Canonical (ƛ x ⇒ e) ⦂ τ' ⇒ τ
+      → Canonical (ƛ x ⇒ e) ⦂ ` (τ' ⇒ τ)
 
-  C-□ : Canonical □ ⦂ □
+  C-□ : Canonical □ ⦂ ` □
 
   C-⟦⟧ : ∀ {e τ σ}
-       → ∅ ⊢ e ⦂ τ
+       → ∅ ⊢ e ⦂ ` τ
          ----------------------
-       → Canonical ⟦ e ⟧ ⦂ IO σ τ
+       → Canonical ⟦ e ⟧ ⦂ ` (IO σ τ)
 
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
@@ -69,6 +69,7 @@ progress (⊢>>= ⊢m ⊢f) with progress ⊢m
 ... | done vm with canonical ⊢m vm
 ...   | C-⟦⟧ _ = step β->>=
 progress ⊢□ = done V-□
+progress a = {!!}
 
 
 
@@ -81,12 +82,12 @@ ext p (S x∈Γ x≢y) = S (p x∈Γ) x≢y
 rename : ∀ {Γ Δ}
        → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)
        → (∀ {e τ} → Γ ⊢ e ⦂ τ → Δ ⊢ e ⦂ τ)
-rename p (⊢` x) = ⊢` (p x)
+rename p (⊢` x⦂τ' τ'>τ) = ⊢` (p x⦂τ') τ'>τ
 rename p (⊢ƛ Γ⊢e⦂τ) = ⊢ƛ (rename (ext p) Γ⊢e⦂τ)
 rename p (⊢· Γ⊢e⦂τ Γ⊢e⦂τ₁) = ⊢· (rename p Γ⊢e⦂τ) (rename p Γ⊢e⦂τ₁)
 rename p (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (rename p ⊢e)
 rename p (⊢>>= ⊢m ⊢f) = ⊢>>= (rename p ⊢m) (rename p ⊢f)
-rename p ⊢□ = ⊢□ 
+rename p ⊢□ = ⊢□
     
 weaken : ∀ {Γ e τ} → ∅ ⊢ e ⦂ τ → Γ ⊢ e ⦂ τ
 weaken = rename f
@@ -118,17 +119,28 @@ swap {Γ} {x} {y} {e} {a} {b} x≢y ⊢e = rename ρ ⊢e
         ρ (S Z y≠x) = Z
         ρ (S (S x∈ z≢y) z≢x) = S (S x∈ z≢x) z≢y
 
+inst : ∀ {Γ e τ τ'} → Γ ⊢ e ⦂ τ' → τ' > τ → Γ ⊢ e ⦂ τ
+inst (⊢` x⦂τ'∈Γ _) τ'>τ = ⊢` x⦂τ'∈Γ τ'>τ
+inst (⊢ƛ x) y = {!!}
+inst (⊢· x x₁) y = {!!}
+inst (⊢lt x x₁) y = {!!}
+inst (⊢⟦⟧ x) y = {!!}
+inst (⊢>>= x x₁) y = {!!}
+inst ⊢□ y = {!!}
+
 subst : ∀ {Γ x e e' τ τ'}
       → ∅ ⊢ e ⦂ τ
       → Γ , x ⦂ τ ⊢ e' ⦂ τ'
         -------------------
       → Γ ⊢ e' [ x := e ] ⦂ τ'
-subst {x = y} ⊢e (⊢` {x = x} Z) with x ≟ y
-...  | yes _ = weaken ⊢e
+subst {x = y} ⊢e (⊢` {x = x} Z τ''>τ) with x ≟ y
+...  | yes _ = f (weaken ⊢e)
+  where f : ∀ {Γ e τ τ'} → Γ ⊢ e ⦂ τ → Γ ⊢ e ⦂ τ'
+        f (⊢` prf _) = {!!}
 ...  | no x≢y = ⊥-elim (x≢y refl)
-subst {x = y} ⊢e (⊢` {x = x} (S x∈ x≢y)) with x ≟ y
+subst {x = y} ⊢e (⊢` {x = x} (S x∈ x≢y) τ''>τ) with x ≟ y
 ...  | yes x≡y = ⊥-elim (x≢y x≡y)
-...  | no x≢y' = ⊢` x∈
+...  | no x≢y' = ⊢` x∈ τ''>τ
 subst {x = y} ⊢e (⊢ƛ {x = x} ⊢e') with x ≟ y
 ...  | yes refl = ⊢ƛ (drop ⊢e')
 ...  | no x≢y = ⊢ƛ (subst ⊢e (swap x≢y ⊢e'))
