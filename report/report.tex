@@ -13,6 +13,12 @@
 
 \newcommand{\llbracket}{[\![}
 \newcommand{\rrbracket}{]\!]}
+\newcommand{\IO}{\mathsf{IO}}
+\newcommand{\bind}{>\!\!>\!\!=} \newcommand{\concbind}{>\!\!>\!>\!\!=}
+\newcommand{\subtyp}{\geq:}
+\newcommand{\notsubtyp}{\ngeq:}
+\newcommand{\lift}[1]{\ensuremath{\llbracket#1\rrbracket}}
+
 
 \chapter{Introduction}
 The immutability and pureness of certain functional languages make them seem
@@ -127,8 +133,9 @@ our IO type to represent what resource an IO action uses:
 
 \mint{haskell}|type IO r a = World -> (World, a)|
 
-Now our type signatures could look like this, annotating the API with what
-resources it might use.
+This is a phantom type parameter, as it only exists at the type level. Now our
+type signatures could look like this, annotating the API with what resources it
+might use.
 
 \begin{minted}{haskell}
 data Resource = FileSystem | Net | Database | OpenGL | ...
@@ -142,7 +149,8 @@ swapBuffers :: IO OpenGL ()
 Keep in mind we are painting in broad strokes when we use the word
 ``resource''. In the running example the resource is a file,
 \texttt{foo.txt}. But the notion of a resource can be as broad or as specific as
-the author of a function needs it to be. For simplicity in our example we will
+the author of a function needs it to be. It could represent a specific database
+instance, or a single network socket. For simplicity in our example we will
 consider the entire file system as a single resource.
 
 Now that we know what resources each $\IO$ action is using, we would like to
@@ -154,16 +162,27 @@ resource, i.e. it only accepts $\IO$ actions with distinct resources.
 
 You can read $r /~ s$ as ``r is distinct from s'', or the opposite of a
 \texttt{r ~ s} equality constraint that one might see in a type signature. This
-of course however, does not exist in Haskell, and seems to be very imprecisely
-defined. 
+of course however, does not exist in Haskell.  And what does it exactly mean for
+two resources to ``be distinct''? And what resources would the returned $\IO$
+use?
 
-\subsection{Resources}
-
+These are questions that are answered in chapter~\ref{chapter:system} with a
+formal definition of a type system that tracks resource usage. We explore a
+specific point in the design space, where the type system rejects programs like
+$$
+\textsf{readFile} \curlyvee \textsf{readFile}
+$$
+But accepts and assigns types to programs such as
+$$
+\textsf{readFile} \curlyvee \textsf{readNet} : \IO_{\textsf{File} \cup \textsf{Net}} \ () \times ()
+$$
 
 
 \include{background}
 
 \include{System}
+
+\include{system2}
 
 Extensions: Dependently typed
 

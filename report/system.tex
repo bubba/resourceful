@@ -1,4 +1,4 @@
-\chapter{A Formal Definition}
+\chapter{A Formal Definition} \label{chapter:system}
 
 To formalize the system of heaped monads, I introduce a toy language
 and type system implementing the basic principles. The semantics are
@@ -7,12 +7,6 @@ mainly based off of the Hilney-Damas-Milner type system \cite{damasmilner}
 The heap is very similar to the heap used in \cite{krishnaswami}
 
 \section{Syntax}
-
-\newcommand{\IO}{\mathsf{IO}}
-\newcommand{\bind}{>\!\!>\!\!=} \newcommand{\concbind}{>\!\!>\!>\!\!=}
-\newcommand{\subtyp}{\geq:}
-\newcommand{\notsubtyp}{\ngeq:}
-\newcommand{\lift}[1]{\ensuremath{\llbracket#1\rrbracket}}
 
 \setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{12em} % increase separation between LHS/RHS
@@ -42,21 +36,22 @@ resources -- provided that their resources do not overlap.
 \begin{grammar}
 
   <type $\tau$> ::= () | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\sigma \tau$
+  
   <type scheme $\sigma$> ::= $\forall \alpha . \sigma$ | $\tau$
 
-<expression $e$> ::= () | $e \times e'$
-\alt $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x = e}{e'}$
-%\alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
-\alt $\lift{e}$ | $e \bind e'$ | $e \curlyvee e'$
-\alt $\textsf{readFile}$
-\alt $\textsf{readNetwork}$
-% how do we specify what resources what functions use? add an explicit
-% type annotation expression?
-% \alt $e : \tau$
+  <expression $e$> ::= () | $e \times e'$
+  \alt $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x = e}{e'}$
+  % \alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
+  \alt $\lift{e}$ | $e \bind e'$ | $e \curlyvee e'$
+  \alt $\textsf{readFile}$
+  \alt $\textsf{readNetwork}$
+  % how do we specify what resources what functions use? add an explicit
+  % type annotation expression?
+  % \alt $e : \tau$
 
-<resource $\rho$> ::= \textsf{File} | \textsf{Network} | \textsf{World}
+  <resource $\rho$> ::= \textsf{File} | \textsf{Network} | \textsf{World}
 
-<heap $\sigma$> ::= $\rho$ | $\sigma \cup \sigma'$
+  <heap $\sigma$> ::= $\rho$ | $\sigma \cup \sigma'$
 
 \end{grammar}
 
@@ -86,6 +81,12 @@ rules of the Hindley-Damas-Milner system.
     \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e' : \tau}
     {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
   \end{mathpar}
+
+Note that in the syntax-directed rules, the typing judgement assigns
+types to terms, not type schemes~\ref{tofte}. Instantiation occurs
+directly within the \textsc{Var} rule, and generalisation occurs
+implicitly in $\bar{\Gamma}$.
+  
 We also introduce the typing rule for $()$ expressions, to give us a
 concrete type, as well as a rule for products which are constructed
 through $e \times e'$.
@@ -262,8 +263,8 @@ based on denotational semantics.
     %   \eta \vdash e_1 \bind e_2 \leadsto \llbracket \rrbracket}
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
-    \inferrule{ }{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
-    \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
+    \inferrule{e_2 \ \textsf{value}}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
+    \inferrule{}{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
     \inferrule{e_1 \leadsto e_1'}{e_1 \bind e_2 \leadsto e_1' \bind e_2} \and
     \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 v} \and
     \inferrule{e_1 \leadsto e_1'}{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2} \and
@@ -624,7 +625,7 @@ based on denotational semantics.
 \end{theorem}
 
 \begin{proof}
-  We prove this via induction on 
+  We prove this via induction on the proof for $. \vdash e : \tau$
 \end{proof}
 
 

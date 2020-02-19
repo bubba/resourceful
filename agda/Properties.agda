@@ -1,7 +1,7 @@
 module Properties where
 
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; _≢_; refl; sym; cong; cong₂)
+  using (_≡_; _≢_; refl; sym; cong; cong₂; ≢-sym)
 open import Data.String using (String; _≟_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -23,18 +23,18 @@ V¬-↝ V-⟦⟧ ()
 
 infix 4 Canonical_⦂_
 
-data Canonical_⦂_ : Term → TypeScheme → Set where
+data Canonical_⦂_ : Term → Type → Set where
   C-ƛ : ∀ {x e τ τ'}
-      → ∅ , x ⦂ ` τ' ⊢ e ⦂ ` τ
+      → ∅ , x ⦂ ` τ' ⊢ e ⦂ τ
         ------------------
-      → Canonical (ƛ x ⇒ e) ⦂ ` (τ' ⇒ τ)
+      → Canonical (ƛ x ⇒ e) ⦂ (τ' ⇒ τ)
 
-  C-□ : Canonical □ ⦂ ` □
+  C-□ : Canonical □ ⦂ □
 
   C-⟦⟧ : ∀ {e τ σ}
-       → ∅ ⊢ e ⦂ ` τ
+       → ∅ ⊢ e ⦂ τ
          ----------------------
-       → Canonical ⟦ e ⟧ ⦂ ` (IO σ τ)
+       → Canonical ⟦ e ⟧ ⦂ IO σ τ
 
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
@@ -69,15 +69,18 @@ progress (⊢>>= ⊢m ⊢f) with progress ⊢m
 ... | done vm with canonical ⊢m vm
 ...   | C-⟦⟧ _ = step β->>=
 progress ⊢□ = done V-□
-progress a = {!!}
-
-
+progress (⊢lt ⊢e₁ ⊢e₂) = step β-lt
 
 ext : ∀ {Γ Δ}
     → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)
     → (∀ {x y τ τ'} → x ⦂ τ ∈ Γ , y ⦂ τ' → x ⦂ τ ∈ Δ , y ⦂ τ')
 ext p Z = Z
 ext p (S x∈Γ x≢y) = S (p x∈Γ) x≢y
+
+renameClose : ∀ {Γ Δ}
+            → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)
+            → (∀ {τ} → close Γ τ ≡ close Δ τ)
+renameClose p = {!!} 
 
 rename : ∀ {Γ Δ}
        → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)
@@ -88,6 +91,7 @@ rename p (⊢· Γ⊢e⦂τ Γ⊢e⦂τ₁) = ⊢· (rename p Γ⊢e⦂τ) (rena
 rename p (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (rename p ⊢e)
 rename p (⊢>>= ⊢m ⊢f) = ⊢>>= (rename p ⊢m) (rename p ⊢f)
 rename p ⊢□ = ⊢□
+rename p (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename p Γ⊢e'⦂τ') {!!}
     
 weaken : ∀ {Γ e τ} → ∅ ⊢ e ⦂ τ → Γ ⊢ e ⦂ τ
 weaken = rename f
@@ -106,6 +110,15 @@ drop {Γ} {x} {e} {τ₁} {τ₂} {τ₃} ⊢e = rename ρ ⊢e
         ρ (S Z x≢x) = ⊥-elim (x≢x refl)
         ρ (S (S z∈ _) z≢x) = S z∈ z≢x
 
+sneakIn : ∀ {Γ x e σ σ' τ}
+        → Γ , x ⦂ σ ⊢ e ⦂ τ
+        → Γ , x ⦂ σ' , x ⦂ σ ⊢ e ⦂ τ
+sneakIn {Γ} {x} {e} {σ} {σ'} {τ} ⊢e = rename ρ ⊢e
+  where ρ : ∀ {z σ''} → z ⦂ σ'' ∈ Γ , x ⦂ σ
+                      → z ⦂ σ'' ∈ Γ , x ⦂ σ' , x ⦂ σ
+        ρ Z = Z
+        ρ (S s z≢x) = S (S s z≢x) z≢x
+
 swap : ∀ {Γ x y e a b c}
      → x ≢ y
      → Γ , y ⦂ b , x ⦂ a ⊢ e ⦂ c
@@ -119,24 +132,65 @@ swap {Γ} {x} {y} {e} {a} {b} x≢y ⊢e = rename ρ ⊢e
         ρ (S Z y≠x) = Z
         ρ (S (S x∈ z≢y) z≢x) = S (S x∈ z≢x) z≢y
 
-inst : ∀ {Γ e τ τ'} → Γ ⊢ e ⦂ τ' → τ' > τ → Γ ⊢ e ⦂ τ
-inst (⊢` x⦂τ'∈Γ _) τ'>τ = ⊢` x⦂τ'∈Γ τ'>τ
-inst (⊢ƛ x) y = {!!}
-inst (⊢· x x₁) y = {!!}
-inst (⊢lt x x₁) y = {!!}
-inst (⊢⟦⟧ x) y = {!!}
-inst (⊢>>= x x₁) y = {!!}
-inst ⊢□ y = {!!}
+
+splitAbs : ∀ {τ₁ τ₂ τ} → ` (τ₁ ⇒ τ₂) > τ → ∃[ τ₁' ] (∃[ τ₂' ] (τ ≡ ` (τ₁' ⇒ τ₂')))
+splitAbs {τ₁} {τ₂} (General SZ refl) = ⟨ τ₁ , ⟨ τ₂ , refl ⟩ ⟩
+splitAbs {τ₁} (General s@(SS x x₁ si) refl) = {!!}
+
+splitAbsGeneralL : ∀ {τ₁ τ₂ τ} → ` (τ₁ ⇒ τ₂) > τ → ` τ₁ > τ
+splitAbsGeneralL τ'>τ with splitAbs τ'>τ
+splitAbsGeneralL (General s refl) | ⟨ τ₁' , ⟨ τ₂' , _ ⟩ ⟩ = {!!}
+
+-- if σ' > σ then either σ' ≡ σ or σ' is of the form ∀ α . σ
+
+subOnType : ∀ {τ} → (s : Substitution) → sub s (` τ) ≡ ` τ
+subOnType SZ = refl
+subOnType (SS _ _ s) = subOnType s
+
+type>Eq : ∀ {τ σ} → ` τ > σ → σ ≡ ` τ
+type>Eq (General s refl) = subOnType s
+
+-- asdf5 : ∀ {σ τ} → (s : Substitution) → sub s (` (IO σ τ)) → sub s (` τ)
+-- asdf5 SZ = {!!}
+-- asdf5 (SS x x₁ s) = {!!}
+
+splitIO : ∀ {σ τ' τ} → ` (IO σ τ') > τ → ` τ' > τ
+splitIO x rewrite sym (type>Eq x) = {! !}
+
+inst : ∀ {Γ e x σ σ' τ} → Γ , x ⦂ σ' ⊢ e ⦂ τ
+                        → σ > σ'
+                          ------------------
+                        → Γ , x ⦂ σ ⊢ e ⦂ τ
+inst {Γ} {e} {x = y} {σ} {σ'} {τ} (⊢` {x = x} x⦂τ∈Γ σ'>τ) σ>σ' with x ≟ y
+... | yes refl = {!!}
+... | no s = {!!}
+inst {x = y} (⊢ƛ {x = x} ⊢e) σ>σ' with x ≟ y
+... | yes refl = let z = drop ⊢e in ⊢ƛ (sneakIn z)
+... | no x≢y = let z = swap x≢y ⊢e
+                   z1 = inst z σ>σ' in ⊢ƛ (swap (≢-sym x≢y) z1)
+inst (⊢· x x₁) σ'>σ = {!!}
+inst (⊢lt x x₁) σ'>σ = {!!}
+inst (⊢⟦⟧ x) σ'>σ = {!!}
+inst (⊢>>= x x₁) σ'>σ = {!!}
+inst ⊢□ σ'>σ = {!!}
+-- inst (⊢` x⦂τ'∈Γ τ'>τ'') τ''>τ = ⊢` x⦂τ'∈Γ (>trans τ'>τ'' τ''>τ)
+-- inst {Γ} {.(ƛ _ ⇒ _)} (⊢ƛ Γ⊢) y@(General s refl) = {!!}
+-- inst (⊢· x x₁) y = {!!}
+-- inst (⊢lt x x₁) y = {!!}
+-- inst (⊢⟦⟧ x) y = {!!}
+-- inst (⊢>>= x x₁) y = {!!}
+-- inst ⊢□ (General SZ refl) = ⊢□
+-- inst ⊢□ (General (SS _ _ s) x) = inst ⊢□ (General s x)
 
 subst : ∀ {Γ x e e' τ τ'}
       → ∅ ⊢ e ⦂ τ
-      → Γ , x ⦂ τ ⊢ e' ⦂ τ'
+      → Γ , x ⦂ ` τ ⊢ e' ⦂ τ'
         -------------------
       → Γ ⊢ e' [ x := e ] ⦂ τ'
 subst {x = y} ⊢e (⊢` {x = x} Z τ''>τ) with x ≟ y
 ...  | yes _ = f (weaken ⊢e)
   where f : ∀ {Γ e τ τ'} → Γ ⊢ e ⦂ τ → Γ ⊢ e ⦂ τ'
-        f (⊢` prf _) = {!!}
+        f x = {!!}
 ...  | no x≢y = ⊥-elim (x≢y refl)
 subst {x = y} ⊢e (⊢` {x = x} (S x∈ x≢y) τ''>τ) with x ≟ y
 ...  | yes x≡y = ⊥-elim (x≢y x≡y)
@@ -148,6 +202,7 @@ subst {x = y} ⊢e (⊢· e e') = ⊢· (subst ⊢e e) (subst ⊢e e')
 subst {x = y} ⊢e ⊢□ = ⊢□
 subst {x = y} ⊢e (⊢⟦⟧ ⊢e') = ⊢⟦⟧ (subst ⊢e ⊢e')
 subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) = ⊢>>= (subst ⊢e ⊢m) (subst ⊢e ⊢f)
+subst {x = y} ⊢e (⊢lt x x₁) = {!!}
 
 preservation : ∀ {e e' τ}
              → ∅ ⊢ e ⦂ τ

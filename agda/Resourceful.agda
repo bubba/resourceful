@@ -4,7 +4,7 @@ open import Data.List using (List; _∷_; [_]; []; foldl; any; _++_)
 open import Data.List.Membership.DecSetoid
 open import Data.String using (String; _≟_; _==_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; ¬_)
 open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Agda.Builtin.Bool
 
@@ -77,6 +77,11 @@ data _↝_ : Term → Term → Set where
       → Value e'
         ------------------
       → (ƛ x ⇒ e) · e' ↝ e [ x := e' ]
+
+  β-lt : ∀ {x e e'}
+         -- TODO: should (Value e')?
+         ----------
+       → (lt x ⇐ e' in' e) ↝ e [ x := e' ]
 
   ξ->>= : ∀ {e₁ e₂ e₁'}
         → e₁ ↝ e₁'
@@ -164,8 +169,7 @@ asdf1 {SZ} = refl
 asdf1 {SS i τ s} = cong (SS i τ) asdf1
 
 asdf2 : ∀ {s} → s ∘ SZ ≡ s
-asdf2 {SZ} = refl
-asdf2 {SS i τ si} = cong (SS i τ) asdf2
+asdf2 = refl
 
 asdf3 : ∀ {σ} → sub SZ σ ≡ σ
 asdf3 = refl
@@ -183,6 +187,8 @@ asdf (SS i τ s1) s2 σ = asdf s1 s2 (substitute i τ σ)
   where a : sub s2 (sub s1 σ) ≡ sub s2 σ'
         a = cong (sub s2) s1p
 
+>refl : ∀ {σ} → σ > σ
+>refl = General SZ refl
 
 infixl 5 _,_⦂_
 data Context : Set where
@@ -199,27 +205,30 @@ _/_ : List Id → List Id → List Id
 _ : ("b" ∷ [ "a" ]) / [ "b" ] ≡ [ "a" ]
 _ = refl
 
-freeVars : TypeScheme → List Id
-freeVars (V α · σ) = freeVars σ / [ α ]
-freeVars (` (` α)) = [ α ]
-freeVars (` □) = []
-freeVars (` (a ⇒ b)) = freeVars (` a) ++ freeVars (` b)
-freeVars (` (IO σ τ)) = freeVars (` τ)
+freeVars : Type → List Id
+-- freeVars (V α · σ) = freeVars σ / [ α ]
+freeVars (` α) = [ α ]
+freeVars □ = []
+freeVars (a ⇒ b) = freeVars a ++ freeVars b
+freeVars (IO σ τ) = freeVars τ
 
 freeVarsC : Context → List Id
 freeVarsC ∅ = []
-freeVarsC (c , x ⦂ σ) = freeVarsC c ++ freeVars σ
+freeVarsC (c , x ⦂ σ) = freeVarsC c ++ freeVarsTS σ
+  where freeVarsTS : TypeScheme → List Id
+        freeVarsTS (V α · σ) = freeVarsTS σ / [ α ]
+        freeVarsTS (` τ) = freeVars τ
 
-close : Context → TypeScheme → TypeScheme
-close Γ σ = foldl (λ acc x → V x · acc) σ (freeVars σ / freeVarsC Γ)
+close : Context → Type → TypeScheme
+close Γ τ = foldl (λ acc x → V x · acc) (` τ) (freeVars τ / freeVarsC Γ)
 
 _ : freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "a" ]
 _ = refl
 
-_ : freeVars (` (` "a" ⇒ ` "b")) / freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "b" ]
+_ : freeVars (` "a" ⇒ ` "b") / freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "b" ]
 _ = refl
 
-_ : close (∅ , "x" ⦂ ` (` "a")) (` (` "a" ⇒ ` "b")) ≡ V "b" · (` (` "a" ⇒ ` "b"))
+_ : close (∅ , "x" ⦂ ` (` "a")) (` "a" ⇒ ` "b") ≡ V "b" · (` (` "a" ⇒ ` "b"))
 _ = refl
 
 infix 4 _⦂_∈_
@@ -235,25 +244,28 @@ data _⦂_∈_ : Id → TypeScheme → Context → Set where
       -----------------
     → x ⦂ τ ∈ Γ , y ⦂ τ'
 
-infix 4 _⊢_⦂_
-data _⊢_⦂_ : Context → Term → TypeScheme → Set where
+-- This is a syntax directed type system, so typing judgements return
+-- *types*, not type schemes.
 
-  ⊢` : ∀ {Γ x τ τ'}
-     → x ⦂ τ' ∈ Γ
-     → τ' > τ
+infix 4 _⊢_⦂_
+data _⊢_⦂_ : Context → Term → Type → Set where
+
+  ⊢` : ∀ {Γ x σ τ}
+     → x ⦂ σ ∈ Γ
+     → σ > ` τ
        ---------
      → Γ ⊢ ` x ⦂ τ
 
   ⊢ƛ : ∀ {Γ x τ' e τ}
-     → Γ , x ⦂ ` τ' ⊢ e ⦂ ` τ
+     → Γ , x ⦂ ` τ' ⊢ e ⦂ τ
        ------------------
-     → Γ ⊢ ƛ x ⇒ e ⦂ ` (τ' ⇒ τ)
+     → Γ ⊢ ƛ x ⇒ e ⦂ (τ' ⇒ τ)
 
   ⊢· : ∀ {Γ e e' τ τ'}
-     → Γ ⊢ e ⦂ ` ( τ' ⇒ τ )
-     → Γ ⊢ e' ⦂ ` τ'
+     → Γ ⊢ e ⦂ τ' ⇒ τ
+     → Γ ⊢ e' ⦂ τ'
        --------------
-     → Γ ⊢ e · e' ⦂ ` τ
+     → Γ ⊢ e · e' ⦂ τ
 
   ⊢lt : ∀ {Γ e e' τ τ' x}
       → Γ ⊢ e' ⦂ τ'
@@ -262,23 +274,26 @@ data _⊢_⦂_ : Context → Term → TypeScheme → Set where
       → Γ ⊢ lt x ⇐ e in' e' ⦂ τ
 
   ⊢⟦⟧ : ∀ {Γ e τ σ}
-      → Γ ⊢ e ⦂ ` τ
+      → Γ ⊢ e ⦂ τ
         ----------------
-      → Γ ⊢ ⟦ e ⟧ ⦂ ` IO σ τ
+      → Γ ⊢ ⟦ e ⟧ ⦂ IO σ τ
   
   ⊢>>= : ∀ {Γ e e' τ τ' σ}
-       → Γ ⊢ e ⦂ ` (IO σ τ')
-       → Γ ⊢ e' ⦂ ` (τ' ⇒ IO σ τ)
+       → Γ ⊢ e ⦂ (IO σ τ')
+       → Γ ⊢ e' ⦂ (τ' ⇒ IO σ τ)
          -------------------
-       → Γ ⊢ e >>= e' ⦂ ` IO σ τ
+       → Γ ⊢ e >>= e' ⦂ IO σ τ
 
   ⊢□ : ∀ {Γ}
        
        ---------
-     → Γ ⊢ □ ⦂ ` □
+     → Γ ⊢ □ ⦂ □
 
-_ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ` ( □ ⇒ □ )
+_ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ( □ ⇒ □ )
 _ = ⊢ƛ ⊢□
 
-_ : ∅ , "x" ⦂ (V "x" · (` (` "x" ⇒ ` "x"))) ⊢ (` "x" · □) ⦂ ` □
+_ : ∅ , "x" ⦂ (V "x" · (` (` "x" ⇒ ` "x"))) ⊢ (` "x" · □) ⦂ □
 _ = ⊢· (⊢` Z (General (SS "x" □ SZ) refl)) ⊢□
+
+_ : ∅ ⊢ ƛ "x" ⇒ (` "x") ⦂ ( ` "α" ⇒ ` "α" )
+_ = ⊢ƛ (⊢` Z >refl)
