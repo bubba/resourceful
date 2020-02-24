@@ -91,7 +91,7 @@ rename p (⊢· Γ⊢e⦂τ Γ⊢e⦂τ₁) = ⊢· (rename p Γ⊢e⦂τ) (rena
 rename p (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (rename p ⊢e)
 rename p (⊢>>= ⊢m ⊢f) = ⊢>>= (rename p ⊢m) (rename p ⊢f)
 rename p ⊢□ = ⊢□
-rename p (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename p Γ⊢e'⦂τ') {!!}
+rename ρ (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename ρ Γ⊢e'⦂τ') {!!}
     
 weaken : ∀ {Γ e τ} → ∅ ⊢ e ⦂ τ → Γ ⊢ e ⦂ τ
 weaken = rename f
@@ -154,25 +154,35 @@ type>Eq (General s refl) = subOnType s
 -- asdf5 SZ = {!!}
 -- asdf5 (SS x x₁ s) = {!!}
 
-splitIO : ∀ {σ τ' τ} → ` (IO σ τ') > τ → ` τ' > τ
-splitIO x rewrite sym (type>Eq x) = {! !}
+asdf5 : ∀ {Γ x y σ σ' e τ τ'}
+      → Γ , x ⦂ close (Γ , y ⦂ σ') τ' ⊢ e ⦂ τ
+      → σ' > σ
+        -------------------------------------
+      → Γ , x ⦂ close (Γ , y ⦂ σ) τ' ⊢ e ⦂ τ
+asdf5 ⊢e σ'>σ = {!!}
+                         
 
 inst : ∀ {Γ e x σ σ' τ} → Γ , x ⦂ σ' ⊢ e ⦂ τ
                         → σ > σ'
                           ------------------
                         → Γ , x ⦂ σ ⊢ e ⦂ τ
-inst {Γ} {e} {x = y} {σ} {σ'} {τ} (⊢` {x = x} x⦂τ∈Γ σ'>τ) σ>σ' with x ≟ y
-... | yes refl = {!!}
-... | no s = {!!}
+inst (⊢` {x = y} Z σ'>τ) σ>σ' = ⊢` Z (>trans σ>σ' σ'>τ)
+inst (⊢` {x = y} (S y⦂σ'∈Γ y≢x) σ'>τ) σ>σ' = ⊢` (S y⦂σ'∈Γ y≢x) σ'>τ
 inst {x = y} (⊢ƛ {x = x} ⊢e) σ>σ' with x ≟ y
 ... | yes refl = let z = drop ⊢e in ⊢ƛ (sneakIn z)
 ... | no x≢y = let z = swap x≢y ⊢e
                    z1 = inst z σ>σ' in ⊢ƛ (swap (≢-sym x≢y) z1)
-inst (⊢· x x₁) σ'>σ = {!!}
-inst (⊢lt x x₁) σ'>σ = {!!}
-inst (⊢⟦⟧ x) σ'>σ = {!!}
-inst (⊢>>= x x₁) σ'>σ = {!!}
-inst ⊢□ σ'>σ = {!!}
+inst (⊢· ⊢e' ⊢e) σ>σ' = ⊢· (inst ⊢e' σ>σ') (inst ⊢e σ>σ')
+inst {x = y} (⊢lt {x = x} ⊢e'⦂τ' ⊢e'⦂τ) σ>σ' = ⊢lt (inst ⊢e'⦂τ' σ>σ') {!!}
+
+-- with x ≟ y
+-- ... | yes refl = ⊢lt (inst ⊢e'⦂τ' σ>σ') {!!}
+-- ... | no x≢y = ⊢lt (inst ⊢e'⦂τ' σ>σ') {!!}
+inst (⊢⟦⟧ x) σ>σ' = ⊢⟦⟧ (inst x σ>σ')
+inst (⊢>>= x x₁) σ>σ' = ⊢>>= (inst x σ>σ') (inst x₁ σ>σ')
+inst ⊢□ σ>σ' = ⊢□
+
+
 -- inst (⊢` x⦂τ'∈Γ τ'>τ'') τ''>τ = ⊢` x⦂τ'∈Γ (>trans τ'>τ'' τ''>τ)
 -- inst {Γ} {.(ƛ _ ⇒ _)} (⊢ƛ Γ⊢) y@(General s refl) = {!!}
 -- inst (⊢· x x₁) y = {!!}

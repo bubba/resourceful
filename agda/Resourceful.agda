@@ -1,8 +1,20 @@
 module Resourceful where
 
 open import Data.List using (List; _∷_; [_]; []; foldl; any; _++_)
-open import Data.List.Membership.DecSetoid
-open import Data.String using (String; _≟_; _==_)
+open import Data.List.Membership.Setoid.Properties
+
+
+open import Data.String using (String; _≟_; _==_; _≈_)
+open import Data.String.Properties using (≈-setoid)
+
+import Data.List.Relation.Binary.Subset.Setoid as Subset
+open module SubsetString = Subset ≈-setoid
+
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+
+import Data.List.Membership.Setoid as Membership
+open module MembershipString = Membership ≈-setoid using (_∈_; find)
+
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (yes; no; ¬_)
 open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
@@ -30,7 +42,7 @@ data Value : Term → Set where
   V-ƛ : ∀ {x N} → Value (ƛ x ⇒ N)
   V-⟦⟧ : ∀ {e} → Value (⟦ e ⟧)
   V-□ : Value □
-
+  
 infix 9 _[_:=_]
 
 _[_:=_] : Term → Id → Term → Term
@@ -197,30 +209,69 @@ data Context : Set where
 
 infix 5 _/_
 _/_ : List Id → List Id → List Id
-(x ∷ xs) / ys with any (\a -> a == x) ys
+(x ∷ xs) / ys with any (λ a → a == x) ys
 ...  | true = xs / ys
 ...  | false = x ∷ (xs / ys)
 [] / ys = []
 
+/-empty : ∀ {a : List Id} → a / [] ≡ a
+/-empty {[]} = refl
+/-empty {x ∷ xs} = cong (_∷_ x) /-empty
+
+/-∈ : ∀ {a b z} → z ∈ a / b → z ∈ a
+/-∈ {a ∷ as} {bs} {z} z∈as/b with any (λ x → x == a) bs
+... | true = there (/-∈ {as} {bs} {z} z∈as/b)
+/-∈ {a ∷ as} {bs} {z} (here z≈a) | false = here z≈a
+/-∈ {a ∷ as} {bs} {z} (there z∈as/b) | false = there (/-∈ {as} {bs} {z} z∈as/b)
+
+/-⊆ : ∀ {a b} → a / b ⊆ a
+/-⊆ {a} {b} {x} = /-∈ {a} {b} {x}
+
+⊆-id : ∀ {a} → a ⊆ a
+⊆-id x = x
+
 _ : ("b" ∷ [ "a" ]) / [ "b" ] ≡ [ "a" ]
 _ = refl
 
+_ : ("b" ∷ [ "a" ]) / [ "a" ] ⊆ "b" ∷ [ "a" ]
+_ = λ{ (here x) → here x;
+       (there ())}
+
 freeVars : Type → List Id
--- freeVars (V α · σ) = freeVars σ / [ α ]
 freeVars (` α) = [ α ]
 freeVars □ = []
 freeVars (a ⇒ b) = freeVars a ++ freeVars b
 freeVars (IO σ τ) = freeVars τ
 
+freeVarsTS : TypeScheme → List Id
+freeVarsTS (V α · σ) = freeVarsTS σ / [ α ]
+freeVarsTS (` τ) = freeVars τ
+
 freeVarsC : Context → List Id
 freeVarsC ∅ = []
 freeVarsC (c , x ⦂ σ) = freeVarsC c ++ freeVarsTS σ
-  where freeVarsTS : TypeScheme → List Id
-        freeVarsTS (V α · σ) = freeVarsTS σ / [ α ]
-        freeVarsTS (` τ) = freeVars τ
 
 close : Context → Type → TypeScheme
 close Γ τ = foldl (λ acc x → V x · acc) (` τ) (freeVars τ / freeVarsC Γ)
+
+foo : "asdF" ∷ [] ⊆ "asdF" ∷ "foo" ∷ []
+foo (here px) = here px
+
+freeVarsSub : ∀ {s σ} → freeVarsTS (sub s σ) ⊆ freeVarsTS σ
+freeVarsSub {s} {V α · σ} = /-⊆ {freeVarsTS σ} {[ α ]}
+freeVarsSub {s} {` x} = {!!} -- if σ is V then /-⊆ {freeVarsTS σ} {[ α ]}
+                           -- if σis τ then ⊆-id
+
+close> : ∀ {Γ x σ σ'}
+       → σ' > σ
+       → close (Γ , x ⦂ σ') ≡ close (Γ , x ⦂ σ)
+close> {Γ} {x} {σ} {σ'} (General s refl) = {!!}
+  where freeVarsLess : freeVarsC (Γ , x ⦂ σ') ⊆ freeVarsC (Γ , x ⦂ σ)
+        freeVarsLess = λ x₂ → {!!}
+
+        freeVarsσ : freeVarsTS (sub s σ) ⊆ freeVarsTS σ
+        freeVarsσ z∈σ' = {!!}
+       
 
 _ : freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "a" ]
 _ = refl
