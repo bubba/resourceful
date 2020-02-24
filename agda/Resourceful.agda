@@ -319,7 +319,7 @@ data _⊢_⦂_ : Context → Term → Type → Set where
      → Γ ⊢ e · e' ⦂ τ
 
   ⊢lt : ∀ {Γ e e' τ τ' x}
-      → Γ ⊢ e' ⦂ τ'
+      → Γ ⊢ e ⦂ τ'
       → Γ , x ⦂ close Γ τ' ⊢ e' ⦂ τ
         ----------------------------
       → Γ ⊢ lt x ⇐ e in' e' ⦂ τ
