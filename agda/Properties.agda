@@ -14,11 +14,11 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Function using (_∘_)
 
-open import Data.String.Properties using (≈-setoid; ≈-refl)
+open import Data.String.Properties using (≡-setoid)
 import Data.List.Relation.Binary.Subset.Setoid as Subset
-open module SubsetString = Subset ≈-setoid
+open module SubsetString = Subset ≡-setoid
 import Data.List.Membership.Setoid as Membership
-open module MembershipString = Membership ≈-setoid using (_∈_;_∉_; find)
+open module MembershipString = Membership ≡-setoid using (_∈_;_∉_; find)
 open import Data.List.Membership.Setoid.Properties
 
 open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
@@ -161,10 +161,6 @@ swap {Γ} {x} {y} {e} {a} {b} x≢y ⊢e = rename ρ ⊢e
         ρ (S Z y≠x) = Z
         ρ (S (S x∈ z≢y) z≢x) = S (S x∈ z≢x) z≢y
 
--- helpa : ∀ {x e e' σ Γ Δ}
---       → (x ∈ FV e ++ FV e' → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
---       → (x ∈ FV e → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
--- helpa {x} {e} {e'} f x∈ rewrite ∈-++⁺ˡ (≈-setoid) = {!!}
 
 -- lemma 4.1
 -- extra vars in the environment can be ignored
@@ -172,19 +168,48 @@ ignore : ∀ {Γ Δ e τ}
        → (∀ {x σ} → x ∈ FV(e) → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
        → Γ ⊢ e ⦂ τ
        → Δ ⊢ e ⦂ τ
-ignore ρ (⊢` {x = x} x∈ σ>τ) = ⊢` (ρ (here (≈-refl {x})) x∈) σ>τ
+ignore ρ (⊢` {x = x} x∈ σ>τ) = ⊢` (ρ (here (refl)) x∈) σ>τ
 ignore ρ (⊢ƛ ⊢e) = ⊢ƛ {!!}
-ignore ρ (⊢· ⊢e₁ ⊢e₂) = {!!}
-ignore ρ (⊢lt ⊢e ⊢e₁) = {!!}
+ignore ρ (⊢· ⊢e₁ ⊢e₂) = ⊢· (ignore {!!} {!!}) {!!}
+ignore ρ (⊢lt ⊢e ⊢e₁) = ⊢lt {!!} {!!}
 ignore ρ (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (ignore ρ ⊢e)
 ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore {!!} ⊢e) {!!}
 ignore ρ ⊢□ = ⊢□
+
+∉-++⁺ˡ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
+∉-++⁺ˡ {v} {xs} {ys} ∉xs ∉ys x∈ with ∈-++⁻ (≡-setoid) {v} xs {ys} x∈
+... | inj₁ ∈xs = ∉xs ∈xs
+... | inj₂ ∈ys = ∉ys ∈ys
+
+∉-++⁻ : ∀ {v xs ys} → v ∉ xs ++ ys → v ∉ xs × v ∉ ys
+∉-++⁻ {v} {xs} {ys} ∉xs++ys = ⟨ l , r ⟩
+  where
+    l : v ∉ xs
+    l v∈xs = ∉xs++ys (∈-++⁺ˡ ≡-setoid v∈xs)
+    r : v ∉ ys
+    r v∈ys = ∉xs++ys (∈-++⁺ʳ ≡-setoid xs v∈ys)
+
+∉-/≢ : ∀ {v xs y} → v ∉ xs / (y ∷ []) → v ≢ y → v ∉ xs
+∉-/≢ {v} {xs} {y} v∉xs/y v≢y v∈xs = v∉xs/y (/-∈≢ v∈xs v≢y)
 
 extend : ∀ {Γ x σ e τ}
        → Γ ⊢ e ⦂ τ
        → x ∉ FV(e)
        → Γ , x ⦂ σ ⊢ e ⦂ τ
-extend = {!!}
+extend {x = x} (⊢` {x = y} x∈ σ>τ) x∉ with x ≟ y
+... | yes refl = ⊥-elim (x∉ (here refl))
+... | no x≢y = ⊢` (S x∈ (λ z → x≢y (sym z))) σ>τ
+extend {x = x} {e = e} (⊢ƛ {x = y} ⊢e) x∉ with x ≟ y
+... | yes refl = ⊢ƛ (sneakIn ⊢e)
+... | no x≢y = ⊢ƛ (swap x≢y (extend ⊢e (∉-/≢ x∉ x≢y)))
+extend (⊢· ⊢e₁ ⊢e₂) x∉ with ∉-++⁻ x∉
+... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢· (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂)
+extend {Γ} {σ = σ} (⊢lt {τ' = τ'} ⊢e ⊢e') x∉ with ∉-++⁻ x∉ | close Γ τ'
+... | ⟨ ∉e , ∉e' ⟩ | foo = ⊢lt (extend ⊢e ∉e) {!!}
+extend (⊢⟦⟧ ⊢e) x∉ = ⊢⟦⟧ (extend ⊢e x∉)
+extend {x = x} (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') x∉ with ∉-++⁻ {x} {FV(e)} {FV(e')} x∉
+... | ⟨ ∉e , ∉e' ⟩ = ⊢>>= (extend ⊢e ∉e) (extend ⊢e' ∉e')
+extend ⊢□ x∉ = ⊢□
 
 -- if σ' > σ then either σ' ≡ σ or σ' is of the form ∀ α . σ
 
@@ -341,11 +366,6 @@ disjoint-sym (DisThere x∉ d) = let z = disjoint-sym d in {!!}
 disjointWeaken : ∀ {x xs ys} → Disjoint (x ∷ xs) ys → Disjoint xs ys
 disjointWeaken (DisThere _ d) = d
 
-∉-++⁺ˡ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
-∉-++⁺ˡ {v} {xs} {ys} ∉xs ∉ys x∈ with ∈-++⁻ (≈-setoid) {v} xs {ys} x∈
-... | inj₁ ∈xs = ∉xs ∈xs
-... | inj₂ ∈ys = ∉ys ∈ys
-
 -- notInExtend : ∀ {Γ αs x σ} → NotInContext αs Γ → Disjoint αs (freeVarsTS σ) → NotInContext αs (Γ , x ⦂ σ)
 -- notInExtend NotHere _ = NotHere
 -- notInExtend (NotThere {α = α} ∉σ notin) (DisThere ∉Γ p) = NotThere (∉-++⁺ˡ {α} ∉σ ∉Γ) (notInExtend notin p)
@@ -355,9 +375,9 @@ disjointWeaken (DisThere _ d) = d
 -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
 absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
              → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
-             → ∃[ s ] (Disjoint (freeVarsC Γ) αs ×
+             → ∃[ s ] (Disjoint (FTVC Γ) αs ×
                        Disjoint (subRegion (BJS.to s)) αs ×
-                       Disjoint (subRegion (BJS.to s)) (freeVarsC Γ))
+                       Disjoint (subRegion (BJS.to s)) (FTVC Γ))
 absSubChoose ⊢e₁ = ⟨ {!!} , {!!} ⟩
 
 subC∅ : (s : Substitution) → subC s ∅ ≡ ∅
@@ -379,7 +399,7 @@ disjointSub {Γ} {SS α σ s} (DisThere x dj) rewrite sub∉FTVC {Γ} {α} {σ} 
 subst : ∀ {Γ x e e' αs τ τ'}
       → Γ ⊢ e ⦂ τ
       → Γ , x ⦂ VV αs τ ⊢ e' ⦂ τ'
-      → Disjoint αs (freeVarsC Γ)
+      → Disjoint αs (FTVC Γ)
         -------------------
       → Γ ⊢ e' [ x := e ] ⦂ τ'
 subst {Γ} {x = y} {e} {αs = αs} {τ = τ} {τ' = τ'} ⊢e (⊢` {x = x} Z (General s ds≡αs refl)) ∉Γ
@@ -395,16 +415,12 @@ subst {Γ} {x = y} {e} {αs = αs} {τ = τ} {τ' = τ'} ⊢e (⊢` {x = x} Z (G
           prf ⊢e rewrite SΓ≡Γ = ⊢e
 ... | refl | no x≢y = ⊥-elim (x≢y refl)
 
--- subst {x = y} {αs = αs} {τ = τ} ⊢e (⊢` {x = x} Z σ>τ@(General s refl)) ∉Γ rewrite (extractVV≡ {αs} {τ}) with x ≟ y
--- ... | yes refl = weaken (subContextTyping ⊢e s)
--- ... | no x≢y = ⊥-elim (x≢y refl)
-
 subst {x = y} ⊢e (⊢` {x = x} (S x∈ x≢y) τ''>τ) _ with x ≟ y
 ...  | yes x≡y = ⊥-elim (x≢y x≡y)
 ...  | no x≢y' = ⊢` x∈ τ''>τ
 
 -- type vars renamed to match wright & felleisen
-subst {Γ} {x = x} {e = v} {e' = _} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' = τ₁} {τ = τ₂} {e = e₁} ⊢e') p with x' ≟ x
+subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' = τ₁} {τ = τ₂} {e = e₁} ⊢e') p with x' ≟ x
 ...  | yes refl = ⊢ƛ (drop ⊢e')
 ...  | no x'≢x = ⊢ƛ prf
      where prf : Γ , x' ⦂ ` τ₁ ⊢ e₁ [ x := v ] ⦂ τ₂
@@ -416,29 +432,25 @@ subst {Γ} {x = x} {e = v} {e' = _} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
                  s⁻¹ = BJS.from bjs
                  prt2 : Γ , x' ⦂ sub s (` τ₁) , x ⦂ VV αs τ ⊢ e₁ ⦂ subT s τ₂
                  prt2 = {!!} -- subContextTyping ? ?
-                 cont  : ∀ { z σ } → z ⦂ σ ∈ Γ → z ⦂ σ ∈ Γ , x' ⦂ sub s (` τ₁)
-                 cont z∈Γ = S z∈Γ {!!}
                  prt3 : Γ , x' ⦂ sub s (` τ₁) ⊢ v ⦂ τ
                  prt3 = ignore {!!} ⊢e
-                 prt4 : Disjoint αs (freeVarsC (Γ , x' ⦂ sub s (` τ₁)))
+                 prt4 : Disjoint αs (FTVC (Γ , x' ⦂ sub s (` τ₁)))
                  prt4 = {!!}
                  prt5 : Γ , x' ⦂ sub s (` τ₁) ⊢ e₁ [ x := v ] ⦂ subT s τ₂
                  prt5 = subst {Γ , x' ⦂ sub s (` τ₁)} prt3 prt2 prt4
                  prt6 : subC s⁻¹ (Γ , x' ⦂ sub s (` τ₁)) ⊢ e₁ [ x := v ] ⦂ subT s⁻¹ (subT s τ₂)
                  prt6 = subContextTyping prt5 (BJS.from bjs)
                  in roundtripSub bjs prt6
-          -- ⊢ƛ (subst ⊢e
-          --                 (swap x≢y ⊢e')
-          --                 (let s : Substitution
-          --                      s = {!!}
-          --                      z = subContextTyping (swap x≢y ⊢e') s in notInExtend p {!!}) )
+                 
 subst {x = y} ⊢e (⊢· e e') p = ⊢· (subst ⊢e e p) (subst ⊢e e' p)
 subst {x = y} ⊢e ⊢□ _ = ⊢□
 subst {x = y} ⊢e (⊢⟦⟧ ⊢e') p = ⊢⟦⟧ (subst ⊢e ⊢e' p)
 subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e ⊢f p)
-subst {x = y} ⊢e (⊢lt {x = x} ⊢e' ⊢e'') p with x ≟ y
-... | yes refl = ⊢lt (subst ⊢e ⊢e' p) {!!}
-... | no x≢y = ⊢lt (subst ⊢e ⊢e' p)
+
+-- variables renamed to match wright & felleisen
+subst {x = y} ⊢v (⊢lt {x = x} ⊢e' ⊢e'') p with x ≟ y
+... | yes refl = ⊢lt (subst ⊢v ⊢e' p) {!!}
+... | no x≢y = ⊢lt (subst ⊢v ⊢e' p)
                    (let swp = (swap x≢y ⊢e'')
                         s = {!!}
                         in {!!})

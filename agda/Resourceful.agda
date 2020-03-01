@@ -1,22 +1,26 @@
 module Resourceful where
 
+open import Data.Empty using (⊥; ⊥-elim)
+
 open import Data.List using (List; _∷_; [_]; []; foldl; filter; any; _++_)
 open import Data.List.Membership.Setoid.Properties
 
 
 open import Data.String using (String; _≟_; _==_; _≈_)
-open import Data.String.Properties using (≈-setoid)
+open import Data.String.Properties using (≡-setoid)
 
 import Data.List.Relation.Binary.Subset.Setoid as Subset
-open module SubsetString = Subset ≈-setoid
+open module SubsetString = Subset ≡-setoid
 
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 
 import Data.List.Membership.Setoid as Membership
-open module MembershipString = Membership ≈-setoid using (_∈_; find)
+open module MembershipString = Membership ≡-setoid using (_∈_; find)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary.Negation using (¬?)
+open import Relation.Unary using (Pred; Decidable)
 open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 open import Agda.Builtin.Bool
 open import Data.Bool using (not)
@@ -317,8 +321,7 @@ _ = refl
 infix 5 _/_
 _/_ : List Id → List Id → List Id
 -- xs / [] = xs
--- xs / (y ∷ ys) = (filter (λ x → not (x ≟ y)) xs) / ys
-
+-- xs / (y ∷ ys) = (filter (λ x → ¬? (x ≟ y)) xs) / ys
 (x ∷ xs) / ys with any (λ a → a == x) ys
 ...  | true = xs / ys
 ...  | false = x ∷ (xs / ys)
@@ -328,11 +331,22 @@ _/_ : List Id → List Id → List Id
 /-empty {[]} = refl
 /-empty {x ∷ xs} = cong (_∷_ x) /-empty
 
-/-∈ : ∀ {a b z} → z ∈ a / b → z ∈ a
+filter-[] : ∀ {y} → filter (λ x → ¬? (x ≟ y)) [] ≡ []
+filter-[] = refl
+
+/-∈ : ∀ {xs ys v} → v ∈ xs / ys → v ∈ xs
 /-∈ {a ∷ as} {bs} {z} z∈as/b with any (λ x → x == a) bs
 ... | true = there (/-∈ {as} {bs} {z} z∈as/b)
 /-∈ {a ∷ as} {bs} {z} (here z≈a) | false = here z≈a
 /-∈ {a ∷ as} {bs} {z} (there z∈as/b) | false = there (/-∈ {as} {bs} {z} z∈as/b)
+
+/-∈≢ : ∀ {v xs y} → v ∈ xs → v ≢ y → v ∈ xs / [ y ]
+/-∈≢ {v} {x ∷ xs} {y} (here refl) v≢y with y ≟ x
+... | yes y≡x = ⊥-elim (v≢y (sym y≡x))
+... | no y≢x = here refl
+/-∈≢ {v} {x ∷ xs} {y} (there v∈xs) v≢y with y ≟ x
+... | yes y≡x = /-∈≢ v∈xs v≢y
+... | no y≢x = there (/-∈≢ v∈xs v≢y)
 
 /-⊆ : ∀ {a b} → a / b ⊆ a
 /-⊆ {a} {b} {x} = /-∈ {a} {b} {x}
@@ -347,20 +361,7 @@ _ : ("b" ∷ [ "a" ]) / [ "a" ] ⊆ "b" ∷ [ "a" ]
 _ = λ{ (here x) → here x;
        (there ())}
 
--- TODO: rename to FTV
-freeVars : Type → List Id
-freeVars (` α) = [ α ]
-freeVars □ = []
-freeVars (a ⇒ b) = freeVars a ++ freeVars b
-freeVars (IO σ τ) = freeVars τ
-
-FTVτ : Type → List Id
-FTVτ = freeVars
-
-subRegion : Substitution → List Id
-subRegion SZ = []
-subRegion (SS α τ s) = FTVτ τ ++ subRegion s
-
+-- Free variables
 FV : Term → List Id
 FV (` x) = [ x ]
 FV (ƛ x ⇒ e) = FV e / [ x ]
@@ -370,24 +371,33 @@ FV ⟦ e ⟧ = FV e
 FV (e >>= e') = FV e ++ FV e'
 FV □ = []
 
-freeVarsTS : TypeScheme → List Id
-freeVarsTS (V α · σ) = freeVarsTS σ / [ α ]
-freeVarsTS (` τ) = FTVτ τ
+-- Free *type* variables, types
+FTVT : Type → List Id
+FTVT (` α) = [ α ]
+FTVT □ = []
+FTVT (a ⇒ b) = FTVT a ++ FTVT b
+FTVT (IO σ τ) = FTVT τ
 
-FTV = freeVarsTS
+subRegion : Substitution → List Id
+subRegion SZ = []
+subRegion (SS α τ s) = FTVT τ ++ subRegion s
 
-freeVarsC : Context → List Id
-freeVarsC ∅ = []
-freeVarsC (c , x ⦂ σ) = freeVarsC c ++ freeVarsTS σ
 
+-- Free *type* variables
+FTV : TypeScheme → List Id
+FTV (V α · σ) = FTV σ / [ α ]
+FTV (` τ) = FTVT τ
+
+-- Free *type* variables in a context
 FTVC : Context → List Id
-FTVC = freeVarsC
+FTVC ∅ = []
+FTVC (c , x ⦂ σ) = FTVC c ++ FTV σ
 
 -- close : Context → Type → TypeScheme
--- close Γ τ = foldl (λ acc x → V x · acc) (` τ) (freeVars τ / freeVarsC Γ)
+-- close Γ τ = foldl (λ acc x → V x · acc) (` τ) (freeVars τ / FTVC Γ)
 
 close : Context → Type → TypeScheme
-close Γ τ = VV (freeVars τ / freeVarsC Γ) τ
+close Γ τ = VV (FTVT τ / FTVC Γ) τ
 -- ... | [] = ` τ
 -- ... | α ∷ αs =  VV
 
@@ -397,20 +407,20 @@ toVV (V α · σ) with toVV σ
 ... | ⟨ αs , ⟨ τ , refl ⟩ ⟩ = ⟨ α ∷ αs , ⟨ τ , refl ⟩ ⟩
 toVV (` τ) = ⟨ [] , ⟨ τ , refl ⟩ ⟩
 
-toVVClose : (τ : Type) → (close ∅ τ ≡ VV (freeVars τ) τ)
+toVVClose : (τ : Type) → (close ∅ τ ≡ VV (FTVT τ) τ)
 toVVClose τ =
   begin
-    VV (freeVars τ / freeVarsC ∅) τ
+    VV (FTVT τ / FTVC ∅) τ
   ≡⟨⟩
-    VV (freeVars τ / []) τ
-  ≡⟨ cong (λ αs → VV αs τ) (/-empty {freeVars τ}) ⟩
-    VV (freeVars τ) τ
+    VV (FTVT τ / []) τ
+  ≡⟨ cong (λ αs → VV αs τ) (/-empty {FTVT τ}) ⟩
+    VV (FTVT τ) τ
   ∎
 
--- need to show that freeVarsTS (sub s σ) = freeVarsTS σ / s
+-- need to show that FTV (sub s σ) = FTV σ / s
 
--- postulate freeVarsSub : ∀ {s σ} → freeVarsTS (sub s σ) ⊆ freeVarsTS σ
--- freeVarsSub {s} {` x} = {!!} -- if σ is V then /-⊆ {freeVarsTS σ} {[ α ]}
+-- postulate freeVarsSub : ∀ {s σ} → FTV (sub s σ) ⊆ FTV σ
+-- freeVarsSub {s} {` x} = {!!} -- if σ is V then /-⊆ {FTV σ} {[ α ]}
                            -- if σis τ then ⊆-id
 
 []⊆ : ∀ {a} → [] ⊆ a
@@ -418,8 +428,8 @@ toVVClose τ =
 
 
 -- free variables in σ get used up in instantiating to σ'
--- ≥freeVars : ∀ {σ σ'} → σ ≥ σ' → freeVarsTS σ' ⊆ freeVarsTS σ
--- ≥freeVars {σ'} {σ} σ≥σ' x∈ with freeVarsTS σ
+-- ≥freeVars : ∀ {σ σ'} → σ ≥ σ' → FTV σ' ⊆ FTV σ
+-- ≥freeVars {σ'} {σ} σ≥σ' x∈ with FTV σ
 -- ≥freeVars {σ'} {σ} σ≥σ' () | []
 -- ≥freeVars {σ'} {σ} σ≥σ' (there x∈) | x ∷ z = {!!}
 
@@ -427,17 +437,17 @@ postulate close> : ∀ {Γ x σ σ' τ}
                  → σ ≥ σ'
                  → close (Γ , x ⦂ σ) τ ≡ close (Γ , x ⦂ σ') τ
 -- close> {Γ} {x} {σ} {σ'} (General f) = {!!}
---   where freeVarsLess : freeVarsC (Γ , x ⦂ σ') ⊆ freeVarsC (Γ , x ⦂ σ)
+--   where freeVarsLess : FTVC (Γ , x ⦂ σ') ⊆ FTVC (Γ , x ⦂ σ)
 --         freeVarsLess α = {!!}
 
---         g : freeVarsTS σ' ⊆ freeVarsTS σ
+--         g : FTV σ' ⊆ FTV σ
 --         g α∈σ' = {!!}
        
 
-_ : freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "a" ]
+_ : FTVC (∅ , "x" ⦂ ` (` "a")) ≡ [ "a" ]
 _ = refl
 
-_ : freeVars (` "a" ⇒ ` "b") / freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "b" ]
+_ : FTVT (` "a" ⇒ ` "b") / FTVC (∅ , "x" ⦂ ` (` "a")) ≡ [ "b" ]
 _ = refl
 
 _ : close (∅ , "x" ⦂ ` (` "a")) (` "a" ⇒ ` "b") ≡ V "b" · (` (` "a" ⇒ ` "b"))
@@ -451,7 +461,7 @@ _ = refl
 --   begin
 --     close ∅ τ
 --   ≡⟨⟩
---     foldl (λ acc x → V x · acc) (` τ) (freeVars τ / freeVarsC ∅)
+--     foldl (λ acc x → V x · acc) (` τ) (freeVars τ / FTVC ∅)
 --   ≡⟨⟩
 --     foldl (λ acc x → V x · acc) (` τ) (freeVars τ / [])
 --   ≡⟨ cong (foldl (λ acc x → V x · acc) (` τ)) (/-empty {freeVars τ}) ⟩
