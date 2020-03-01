@@ -144,13 +144,21 @@ unwrapTS : TypeScheme → List Id
 unwrapTS (V α · σ) = α ∷ unwrapTS σ
 unwrapTS (` _) = []
 
-extractTS : TypeScheme → Type
-extractTS (V _ · σ) = extractTS σ
-extractTS (` τ) = τ
+TStype : TypeScheme → Type
+TStype (V _ · σ) = TStype σ
+TStype (` τ) = τ
 
-extractVV≡ : ∀ {αs τ} → extractTS (VV αs τ) ≡ τ
+TSvars : TypeScheme → List Id
+TSvars (V α · σ) = α ∷ TSvars σ
+TSvars (` τ) = []
+
+extractVV≡ : ∀ {αs τ} → TStype (VV αs τ) ≡ τ
 extractVV≡ {[]} {τ} = refl
 extractVV≡ {α ∷ αs} {τ} = extractVV≡ {αs}
+
+TSvars≡ : ∀ {αs τ} → TSvars (VV αs τ) ≡ αs
+TSvars≡ {[]} = refl
+TSvars≡ {α ∷ αs} = cong (_∷_ α) TSvars≡
 
 subType : Id → Type → Type → Type
 subType id τ (` α) with id ≟ α
@@ -183,9 +191,18 @@ sub : Substitution → TypeScheme → TypeScheme
 sub SZ σ = σ
 sub (SS id type xs) σ = sub xs (substitute id type σ)
 
--- subT : Substitution → Type → Type
--- subT SZ τ = τ
--- subT (SS id type s) τ = subT s (subType id type τ)
+subDomain : Substitution → List Id
+subDomain SZ = []
+subDomain (SS id _ s) = id ∷ subDomain s
+
+record BJS : Set where
+  field
+    to : Substitution
+    from : Substitution
+    from-to : ∀ {σ} → sub from (sub to σ) ≡ σ
+    to-from : ∀ {σ} → sub to (sub from σ) ≡ σ
+
+
 
 subT : Substitution → Type → Type
 subT s (a ⇒ b) = subT s a ⇒ subT s b
@@ -208,22 +225,12 @@ _ = refl
 _ : SZ ∘ (SS "b" □ SZ) ≡ (SS "b" □ SZ)
 _ = refl
 
-
--- s must cover all of αs
--- fooo : ∀ {αs τ τ'} → (s : Substitution) → sub s (VV αs τ) ≡ ` τ' → subT s τ ≡ τ'
--- fooo {[]} SZ refl = refl
--- fooo {α ∷ αs} SZ ()
--- fooo {[]} (SS id type s) p = {!!}
--- fooo {α ∷ αs} (SS id σ s)  with α ≟ id
--- ... | yes refl = {!!}
--- ... | no α≢id = {!!}
-
 infixr 3 _>_
-data _>_ : (σ : TypeScheme) → (τ : Type) → Set where
+data _>_ : TypeScheme → Type → Set where
   General : ∀ {σ τ}
     → (s : Substitution)
-    -- and domain s ≡ extractFVs σ
-    → ((subT s (extractTS σ)) ≡ τ)
+    → subDomain s ≡ TSvars σ
+    → subT s (TStype σ) ≡ τ
     -------------------
     → σ > τ
 
@@ -232,6 +239,13 @@ data _≥_ : (σ : TypeScheme) → (σ' : TypeScheme) → Set where
             → (∀ {τ} → σ' > τ → σ > τ)
             -------------------
             → σ ≥ σ'
+
+-- data _⇒_⇒_ : (σ : TypeScheme) → (s : Substitution) → (σ' : TypeScheme) → Set where
+--  _ : ∀ {αs τ βs τ'}
+--      → length αs ≡ length βs
+--      -- → αᵢ → βᵢ is bijection?
+--      → no β in typevars of of Sₒ
+--      → 
 
 -- _ : V "a" · (` (` "a" ⇒ ` "a")) > ` (□ ⇒ □)
 -- _ = General (SS "a" □ SZ) refl
@@ -281,6 +295,18 @@ data Context : Set where
   ∅ : Context
   _,_⦂_ : Context → Id → TypeScheme → Context
 
+data Maybe : (A : Set) → Set where
+  Just : ∀ {A} → (x : A) → Maybe A
+  Nothing : ∀ {A} → Maybe A
+
+infixl 5 _⦅_⦆
+_⦅_⦆ : Context → Id → Maybe TypeScheme
+∅ ⦅ x ⦆ = Nothing
+(Γ , y ⦂ σ) ⦅ x ⦆ with x ≟ y
+... | yes refl = Just σ
+... | no x≢y = Γ ⦅ x ⦆
+
+
 subC : Substitution → Context → Context
 subC s ∅ = ∅
 subC s (Γ , x ⦂ σ) = (subC s Γ) , x ⦂ (sub s σ)
@@ -321,19 +347,41 @@ _ : ("b" ∷ [ "a" ]) / [ "a" ] ⊆ "b" ∷ [ "a" ]
 _ = λ{ (here x) → here x;
        (there ())}
 
+-- TODO: rename to FTV
 freeVars : Type → List Id
 freeVars (` α) = [ α ]
 freeVars □ = []
 freeVars (a ⇒ b) = freeVars a ++ freeVars b
 freeVars (IO σ τ) = freeVars τ
 
+FTVτ : Type → List Id
+FTVτ = freeVars
+
+subRegion : Substitution → List Id
+subRegion SZ = []
+subRegion (SS α τ s) = FTVτ τ ++ subRegion s
+
+FV : Term → List Id
+FV (` x) = [ x ]
+FV (ƛ x ⇒ e) = FV e / [ x ]
+FV (e₁ · e₂) = FV e₁ ++ FV e₂
+FV (lt x ⇐ e in' e') = FV e ++ (FV e' / [ x ])
+FV ⟦ e ⟧ = FV e
+FV (e >>= e') = FV e ++ FV e'
+FV □ = []
+
 freeVarsTS : TypeScheme → List Id
 freeVarsTS (V α · σ) = freeVarsTS σ / [ α ]
-freeVarsTS (` τ) = freeVars τ
+freeVarsTS (` τ) = FTVτ τ
+
+FTV = freeVarsTS
 
 freeVarsC : Context → List Id
 freeVarsC ∅ = []
 freeVarsC (c , x ⦂ σ) = freeVarsC c ++ freeVarsTS σ
+
+FTVC : Context → List Id
+FTVC = freeVarsC
 
 -- close : Context → Type → TypeScheme
 -- close Γ τ = foldl (λ acc x → V x · acc) (` τ) (freeVars τ / freeVarsC Γ)
@@ -365,15 +413,25 @@ toVVClose τ =
 -- freeVarsSub {s} {` x} = {!!} -- if σ is V then /-⊆ {freeVarsTS σ} {[ α ]}
                            -- if σis τ then ⊆-id
 
-close> : ∀ {Γ x σ σ' τ}
-       → σ ≥ σ'
-       → close (Γ , x ⦂ σ) τ ≡ close (Γ , x ⦂ σ') τ
-close> {Γ} {x} {σ} {σ'} (General f) = {!!}
-  where freeVarsLess : freeVarsC (Γ , x ⦂ σ') ⊆ freeVarsC (Γ , x ⦂ σ)
-        freeVarsLess α = {!!}
+[]⊆ : ∀ {a} → [] ⊆ a
+[]⊆ = λ ()
 
-        g : freeVarsTS σ' ⊆ freeVarsTS σ
-        g α∈σ' = {!!}
+
+-- free variables in σ get used up in instantiating to σ'
+-- ≥freeVars : ∀ {σ σ'} → σ ≥ σ' → freeVarsTS σ' ⊆ freeVarsTS σ
+-- ≥freeVars {σ'} {σ} σ≥σ' x∈ with freeVarsTS σ
+-- ≥freeVars {σ'} {σ} σ≥σ' () | []
+-- ≥freeVars {σ'} {σ} σ≥σ' (there x∈) | x ∷ z = {!!}
+
+postulate close> : ∀ {Γ x σ σ' τ}
+                 → σ ≥ σ'
+                 → close (Γ , x ⦂ σ) τ ≡ close (Γ , x ⦂ σ') τ
+-- close> {Γ} {x} {σ} {σ'} (General f) = {!!}
+--   where freeVarsLess : freeVarsC (Γ , x ⦂ σ') ⊆ freeVarsC (Γ , x ⦂ σ)
+--         freeVarsLess α = {!!}
+
+--         g : freeVarsTS σ' ⊆ freeVarsTS σ
+--         g α∈σ' = {!!}
        
 
 _ : freeVarsC (∅ , "x" ⦂ ` (` "a")) ≡ [ "a" ]
@@ -427,7 +485,7 @@ data _⊢_⦂_ : Context → Term → Type → Set where
        ---------
      → Γ ⊢ ` x ⦂ τ
 
-  ⊢ƛ : ∀ {Γ x τ' e τ}
+  ⊢ƛ : ∀ {Γ x τ' τ e}
      → Γ , x ⦂ ` τ' ⊢ e ⦂ τ
        ------------------
      → Γ ⊢ ƛ x ⇒ e ⦂ (τ' ⇒ τ)
@@ -464,8 +522,13 @@ _ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ( □ ⇒ □ )
 _ = ⊢ƛ ⊢□
 
 _ : ∅ , "x" ⦂ (V "x" · (` (` "x" ⇒ ` "x"))) ⊢ (` "x" · □) ⦂ □
-_ = ⊢· (⊢` Z (General (SS "x" □ SZ) refl)) ⊢□
+_ = ⊢· (⊢` Z (General (SS "x" □ SZ) refl refl)) ⊢□
 
 -- _ : ∅ ⊢ ƛ "x" ⇒ (` "x") ⦂ ( ` "α" ⇒ ` "α" )
 -- _ = ⊢ƛ (⊢` Z >refl)
 
+postulate roundtripSub : ∀ {Γ x σ e τ}
+               → (s : BJS)
+               → subC (BJS.from s) (Γ , x ⦂ sub (BJS.to s) σ) ⊢ 
+                      e ⦂ subT (BJS.from s) (subT (BJS.to s) τ)
+               → Γ , x ⦂ σ ⊢ e ⦂ τ
