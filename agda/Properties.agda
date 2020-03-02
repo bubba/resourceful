@@ -176,21 +176,6 @@ ignore ρ (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (ignore ρ ⊢e)
 ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore {!!} ⊢e) {!!}
 ignore ρ ⊢□ = ⊢□
 
-∉-++⁺ˡ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
-∉-++⁺ˡ {v} {xs} {ys} ∉xs ∉ys x∈ with ∈-++⁻ (≡-setoid) {v} xs {ys} x∈
-... | inj₁ ∈xs = ∉xs ∈xs
-... | inj₂ ∈ys = ∉ys ∈ys
-
-∉-++⁻ : ∀ {v xs ys} → v ∉ xs ++ ys → v ∉ xs × v ∉ ys
-∉-++⁻ {v} {xs} {ys} ∉xs++ys = ⟨ l , r ⟩
-  where
-    l : v ∉ xs
-    l v∈xs = ∉xs++ys (∈-++⁺ˡ ≡-setoid v∈xs)
-    r : v ∉ ys
-    r v∈ys = ∉xs++ys (∈-++⁺ʳ ≡-setoid xs v∈ys)
-
-∉-/≢ : ∀ {v xs y} → v ∉ xs / (y ∷ []) → v ≢ y → v ∉ xs
-∉-/≢ {v} {xs} {y} v∉xs/y v≢y v∈xs = v∉xs/y (/-∈≢ v∈xs v≢y)
 
 extend : ∀ {Γ x σ e τ}
        → Γ ⊢ e ⦂ τ
@@ -210,29 +195,6 @@ extend (⊢⟦⟧ ⊢e) x∉ = ⊢⟦⟧ (extend ⊢e x∉)
 extend {x = x} (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') x∉ with ∉-++⁻ {x} {FV(e)} {FV(e')} x∉
 ... | ⟨ ∉e , ∉e' ⟩ = ⊢>>= (extend ⊢e ∉e) (extend ⊢e' ∉e')
 extend ⊢□ x∉ = ⊢□
-
--- if σ' > σ then either σ' ≡ σ or σ' is of the form ∀ α . σ
-
--- subOnType : ∀ {τ} → (s : Substitution) → sub s (` τ) ≡ ` τ
--- subOnType SZ = refl
--- subOnType (SS _ _ s) = subOnType s
-
--- type>Eq : ∀ {τ σ} → ` τ > σ → σ ≡ ` τ
--- type>Eq (General s refl) = subOnType s
-
--- asdf5 : ∀ {σ τ} → (s : Substitution) → sub s (` (IO σ τ)) → sub s (` τ)
--- asdf5 SZ = {!!}
--- asdf5 (SS x x₁ s) = {!!}
-
--- asdf5 : ∀ {Γ x y σ σ' e τ τ'}
---       → Γ , x ⦂ close (Γ , y ⦂ σ') τ' ⊢ e ⦂ τ
---       → σ' > σ
---         -------------------------------------
---       → Γ , x ⦂ close (Γ , y ⦂ σ) τ' ⊢ e ⦂ τ
--- asdf5 ⊢e σ'>σ = {!!}
-
--- close>' : ∀ {Γ}
---         → Γ , x ⦂ (Γ' , y ⦂ 
 
 closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
        → Γ , x ⦂ close (Γ' , y ⦂ σ') τ' ⊢ e ⦂ τ
@@ -351,21 +313,6 @@ subContextTyping ⊢□ s = ⊢□
 -- notIn∅ {[]} = NotHere
 -- notIn∅ {x ∷ αs} = NotThere (λ ()) notIn∅
 
-data Disjoint : List Id → List Id → Set where
-  DisHere : ∀ {ys} → Disjoint [] ys
-  DisThere : ∀ {x xs ys} → x ∉ ys → Disjoint xs ys → Disjoint (x ∷ xs) ys
-
-disjoint-[] : ∀ {a} → Disjoint a []
-disjoint-[] {[]} = DisHere
-disjoint-[] {x ∷ a} = DisThere (λ ()) disjoint-[]
-
-disjoint-sym : ∀ {a b} → Disjoint a b → Disjoint b a
-disjoint-sym DisHere = disjoint-[]
-disjoint-sym (DisThere x∉ d) = let z = disjoint-sym d in {!!}
-
-disjointWeaken : ∀ {x xs ys} → Disjoint (x ∷ xs) ys → Disjoint xs ys
-disjointWeaken (DisThere _ d) = d
-
 -- notInExtend : ∀ {Γ αs x σ} → NotInContext αs Γ → Disjoint αs (freeVarsTS σ) → NotInContext αs (Γ , x ⦂ σ)
 -- notInExtend NotHere _ = NotHere
 -- notInExtend (NotThere {α = α} ∉σ notin) (DisThere ∉Γ p) = NotThere (∉-++⁺ˡ {α} ∉σ ∉Γ) (notInExtend notin p)
@@ -378,7 +325,8 @@ absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
              → ∃[ s ] (Disjoint (FTVC Γ) αs ×
                        Disjoint (subRegion (BJS.to s)) αs ×
                        Disjoint (subRegion (BJS.to s)) (FTVC Γ))
-absSubChoose ⊢e₁ = ⟨ {!!} , {!!} ⟩
+absSubChoose {αs = αs} ⊢e with freshTypeVars αs
+... | ⟨ βs , djαβ ⟩ = {!!}
 
 subC∅ : (s : Substitution) → subC s ∅ ≡ ∅
 subC∅ _ = refl

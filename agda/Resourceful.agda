@@ -4,18 +4,18 @@ open import Data.Empty using (⊥; ⊥-elim)
 
 open import Data.List using (List; _∷_; [_]; []; foldl; filter; any; _++_)
 open import Data.List.Membership.Setoid.Properties
-
+import Data.List.Relation.Binary.Subset.Setoid as Subset
 
 open import Data.String using (String; _≟_; _==_; _≈_)
 open import Data.String.Properties using (≡-setoid)
-
-import Data.List.Relation.Binary.Subset.Setoid as Subset
 open module SubsetString = Subset ≡-setoid
+
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 
 import Data.List.Membership.Setoid as Membership
-open module MembershipString = Membership ≡-setoid using (_∈_; find)
+open module MembershipString = Membership ≡-setoid using (_∈_; _∉_; find)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (yes; no; ¬_)
@@ -143,7 +143,6 @@ VV : List Id → Type → TypeScheme
 VV (α ∷ αs) τ = V α · (VV αs τ)
 VV [] τ = ` τ
 
-
 unwrapTS : TypeScheme → List Id
 unwrapTS (V α · σ) = α ∷ unwrapTS σ
 unwrapTS (` _) = []
@@ -262,37 +261,27 @@ data _≥_ : (σ : TypeScheme) → (σ' : TypeScheme) → Set where
 --     -------------------
 --     → σ > σ'
 
--- _ : V "a" · (` (` "a" ⇒ ` "a")) > ` (□ ⇒ □)
--- _ = General (SS "a" □ SZ) refl
+_ : V "a" · (` (` "a" ⇒ ` "a")) > (□ ⇒ □)
+_ = General (SS "a" □ SZ) refl refl
 
--- asdf1 : ∀ {s} → SZ ∘ s ≡ s
--- asdf1 {SZ} = refl
--- asdf1 {SS i τ s} = cong (SS i τ) asdf1
+SZ∘ : ∀ {s} → SZ ∘ s ≡ s
+SZ∘ {SZ} = refl
+SZ∘ {SS i τ s} = cong (SS i τ) SZ∘
 
--- asdf2 : ∀ {s} → s ∘ SZ ≡ s
--- asdf2 = refl
+sub∘ : ∀ (s1 s2 σ) → sub (s2 ∘ s1) σ ≡ sub s2 (sub s1 σ)
+sub∘ SZ s2 σ = refl
+sub∘ (SS i τ s1) s2 σ = sub∘ s1 s2 (substitute i τ σ)
 
--- asdf3 : ∀ {σ} → sub SZ σ ≡ σ
--- asdf3 = refl
-
--- asdf4 : ∀ (σ i τ s) → sub (SS i τ s) σ ≡ sub s (substitute i τ σ)
--- asdf4 σ i τ s = refl
-
--- asdf : ∀ (s1 s2 σ) → sub (s2 ∘ s1) σ ≡ sub s2 (sub s1 σ)
--- asdf SZ s2 σ rewrite asdf2 {s2} = refl
--- asdf (SS i τ s1) s2 σ = asdf s1 s2 (substitute i τ σ)
-
-
--- >trans : ∀ {σ σ' σ''} → σ > σ' → σ' > σ'' → σ > σ''
--- >trans {σ} {σ'} (General s1 s1p) (General s2 s2p)  = General (s2 ∘ s1) (trans (trans (asdf s1 s2 σ) a) s2p)
+-- ≥trans : ∀ {σ σ' σ''} → σ ≥ σ' → σ' ≥ σ'' → σ ≥ σ''
+-- ≥trans {σ} {σ'} (General s1 s1p) (General s2 s2p) = General (s2 ∘ s1) (trans (trans (asdf s1 s2 σ) a) s2p)
 --   where a : sub s2 (sub s1 σ) ≡ sub s2 σ'
 --         a = cong (sub s2) s1p
 
 >trans : ∀ {σ σ' τ} → σ ≥ σ' → σ' > τ → σ > τ
 >trans {σ} {σ'} (General f) σ'>τ = f σ'>τ
 
--- >refl : ∀ {σ} → σ > σ
--- >refl = General SZ refl
+≥refl : ∀ {σ} → σ ≥ σ
+≥refl = General λ x → x
 
 infixl 5 _,_⦂_
 data Context : Set where
@@ -303,14 +292,6 @@ data Maybe : (A : Set) → Set where
   Just : ∀ {A} → (x : A) → Maybe A
   Nothing : ∀ {A} → Maybe A
 
-infixl 5 _⦅_⦆
-_⦅_⦆ : Context → Id → Maybe TypeScheme
-∅ ⦅ x ⦆ = Nothing
-(Γ , y ⦂ σ) ⦅ x ⦆ with x ≟ y
-... | yes refl = Just σ
-... | no x≢y = Γ ⦅ x ⦆
-
-
 subC : Substitution → Context → Context
 subC s ∅ = ∅
 subC s (Γ , x ⦂ σ) = (subC s Γ) , x ⦂ (sub s σ)
@@ -320,12 +301,13 @@ _ = refl
 
 infix 5 _/_
 _/_ : List Id → List Id → List Id
--- xs / [] = xs
--- xs / (y ∷ ys) = (filter (λ x → ¬? (x ≟ y)) xs) / ys
 (x ∷ xs) / ys with any (λ a → a == x) ys
 ...  | true = xs / ys
 ...  | false = x ∷ (xs / ys)
 [] / ys = []
+
+-- xs / [] = xs
+-- xs / (y ∷ ys) = (filter (λ x → ¬? (x ≟ y)) xs) / ys
 
 /-empty : ∀ {a : List Id} → a / [] ≡ a
 /-empty {[]} = refl
@@ -353,6 +335,22 @@ filter-[] = refl
 
 ⊆-id : ∀ {a} → a ⊆ a
 ⊆-id x = x
+
+∉-++⁺ˡ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
+∉-++⁺ˡ {v} {xs} {ys} ∉xs ∉ys x∈ with ∈-++⁻ (≡-setoid) {v} xs {ys} x∈
+... | inj₁ ∈xs = ∉xs ∈xs
+... | inj₂ ∈ys = ∉ys ∈ys
+
+∉-++⁻ : ∀ {v xs ys} → v ∉ xs ++ ys → v ∉ xs × v ∉ ys
+∉-++⁻ {v} {xs} {ys} ∉xs++ys = ⟨ l , r ⟩
+  where
+    l : v ∉ xs
+    l v∈xs = ∉xs++ys (∈-++⁺ˡ ≡-setoid v∈xs)
+    r : v ∉ ys
+    r v∈ys = ∉xs++ys (∈-++⁺ʳ ≡-setoid xs v∈ys)
+
+∉-/≢ : ∀ {v xs y} → v ∉ xs / (y ∷ []) → v ≢ y → v ∉ xs
+∉-/≢ {v} {xs} {y} v∉xs/y v≢y v∈xs = v∉xs/y (/-∈≢ v∈xs v≢y)
 
 _ : ("b" ∷ [ "a" ]) / [ "b" ] ≡ [ "a" ]
 _ = refl
@@ -393,14 +391,8 @@ FTVC : Context → List Id
 FTVC ∅ = []
 FTVC (c , x ⦂ σ) = FTVC c ++ FTV σ
 
--- close : Context → Type → TypeScheme
--- close Γ τ = foldl (λ acc x → V x · acc) (` τ) (freeVars τ / FTVC Γ)
-
 close : Context → Type → TypeScheme
 close Γ τ = VV (FTVT τ / FTVC Γ) τ
--- ... | [] = ` τ
--- ... | α ∷ αs =  VV
-
 
 toVV : (σ : TypeScheme) → ∃[ αs ] ( ∃[ τ ] (σ ≡ VV αs τ) )
 toVV (V α · σ) with toVV σ
@@ -469,7 +461,6 @@ _ = refl
 --   ≡⟨⟩
 --     {!!}
 
-
 infix 4 _⦂_∈_
 
 data _⦂_∈_ : Id → TypeScheme → Context → Set where
@@ -534,11 +525,39 @@ _ = ⊢ƛ ⊢□
 _ : ∅ , "x" ⦂ (V "x" · (` (` "x" ⇒ ` "x"))) ⊢ (` "x" · □) ⦂ □
 _ = ⊢· (⊢` Z (General (SS "x" □ SZ) refl refl)) ⊢□
 
--- _ : ∅ ⊢ ƛ "x" ⇒ (` "x") ⦂ ( ` "α" ⇒ ` "α" )
--- _ = ⊢ƛ (⊢` Z >refl)
+_ : ∅ ⊢ ƛ "x" ⇒ (` "x") ⦂ ( ` "α" ⇒ ` "α" )
+_ = ⊢ƛ (⊢` Z (General SZ refl refl))
 
 postulate roundtripSub : ∀ {Γ x σ e τ}
                → (s : BJS)
                → subC (BJS.from s) (Γ , x ⦂ sub (BJS.to s) σ) ⊢ 
                       e ⦂ subT (BJS.from s) (subT (BJS.to s) τ)
                → Γ , x ⦂ σ ⊢ e ⦂ τ
+
+data Disjoint : List Id → List Id → Set where
+  DisHere : ∀ {ys} → Disjoint [] ys
+  DisThere : ∀ {x xs ys} → x ∉ ys → Disjoint xs ys → Disjoint (x ∷ xs) ys
+
+disjoint-[] : ∀ {a} → Disjoint a []
+disjoint-[] {[]} = DisHere
+disjoint-[] {x ∷ a} = DisThere (λ ()) disjoint-[]
+
+∉-∷ : ∀ {a b xs ys} → a ∉ xs → b ∉ a ∷ ys → a ∉ b ∷ xs
+∉-∷ a∉xs b∉a∷ys (here refl) = b∉a∷ys (here refl)
+∉-∷ a∉xs b∉a∷ys (there a∈b∷xs) = a∉xs a∈b∷xs
+
+disjoint-insert : ∀ {a b x} → Disjoint a b → x ∉ a → Disjoint a (x ∷ b)
+disjoint-insert DisHere x∉a = DisHere
+disjoint-insert {a ∷ as} {b} {x} (DisThere x∉b dj) x∉a∷as =
+  let z : Disjoint as (x ∷ b)
+      z = disjoint-insert dj (λ z → x∉a∷as (there z))
+      in DisThere (∉-∷ x∉b x∉a∷as) z
+
+disjoint-sym : ∀ {a b} → Disjoint a b → Disjoint b a
+disjoint-sym DisHere = disjoint-[]
+disjoint-sym (DisThere x∉ d) = disjoint-insert (disjoint-sym d) x∉
+
+disjointWeaken : ∀ {x xs ys} → Disjoint (x ∷ xs) ys → Disjoint xs ys
+disjointWeaken (DisThere _ d) = d
+
+postulate freshTypeVars : (αs : List Id) → ∃[ βs ] (Disjoint αs βs)
