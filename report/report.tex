@@ -177,14 +177,31 @@ $$
 \textsf{readFile} \curlyvee \textsf{readNet} : \IO_{\textsf{File} \cup \textsf{Net}} \ () \times ()
 $$
 
+In chapter~\ref{chapter:background} we will lay out the seminal works in type
+theory that we will build upon. We will also briefly touch other parallels to
+our problem such as separation logic, and how they will influence the upcoming
+design.
+
+Chapter~\ref{chapter:system} introduces the language and its type system, and
+presents some informal proofs of its soundness. These proofs are then
+formalised within the dependently typed language and proof assistant agda in
+chapter~\ref{chapter:agda}.
+
+Chapter~\ref{chapter:evaluation} evaluates how such a type system works in
+practice in ``real-world'' code examples, and how it might be refined. Further
+areas to explore in this design are listed in chapter~\ref{chapter:further-work}.
 
 \include{background}
 
-\include{System}
+\include{system}
 
-\include{system2}
+\include{formalisation}
 
-Extensions: Dependently typed
+\include{evaluation}
+
+\chapter{Further Work} \label{chapter:futher-work}
+
+- Dependently typed resource tags
 
 \bibliographystyle{plain}
 \bibliography{report}
