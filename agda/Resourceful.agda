@@ -171,28 +171,50 @@ subType id τ (a ⇒ b) = subType id τ a ⇒ subType id τ b
 subType id τ (IO σ τ') = IO σ (subType id τ τ')
 subType _ _ □ = □
 
-instantiate : Id → Type → TypeScheme → TypeScheme
-instantiate id τ (V α · τ') = (V α · instantiate id τ τ')
-instantiate id τ (` τ') = ` (subType id τ τ')
-
-substitute : Id → Type → TypeScheme → TypeScheme
-substitute id τ (V α · σ) with id ≟ α
-...  | yes _ = instantiate id τ σ
-...  | no _  = V α · (substitute id τ σ)
-substitute id τ (` τ') = ` τ'
 
 data Substitution : Set where
   SZ : Substitution
   SS : Id → Type → Substitution → Substitution
 
-infix 5 _∘_
-_∘_ : Substitution → Substitution → Substitution
-s ∘ SZ = s
-s1 ∘ (SS i τ s2) = SS i τ (s1 ∘ s2)
-  
+infix 5 _∘ˢ_
+_∘ˢ_ : Substitution → Substitution → Substitution
+s ∘ˢ SZ = s
+s1 ∘ˢ(SS i τ s2) = SS i τ (s1 ∘ˢ s2)
+
+-- susbtitutes ALL type variables in a type
+subT : Substitution → Type → Type
+subT s (a ⇒ b) = subT s a ⇒ subT s b
+subT s (IO σ τ) = IO σ (subT s τ)
+subT s □ = □
+subT SZ (` α) = (` α)
+subT (SS id τ s) (` α) with id ≟ α
+...  | yes _ = subT s τ
+...  | no  _ = subT s (` α)
+
+-- substitutes the FREE type variables
 sub : Substitution → TypeScheme → TypeScheme
 sub SZ σ = σ
-sub (SS id type xs) σ = sub xs (substitute id type σ)
+sub s@(SS id τ si) (V α · σ) with α ≟ id
+... | yes refl = (V α · sub si σ)
+... | no α≢id = (V α · sub s σ)
+sub s@(SS id τ si) (` τ') = ` (subT s τ')
+
+-- substitutes the BOUND type variables
+inst : Substitution → TypeScheme → TypeScheme
+inst SZ σ = σ
+inst (SS id type xs) σ = inst xs (substitute id type σ)
+  where
+    
+  instantiate : Id → Type → TypeScheme → TypeScheme
+  instantiate id τ (V α · τ') = (V α · instantiate id τ τ')
+  instantiate id τ (` τ') = ` (subType id τ τ')
+
+  substitute : Id → Type → TypeScheme → TypeScheme
+  substitute id τ (V α · σ) with id ≟ α
+  ...  | yes _ = instantiate id τ σ
+  ...  | no _  = V α · (substitute id τ σ)
+  substitute id τ (` τ') = ` τ'
+
 
 subDomain : Substitution → List Id
 subDomain SZ = []
@@ -207,25 +229,19 @@ record BJS : Set where
 
 
 
-subT : Substitution → Type → Type
-subT s (a ⇒ b) = subT s a ⇒ subT s b
-subT s (IO σ τ) = IO σ (subT s τ)
-subT s □ = □
-subT SZ (` α) = (` α)
-subT (SS id τ s) (` α) with id ≟ α
-...  | yes _ = subT s τ
-...  | no  _ = subT s (` α)
-
 _ : subT (SS "a" □ SZ) (` "a" ⇒ ` "b") ≡ □ ⇒ ` "b"
 _ = refl
 
-_ : (sub (SS "a" □ SZ) (` (` "a"))) ≡ ` (` "a")
+_ : (sub (SS "a" □ SZ) (` (` "a"))) ≡ ` □
 _ = refl
 
-_ : (sub (SS "b" □ SZ) (V "b" · (` (` "b" ⇒ ` "b")))) ≡ ` (□ ⇒ □)
+_ : (inst (SS "a" □ SZ) (` (` "a"))) ≡ ` (` "a")
 _ = refl
 
-_ : SZ ∘ (SS "b" □ SZ) ≡ (SS "b" □ SZ)
+_ : (inst (SS "b" □ SZ) (V "b" · (` (` "b" ⇒ ` "b")))) ≡ ` (□ ⇒ □)
+_ = refl
+
+_ : SZ ∘ˢ (SS "b" □ SZ) ≡ (SS "b" □ SZ)
 _ = refl
 
 infixr 3 _>_
@@ -264,13 +280,13 @@ data _≥_ : (σ : TypeScheme) → (σ' : TypeScheme) → Set where
 _ : V "a" · (` (` "a" ⇒ ` "a")) > (□ ⇒ □)
 _ = General (SS "a" □ SZ) refl refl
 
-SZ∘ : ∀ {s} → SZ ∘ s ≡ s
-SZ∘ {SZ} = refl
-SZ∘ {SS i τ s} = cong (SS i τ) SZ∘
+SZ∘ˢ : ∀ {s} → SZ ∘ˢ s ≡ s
+SZ∘ˢ {SZ} = refl
+SZ∘ˢ {SS i τ s} = cong (SS i τ) SZ∘ˢ
 
-sub∘ : ∀ (s1 s2 σ) → sub (s2 ∘ s1) σ ≡ sub s2 (sub s1 σ)
-sub∘ SZ s2 σ = refl
-sub∘ (SS i τ s1) s2 σ = sub∘ s1 s2 (substitute i τ σ)
+-- inst∘ : ∀ (s1 s2 σ) → inst (s2 ∘ s1) σ ≡ inst s2 (sub s1 σ)
+-- inst∘ SZ s2 σ = refl
+-- inst∘ (SS i τ s1) s2 σ = inst∘ {!!} s2 σ
 
 -- ≥trans : ∀ {σ σ' σ''} → σ ≥ σ' → σ' ≥ σ'' → σ ≥ σ''
 -- ≥trans {σ} {σ'} (General s1 s1p) (General s2 s2p) = General (s2 ∘ s1) (trans (trans (asdf s1 s2 σ) a) s2p)
@@ -296,8 +312,30 @@ subC : Substitution → Context → Context
 subC s ∅ = ∅
 subC s (Γ , x ⦂ σ) = (subC s Γ) , x ⦂ (sub s σ)
 
-_ : subC (SS "α" □ SZ) (∅ , "x" ⦂ V "α" · (` (` "α" ⇒ ` "α"))) ≡ ∅ , "x" ⦂ ` (□ ⇒ □)
+_ : subC (SS "α" □ SZ) (∅ , "x" ⦂ V "α" · (` (` "α" ⇒ ` "α"))) ≡ ∅ , "x" ⦂ V "α" · (` (` "α" ⇒ ` "α"))
 _ = refl
+
+
+subTSZ : ∀ {τ} → subT SZ τ ≡ τ
+subTSZ {` x} = refl
+subTSZ {τ ⇒ τ'} rewrite subTSZ {τ} | subTSZ {τ'} = refl
+subTSZ {IO x τ} = cong (IO x) subTSZ
+subTSZ {□} = refl
+
+subCSZ : ∀ {Γ} → subC SZ Γ ≡ Γ
+subCSZ {∅} = refl
+subCSZ {Γ , x ⦂ σ} = cong (λ z → z , x ⦂ σ) subCSZ
+
+subT≡sub : ∀ {τ} → (s : Substitution) → sub s (` τ) ≡ ` (subT s τ)
+subT≡sub {τ} SZ =
+  begin
+    sub SZ (` τ)
+  ≡⟨⟩
+    (` τ)
+  ≡⟨ cong (`_) (sym (subTSZ {τ})) ⟩
+    (` (subT SZ τ))
+  ∎
+subT≡sub {τ} (SS id τ' si) = refl
 
 infix 5 _/_
 _/_ : List Id → List Id → List Id

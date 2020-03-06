@@ -121,6 +121,13 @@ rename p (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (rename p ⊢e)
 rename p (⊢>>= ⊢m ⊢f) = ⊢>>= (rename p ⊢m) (rename p ⊢f)
 rename p ⊢□ = ⊢□
 rename {Γ} {Δ} ρ (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename ρ Γ⊢e'⦂τ') (renameClose ρ Γ⊢e'⦂τ)
+
+extend∈ : ∀ {Γ Δ}
+          → (∀ {x σ} → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+          → (∀ {x σ y σ'} → x ⦂ σ ∈ Γ , y ⦂ σ' → x ⦂ σ ∈ Δ , y ⦂ σ')
+extend∈ ρ Z = Z
+extend∈ ρ (S x∈Γ,y x) = S (ρ x∈Γ,y) x   
+        
     
 weaken : ∀ {Γ e τ} → ∅ ⊢ e ⦂ τ → Γ ⊢ e ⦂ τ
 weaken = rename f
@@ -162,21 +169,6 @@ swap {Γ} {x} {y} {e} {a} {b} x≢y ⊢e = rename ρ ⊢e
         ρ (S (S x∈ z≢y) z≢x) = S (S x∈ z≢x) z≢y
 
 
--- lemma 4.1
--- extra vars in the environment can be ignored
-ignore : ∀ {Γ Δ e τ}
-       → (∀ {x σ} → x ∈ FV(e) → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
-       → Γ ⊢ e ⦂ τ
-       → Δ ⊢ e ⦂ τ
-ignore ρ (⊢` {x = x} x∈ σ>τ) = ⊢` (ρ (here (refl)) x∈) σ>τ
-ignore ρ (⊢ƛ ⊢e) = ⊢ƛ {!!}
-ignore ρ (⊢· ⊢e₁ ⊢e₂) = ⊢· (ignore {!!} {!!}) {!!}
-ignore ρ (⊢lt ⊢e ⊢e₁) = ⊢lt {!!} {!!}
-ignore ρ (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (ignore ρ ⊢e)
-ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore {!!} ⊢e) {!!}
-ignore ρ ⊢□ = ⊢□
-
-
 extend : ∀ {Γ x σ e τ}
        → Γ ⊢ e ⦂ τ
        → x ∉ FV(e)
@@ -189,12 +181,28 @@ extend {x = x} {e = e} (⊢ƛ {x = y} ⊢e) x∉ with x ≟ y
 ... | no x≢y = ⊢ƛ (swap x≢y (extend ⊢e (∉-/≢ x∉ x≢y)))
 extend (⊢· ⊢e₁ ⊢e₂) x∉ with ∉-++⁻ x∉
 ... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢· (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂)
-extend {Γ} {σ = σ} (⊢lt {τ' = τ'} ⊢e ⊢e') x∉ with ∉-++⁻ x∉ | close Γ τ'
-... | ⟨ ∉e , ∉e' ⟩ | foo = ⊢lt (extend ⊢e ∉e) {!!}
+extend {Γ} {x} {σ = σ} (⊢lt {τ' = τ'} {x = y} ⊢e ⊢e') x∉ with x ≟ y | ∉-++⁻ x∉ | close (Γ , y ⦂ σ) τ'
+... | yes refl | ⟨ ∉e , ∉e' ⟩ | _ = ⊢lt (extend ⊢e ∉e) (sneakIn {!⊢e'!})
+... | no x≢y | ⟨ ∉e , ∉e' ⟩ | foo = {!!}
 extend (⊢⟦⟧ ⊢e) x∉ = ⊢⟦⟧ (extend ⊢e x∉)
 extend {x = x} (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') x∉ with ∉-++⁻ {x} {FV(e)} {FV(e')} x∉
 ... | ⟨ ∉e , ∉e' ⟩ = ⊢>>= (extend ⊢e ∉e) (extend ⊢e' ∉e')
 extend ⊢□ x∉ = ⊢□
+
+-- lemma 4.1
+-- extra vars in the environment can be ignored
+ignore : ∀ {Γ Δ e τ}
+       → (∀ {x σ} → x ∈ FV(e) → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+       → Γ ⊢ e ⦂ τ
+       → Δ ⊢ e ⦂ τ
+ignore ρ (⊢` {x = x} x∈ σ>τ) = ⊢` (ρ (here refl) x∈) σ>τ
+ignore ρ (⊢ƛ ⊢e) = ⊢ƛ (ignore (λ x∈FV x∈Γ → let z = extend∈ (ρ {!!}) in {!!}) ⊢e)
+ignore ρ (⊢· ⊢e₁ ⊢e₂) = ⊢· (ignore {!!} {!!}) {!!}
+ignore ρ (⊢lt ⊢e ⊢e₁) = ⊢lt {!!} {!!}
+ignore ρ (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (ignore ρ ⊢e)
+ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore {!!} ⊢e) {!!}
+ignore ρ ⊢□ = ⊢□
+
 
 closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
        → Γ , x ⦂ close (Γ' , y ⦂ σ') τ' ⊢ e ⦂ τ
@@ -228,40 +236,6 @@ gen (⊢⟦⟧ x) σ>σ' = ⊢⟦⟧ (gen x σ>σ')
 gen (⊢>>= x x₁) σ>σ' = ⊢>>= (gen x σ>σ') (gen x₁ σ>σ')
 gen ⊢□ σ>σ' = ⊢□
 
-subTSZ : ∀ {τ} → subT SZ τ ≡ τ
-subTSZ {` x} = refl
-subTSZ {τ ⇒ τ'} rewrite subTSZ {τ} | subTSZ {τ'} = refl
-subTSZ {IO x τ} = cong (IO x) subTSZ
-subTSZ {□} = refl
-
-subCSZ : ∀ {Γ} → subC SZ Γ ≡ Γ
-subCSZ {∅} = refl
-subCSZ {Γ , x ⦂ σ} = cong (λ z → z , x ⦂ σ) subCSZ
-
--- this is wrong? sub on type scheme only instantiates
--- subT~sub : ∀ {τ} → (s : Substitution) → sub s (` τ) ≡ ` (subT s τ)
--- subT~sub {τ} SZ =
---   begin
---     sub SZ (` τ)
---   ≡⟨⟩
---     (` τ)
---   ≡⟨ cong (`_) (sym (subTSZ {τ})) ⟩
---     (` (subT SZ τ))
---   ∎
--- subT~sub {τ} (SS id τ' si) =
---   begin
---     sub (SS id τ' si) (` τ)
---   ≡⟨⟩
---     sub si (substitute id τ' (` τ))
---   ≡⟨⟩
---     sub si (` τ)
---   ≡⟨ subT~sub si ⟩
---     ` (subT si τ)
---   ≡⟨⟩  
---     ` (subT (SS id τ' si) τ)
---   ≡⟨⟩
---     {!!}
-
 Γcong : ∀ {Γ x e τ σ σ'} → Γ , x ⦂ σ ⊢ e ⦂ τ → σ ≡ σ' → Γ , x ⦂ σ' ⊢ e ⦂ τ
 Γcong Γ refl = Γ
 
@@ -270,6 +244,10 @@ subCSZ {Γ , x ⦂ σ} = cong (λ z → z , x ⦂ σ) subCSZ
        → Γ ⊢ e ⦂ τ
        → Γ ⊢ e ⦂ τ'
 Γ⊢cong refl ⊢e = ⊢e
+
+
+sub> : ∀ {s σ τ} → σ > τ → sub s σ > subT s τ
+sub> {s} {σ} (General s' x y) = General (s' ∘ˢ s) {!!} {!!}
 
 -- tofte lemma 2.6
 -- lemma26 : ∀ {s σ σ' τ} → σ > τ → σ ⇒ s ⇒ σ' → σ' > subT s τ)
@@ -282,13 +260,40 @@ subContextTyping : ∀ {Γ e τ}
                    → Γ ⊢ e ⦂ τ
                    → (s : Substitution)
                    → subC s Γ ⊢ e ⦂ subT s τ
-subContextTyping {Γ} (⊢` {x = x} {σ} x∈Γ σ>τ) s = {!!}
+subContextTyping {Γ} (⊢` {x = x} {σ} x∈Γ σ>τ) s = let sσ = sub s σ in ⊢` (f x∈Γ) (sub> σ>τ)
   where
---  f : x ⦂ σ ∈ Γ → x ⦂ subT s τ ∈ subC s Γ
-subContextTyping {Γ} (⊢ƛ {x = x} {τ' = τ'} ⊢e) s = {!!}
-  -- ⊢ƛ (Γcong (subContextTyping {Γ , x ⦂ ` τ'} ⊢e s) {!!})
+  f : ∀ {x σ Γ s} → x ⦂ σ ∈ Γ → x ⦂ sub s σ ∈ subC s Γ
+  f Z = Z
+  f (S x∈ x≢y) = S (f x∈) x≢y
+
+subContextTyping {Γ} {e} {τ} (⊢ƛ {x = x} {τ' = τ'} {e = e'} ⊢e) s = ⊢ƛ (let z = (subContextTyping ⊢e s) in f z)
+  where
+  f : ∀ {e Γ s τ' τ x} → subC s Γ , x ⦂ sub s (` τ') ⊢ e ⦂ subT s τ → subC s Γ , x ⦂ ` subT s τ' ⊢ e ⦂ subT s τ
+  f {s = s} {τ' = τ'}  ⊢e rewrite subT≡sub {τ'} s = ⊢e
+
+  
 subContextTyping (⊢· ⊢e₁ ⊢e₂) s = ⊢· (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
-subContextTyping (⊢lt ⊢e ⊢e') s = ⊢lt (subContextTyping ⊢e s) {!!}
+subContextTyping (⊢lt ⊢e ⊢e') s = ⊢lt (subContextTyping ⊢e s) (f' (subContextTyping ⊢e' s))
+  where
+  -- equation 2.26 in tofte
+  g : ∀ {Γ s τ} → sub s (close Γ τ) ≡ close (subC s Γ) (subT s τ)
+  g {Γ} {SZ} {τ} rewrite subCSZ {Γ} | subTSZ {τ} = refl
+  g {Γ} {SS id τ' si} {τ} =
+    begin
+      sub (SS id τ' si) (close Γ τ)
+    ≡⟨⟩
+      sub (SS id τ' si) (VV (FTVT τ / FTVC Γ) τ)
+    ≡⟨⟩
+      {!!}
+      
+  f : ∀ {Γ s x τ} → subC s (Γ , x ⦂ close Γ τ) ≡ subC s Γ , x ⦂ close (subC s Γ) (subT s τ)
+  f {Γ} {s} {x} {τ} rewrite g {Γ} {s} {τ} = refl
+  f' : ∀ {Γ s x τ' e τ}
+     → subC s (Γ , x ⦂ close Γ τ') ⊢ e ⦂ τ
+     → subC s Γ , x ⦂ close (subC s Γ) (subT s τ') ⊢ e ⦂ τ
+  f' {Γ} {s} {x} {τ'} {e} {τ} ⊢e rewrite (cong (λ z → z ⊢ e ⦂ τ) (f {Γ} {s} {x} {τ'})) = ⊢e
+
+      
 subContextTyping (⊢⟦⟧ ⊢e) s = ⊢⟦⟧ (subContextTyping ⊢e s)
 subContextTyping (⊢>>= ⊢e₁ ⊢e₂) s = ⊢>>= (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
 subContextTyping ⊢□ s = ⊢□
