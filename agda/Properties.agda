@@ -24,8 +24,8 @@ open import Data.List.Membership.Setoid.Properties
 open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 
 open import Data.Product
-  using (_×_; proj₁; proj₂; ∃; ∃-syntax)
-  renaming (_,_ to ⟨_,_⟩)
+  using (proj₁; proj₂; ∃; ∃-syntax)
+  renaming (_,_ to ⟨_,_⟩; _×_ to ⟨_×_⟩)
 
 open import Resourceful
 
@@ -36,6 +36,7 @@ V¬-↝ : ∀ {e e'}
 V¬-↝ V-□ ()
 V¬-↝ V-ƛ ()
 V¬-↝ V-⟦⟧ ()
+V¬-↝ V-× ()
 
 infix 4 Canonical_⦂_
 
@@ -52,6 +53,12 @@ data Canonical_⦂_ : Term → Type → Set where
          ----------------------
        → Canonical ⟦ e ⟧ ⦂ IO σ τ
 
+  C-× : ∀ {e₁ τ₁ e₂ τ₂}
+      → ∅ ⊢ e₁ ⦂ τ₁
+      → ∅ ⊢ e₂ ⦂ τ₂
+        -------------------
+      → Canonical (e₁ × e₂) ⦂ τ₁ × τ₂
+
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
           → Value v
@@ -60,6 +67,7 @@ canonical : ∀ {v τ}
 canonical (⊢ƛ ⊢e) V-ƛ = C-ƛ ⊢e
 canonical (⊢□) V-□ = C-□
 canonical (⊢⟦⟧ ⊢e) V-⟦⟧ = C-⟦⟧ ⊢e
+canonical (⊢× ⊢e₁ ⊢e₂) V-× = C-× ⊢e₁ ⊢e₂
 
 data Progress (e : Term) : Set where
   step : ∀ {e'}
@@ -86,6 +94,9 @@ progress (⊢>>= ⊢m ⊢f) with progress ⊢m
 ...   | C-⟦⟧ _ = step β->>=
 progress ⊢□ = done V-□
 progress (⊢lt ⊢e₁ ⊢e₂) = step β-lt
+progress (⊢× z z₁) = done V-×
+progress ⊢readFile = step β-readFile
+progress ⊢readNet = step β-readNet
 
 contained  : ∀ { Γ x σ y σ' } → x ≢ y → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Γ , y ⦂ σ'
 contained x≢y Z = S Z x≢y
@@ -121,6 +132,9 @@ rename p (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (rename p ⊢e)
 rename p (⊢>>= ⊢m ⊢f) = ⊢>>= (rename p ⊢m) (rename p ⊢f)
 rename p ⊢□ = ⊢□
 rename {Γ} {Δ} ρ (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename ρ Γ⊢e'⦂τ') (renameClose ρ Γ⊢e'⦂τ)
+rename ρ (⊢× ⊢e₁ ⊢e₂) = ⊢× (rename ρ ⊢e₁) (rename ρ ⊢e₂)
+rename ρ ⊢readFile = ⊢readFile
+rename ρ ⊢readNet = ⊢readNet
 
 extend∈ : ∀ {Γ Δ}
           → (∀ {x σ} → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
@@ -176,6 +190,8 @@ extend : ∀ {Γ x σ e τ}
 extend {x = x} (⊢` {x = y} x∈ σ>τ) x∉ with x ≟ y
 ... | yes refl = ⊥-elim (x∉ (here refl))
 ... | no x≢y = ⊢` (S x∈ (λ z → x≢y (sym z))) σ>τ
+extend (⊢× ⊢e₁ ⊢e₂) x∉ with ∉-++⁻ x∉
+... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢× (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂)
 extend {x = x} {e = e} (⊢ƛ {x = y} ⊢e) x∉ with x ≟ y
 ... | yes refl = ⊢ƛ (sneakIn ⊢e)
 ... | no x≢y = ⊢ƛ (swap x≢y (extend ⊢e (∉-/≢ x∉ x≢y)))
@@ -188,6 +204,8 @@ extend (⊢⟦⟧ ⊢e) x∉ = ⊢⟦⟧ (extend ⊢e x∉)
 extend {x = x} (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') x∉ with ∉-++⁻ {x} {FV(e)} {FV(e')} x∉
 ... | ⟨ ∉e , ∉e' ⟩ = ⊢>>= (extend ⊢e ∉e) (extend ⊢e' ∉e')
 extend ⊢□ x∉ = ⊢□
+extend ⊢readFile x∉ = ⊢readFile
+extend ⊢readNet x∉ = ⊢readNet
 
 -- lemma 4.1
 -- extra vars in the environment can be ignored
@@ -197,11 +215,14 @@ ignore : ∀ {Γ Δ e τ}
        → Δ ⊢ e ⦂ τ
 ignore ρ (⊢` {x = x} x∈ σ>τ) = ⊢` (ρ (here refl) x∈) σ>τ
 ignore ρ (⊢ƛ ⊢e) = ⊢ƛ (ignore (λ x∈FV x∈Γ → let z = extend∈ (ρ {!!}) in {!!}) ⊢e)
+ignore ρ (⊢× ⊢e₁ ⊢e₂) = ⊢× {!!} {!!}
 ignore ρ (⊢· ⊢e₁ ⊢e₂) = ⊢· (ignore {!!} {!!}) {!!}
 ignore ρ (⊢lt ⊢e ⊢e₁) = ⊢lt {!!} {!!}
 ignore ρ (⊢⟦⟧ ⊢e) = ⊢⟦⟧ (ignore ρ ⊢e)
 ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore {!!} ⊢e) {!!}
 ignore ρ ⊢□ = ⊢□
+ignore ρ ⊢readFile = ⊢readFile
+ignore ρ ⊢readNet = ⊢readNet
 
 
 closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
@@ -231,10 +252,13 @@ gen {Γ} {x = y} {σ = σ} {σ' = σ'} (⊢lt {Γ , y ⦂ σ'} {τ = τ} {τ' = 
           ⊢e⦂τswp'' = swap (≢-sym x≢y) ⊢e⦂τswp'
           z = closeσ {Γ , y ⦂ σ} {Γ} {x} {y} τ' τ ⊢e⦂τswp'' σ>σ'
           in ⊢lt (gen ⊢e'⦂τ' σ>σ') z
-          
+
+gen (⊢× ⊢e₁ ⊢e₂) σ>σ' = ⊢× (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ')
 gen (⊢⟦⟧ x) σ>σ' = ⊢⟦⟧ (gen x σ>σ')
 gen (⊢>>= x x₁) σ>σ' = ⊢>>= (gen x σ>σ') (gen x₁ σ>σ')
 gen ⊢□ σ>σ' = ⊢□
+gen ⊢readFile σ>σ' = ⊢readFile
+gen ⊢readNet σ>σ' = ⊢readNet
 
 Γcong : ∀ {Γ x e τ σ σ'} → Γ , x ⦂ σ ⊢ e ⦂ τ → σ ≡ σ' → Γ , x ⦂ σ' ⊢ e ⦂ τ
 Γcong Γ refl = Γ
@@ -273,6 +297,7 @@ subContextTyping {Γ} {e} {τ} (⊢ƛ {x = x} {τ' = τ'} {e = e'} ⊢e) s = ⊢
 
   
 subContextTyping (⊢· ⊢e₁ ⊢e₂) s = ⊢· (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
+
 subContextTyping (⊢lt ⊢e ⊢e') s = ⊢lt (subContextTyping ⊢e s) (f' (subContextTyping ⊢e' s))
   where
   -- equation 2.26 in tofte
@@ -293,10 +318,12 @@ subContextTyping (⊢lt ⊢e ⊢e') s = ⊢lt (subContextTyping ⊢e s) (f' (sub
      → subC s Γ , x ⦂ close (subC s Γ) (subT s τ') ⊢ e ⦂ τ
   f' {Γ} {s} {x} {τ'} {e} {τ} ⊢e rewrite (cong (λ z → z ⊢ e ⦂ τ) (f {Γ} {s} {x} {τ'})) = ⊢e
 
-      
+subContextTyping (⊢× ⊢e₁ ⊢e₂) s = ⊢× (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
 subContextTyping (⊢⟦⟧ ⊢e) s = ⊢⟦⟧ (subContextTyping ⊢e s)
 subContextTyping (⊢>>= ⊢e₁ ⊢e₂) s = ⊢>>= (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
 subContextTyping ⊢□ s = ⊢□
+subContextTyping ⊢readFile s = ⊢readFile
+subContextTyping ⊢readNet s = ⊢readNet
 
 
 -- -- s must cover all of αs
@@ -327,9 +354,7 @@ subContextTyping ⊢□ s = ⊢□
 -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
 absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
              → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
-             → ∃[ s ] (Disjoint (FTVC Γ) αs ×
-                       Disjoint (subRegion (BJS.to s)) αs ×
-                       Disjoint (subRegion (BJS.to s)) (FTVC Γ))
+             → ∃[ s ] ⟨ Disjoint (FTVC Γ) αs × ⟨ (Disjoint (subRegion (BJS.to s)) αs) × (Disjoint (subRegion (BJS.to s)) (FTVC Γ)) ⟩ ⟩
 absSubChoose {αs = αs} ⊢e with freshTypeVars αs
 ... | ⟨ βs , djαβ ⟩ = {!!}
 
@@ -396,7 +421,10 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
                  in roundtripSub bjs prt6
                  
 subst {x = y} ⊢e (⊢· e e') p = ⊢· (subst ⊢e e p) (subst ⊢e e' p)
+subst {x = y} ⊢e (⊢× ⊢e₁ ⊢e₂) p = ⊢× (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p)
 subst {x = y} ⊢e ⊢□ _ = ⊢□
+subst {x = y} ⊢e ⊢readFile _ = ⊢readFile
+subst {x = y} ⊢e ⊢readNet _ = ⊢readNet
 subst {x = y} ⊢e (⊢⟦⟧ ⊢e') p = ⊢⟦⟧ (subst ⊢e ⊢e' p)
 subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e ⊢f p)
 
@@ -420,4 +448,6 @@ preservation (⊢· (⊢ƛ ⊢e) ⊢e') (β-ƛ _) = subst ⊢e' ⊢e DisHere
 preservation (⊢>>= ⊢m ⊢f) (ξ->>= m↝m') = ⊢>>= (preservation ⊢m m↝m') ⊢f
 preservation (⊢>>= (⊢⟦⟧ ⊢e) ⊢f) β->>= = ⊢· ⊢f ⊢e
 preservation (⊢lt {τ' = τ'} ⊢e' ⊢e) β-lt rewrite toVVClose τ' = subst ⊢e' ⊢e disjoint-[]
+preservation ⊢readFile β-readFile = ⊢⟦⟧ ⊢□
+preservation ⊢readNet β-readNet = ⊢⟦⟧ ⊢□
 

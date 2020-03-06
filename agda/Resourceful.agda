@@ -29,8 +29,8 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq.≡-Reasoning
 
 open import Data.Product
-  using (_×_; proj₁; proj₂; ∃; ∃-syntax)
-  renaming (_,_ to ⟨_,_⟩)
+  using (proj₁; proj₂; ∃; ∃-syntax)
+  renaming (_,_ to ⟨_,_⟩; _×_ to ⟨_×_⟩)
 
 Id : Set
 Id = String
@@ -40,6 +40,7 @@ infix 9 `_
 infix 7 _·_
 infix 4 lt_⇐_in'_
 infix 5 _>>=_
+infix 5 _×_
 
 data Term : Set where
   `_    : Id → Term
@@ -49,11 +50,15 @@ data Term : Set where
   ⟦_⟧   : Term → Term
   _>>=_ : Term → Term → Term
   □     : Term
+  readFile : Term
+  readNet : Term
+  _×_ : Term → Term → Term
 
 data Value : Term → Set where
   V-ƛ : ∀ {x N} → Value (ƛ x ⇒ N)
   V-⟦⟧ : ∀ {e} → Value (⟦ e ⟧)
   V-□ : Value □
+  V-× : ∀ {e₁ e₂} → Value (e₁ × e₂)
   
 infix 9 _[_:=_]
 
@@ -71,6 +76,9 @@ _[_:=_] : Term → Id → Term → Term
 ⟦ e ⟧ [ y := z ] = ⟦ e [ y := z ] ⟧
 (m >>= f) [ y := z ] = m [ y := z ] >>= f [ y := z ]
 □ [ _ := _ ] = □
+readFile [ _ := _ ] = readFile
+readNet [ _ := _ ] = readNet
+(e × e') [ y := z ] = e [ y := z ] × e' [ y := z ]
 
 _ : (ƛ "a" ⇒ ` "b") [ "b" := ` "c" ] ≡ ƛ "a" ⇒ ` "c"
 _ = refl
@@ -116,6 +124,10 @@ data _↝_ : Term → Term → Set where
           -------------------
         → ⟦ v ⟧ >>= e ↝ e · v
 
+  β-readFile : readFile ↝ ⟦ □ ⟧
+  β-readNet : readNet ↝ ⟦ □ ⟧
+
+
 data Resource : Set where
   Net : Resource
   File : Resource
@@ -131,6 +143,7 @@ data Type : Set where
   _⇒_ : Type → Type → Type
   IO : Heap → Type → Type
   □ : Type
+  _×_ : Type → Type → Type
 
 data TypeScheme : Set where
   V_·_ : Id → TypeScheme → TypeScheme
@@ -169,6 +182,7 @@ subType id τ (` α) with id ≟ α
 ...  | no  _ = ` α
 subType id τ (a ⇒ b) = subType id τ a ⇒ subType id τ b
 subType id τ (IO σ τ') = IO σ (subType id τ τ')
+subType id τ (a × b) = subType id τ a × subType id τ b
 subType _ _ □ = □
 
 
@@ -185,6 +199,7 @@ s1 ∘ˢ(SS i τ s2) = SS i τ (s1 ∘ˢ s2)
 subT : Substitution → Type → Type
 subT s (a ⇒ b) = subT s a ⇒ subT s b
 subT s (IO σ τ) = IO σ (subT s τ)
+subT s (a × b) = subT s a × subT s b
 subT s □ = □
 subT SZ (` α) = (` α)
 subT (SS id τ s) (` α) with id ≟ α
@@ -321,6 +336,7 @@ subTSZ {` x} = refl
 subTSZ {τ ⇒ τ'} rewrite subTSZ {τ} | subTSZ {τ'} = refl
 subTSZ {IO x τ} = cong (IO x) subTSZ
 subTSZ {□} = refl
+subTSZ {a × b} rewrite subTSZ {a} | subTSZ {b} = refl
 
 subCSZ : ∀ {Γ} → subC SZ Γ ≡ Γ
 subCSZ {∅} = refl
@@ -379,7 +395,7 @@ filter-[] = refl
 ... | inj₁ ∈xs = ∉xs ∈xs
 ... | inj₂ ∈ys = ∉ys ∈ys
 
-∉-++⁻ : ∀ {v xs ys} → v ∉ xs ++ ys → v ∉ xs × v ∉ ys
+∉-++⁻ : ∀ {v xs ys} → v ∉ xs ++ ys → ⟨ v ∉ xs × v ∉ ys ⟩
 ∉-++⁻ {v} {xs} {ys} ∉xs++ys = ⟨ l , r ⟩
   where
     l : v ∉ xs
@@ -406,6 +422,9 @@ FV (lt x ⇐ e in' e') = FV e ++ (FV e' / [ x ])
 FV ⟦ e ⟧ = FV e
 FV (e >>= e') = FV e ++ FV e'
 FV □ = []
+FV readFile = []
+FV readNet = []
+FV (e₁ × e₂) = FV e₁ ++ FV e₂
 
 -- Free *type* variables, types
 FTVT : Type → List Id
@@ -413,6 +432,7 @@ FTVT (` α) = [ α ]
 FTVT □ = []
 FTVT (a ⇒ b) = FTVT a ++ FTVT b
 FTVT (IO σ τ) = FTVT τ
+FTVT (a × b) = FTVT a ++ FTVT b
 
 subRegion : Substitution → List Id
 subRegion SZ = []
@@ -541,6 +561,12 @@ data _⊢_⦂_ : Context → Term → Type → Set where
         ----------------------------
       → Γ ⊢ lt x ⇐ e' in' e ⦂ τ
 
+  ⊢× : ∀ {Γ e e' τ τ'}
+     → Γ ⊢ e ⦂ τ
+     → Γ ⊢ e' ⦂ τ'
+       --------------------
+     → Γ ⊢ e × e' ⦂ τ × τ'
+
   ⊢⟦⟧ : ∀ {Γ e τ σ}
       → Γ ⊢ e ⦂ τ
         ----------------
@@ -556,6 +582,17 @@ data _⊢_⦂_ : Context → Term → Type → Set where
        
        ---------
      → Γ ⊢ □ ⦂ □
+
+
+  -- resource stuff
+
+  ⊢readFile : ∀ {Γ}
+              ----------------------------
+            → Γ ⊢ readFile ⦂ IO (` File) □
+
+  ⊢readNet : ∀ {Γ}
+             --------------------------
+           → Γ ⊢ readNet ⦂ IO (` Net) □
 
 _ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ( □ ⇒ □ )
 _ = ⊢ƛ ⊢□
