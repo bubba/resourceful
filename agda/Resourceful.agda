@@ -120,7 +120,7 @@ data _↝_ : Term → Term → Set where
   β-readFile : readFile ↝ ⟦ □ ⟧
   β-readNet : readNet ↝ ⟦ □ ⟧
 
-  -- concurrency
+  -- resource stuff
 
   ξ-⋎₁ : ∀ {e₁ e₂ e₁'}
        → e₁ ↝ e₁'
@@ -158,6 +158,32 @@ data _∩_=∅ : Heap → Heap → Set where
         ----------------
       → (ρ₁ ∪ ρ₂) ∩ ρ =∅
 
+
+
+distinct-sym : ∀ {ρ ρ'} → ρ ∩ ρ' =∅ → ρ' ∩ ρ =∅
+distinct-sym (DHZ x) = DHZ (λ z → x (sym z))
+distinct-sym (DHL dist dist₁ dist₂) = DHR dist dist₁ dist₂
+distinct-sym (DHR dist dist₁ dist₂) = DHL dist dist₁ dist₂
+
+distinct-∪ˡ : ∀ {a b c}
+           → a ∩ b ∪ c =∅
+           → a ∩ b =∅
+distinct-∪ˡ (DHL a _ _) = a
+distinct-∪ˡ (DHR a b c) = let z = distinct-∪ˡ (distinct-sym b )
+                              y = distinct-∪ˡ (distinct-sym a)
+                         in DHR (distinct-sym y) (distinct-sym z) c
+
+distinct-∪ʳ : ∀ {a b c}
+           → a ∩ b ∪ c =∅
+           → a ∩ c =∅
+distinct-∪ʳ (DHL _ a _) = a
+distinct-∪ʳ (DHR a b c) = DHR (distinct-sym (distinct-∪ʳ (distinct-sym a)))
+                              (distinct-sym (distinct-∪ʳ (distinct-sym b)))
+                              c
+
+worldDistinct : ∀ {ρ} →  ¬ (World ∩ ρ =∅)
+worldDistinct (DHL =∅ =∅₁ =∅₂) = worldDistinct =∅₁
+
 _ : ` Net ∩ ` File =∅
 _ = DHZ (λ ())
 
@@ -183,6 +209,16 @@ _ : ` Net ≥: World
 _ = ≥:World
 _ : ` Net ≥: ` Net ∪ ` File
 _ = ≥:∪₂ ≥:Refl
+
+∩-≥: : ∀ {ρ ρ' ρ''}
+     → ρ ∩ ρ'' =∅    
+     → ρ' ≥: ρ''
+     → ρ ∩ ρ' =∅
+∩-≥: {ρ} a ≥:World = ⊥-elim (worldDistinct {ρ} (distinct-sym a))
+∩-≥: a ≥:Refl = a
+∩-≥: a (≥:∪₁ b) = let z = distinct-∪ʳ a
+                       in ∩-≥: z b
+∩-≥: a (≥:∪₂ b) = let z = distinct-∪ˡ a in ∩-≥: z b
 
 infix 5 _/_
 _/_ : List Id → List Id → List Id
