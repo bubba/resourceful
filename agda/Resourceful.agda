@@ -34,10 +34,24 @@ open import Data.Product
   using (proj₁; proj₂; ∃; ∃-syntax)
   renaming (_,_ to ⟨_,_⟩; _×_ to ⟨_×_⟩)
 
+-- Dynamic Semantics
+
+data Value : Term → Set where
+  V-ƛ : ∀ {x N} → Value (ƛ x ⇒ N)
+  V-⟦⟧ : ∀ {e} → Value (⟦ e ⟧)
+  V-□ : Value □
+  V-× : ∀ {e₁ e₂}
+      → Value e₁
+      → Value e₂
+        ---------------
+      → Value (e₁ × e₂)
 
 infix 4 _↝_
 
 data _↝_ : Term → Term → Set where
+
+  -- lambda calculus
+
   ξ-·₁ : ∀ {e₁ e₂ e₁'}
        → e₁ ↝ e₁'
          ------------------
@@ -53,11 +67,15 @@ data _↝_ : Term → Term → Set where
         ------------------
       → (ƛ x ⇒ e) · e' ↝ e [ x := e' ]
 
+  -- HM let binding
+  
   β-lt : ∀ {x e e'}
          -- TODO: should (Value e')?
          ----------
-       → (lt x ⇐ e' in' e) ↝ e [ x := e' ]
+       → (lt x ⇐ e' in' e) ↝ e [ x := e' ]       
 
+  -- monads
+  
   ξ->>= : ∀ {e₁ e₂ e₁'}
         → e₁ ↝ e₁'
           ----------------------
@@ -66,6 +84,38 @@ data _↝_ : Term → Term → Set where
   β->>= : ∀ {v e}
           -------------------
         → ⟦ v ⟧ >>= e ↝ e · v
+
+  -- product types
+  
+  ξ-×₁ : ∀ {e₁ e₂ e₁'}
+       → e₁ ↝ e₁'
+         ------------
+       → e₁ × e₂ ↝ e₁' × e₂
+       
+  ξ-×₂ : ∀ {e₁ e₂ e₂'}
+       → e₂ ↝ e₂'
+         ------------
+       → e₁ × e₂ ↝ e₁ × e₂'
+
+  ξ-π₁ : ∀ {e e'}
+       → e ↝ e'
+         ------------
+       → π₁ e ↝ π₁ e'
+
+  ξ-π₂ : ∀ {e e'}
+       → e ↝ e'
+         ------------
+       → π₂ e ↝ π₂ e'
+
+  β-π₁ : ∀ {e₁ e₂}
+         ----------------
+       → π₁ (e₁ × e₂) ↝ e₁
+
+  β-π₂ : ∀ {e₁ e₂}
+         -----------------
+       → π₂ (e₁ × e₂) ↝ e₂
+
+  -- resource primitives
 
   β-readFile : readFile ↝ ⟦ □ ⟧
   β-readNet : readNet ↝ ⟦ □ ⟧
@@ -206,6 +256,8 @@ FV □ = []
 FV readFile = []
 FV readNet = []
 FV (e₁ × e₂) = FV e₁ ++ FV e₂
+FV (π₁ e) = FV e
+FV (π₂ e) = FV e
 FV (e₁ ⋎ e₂) = FV e₁ ++ FV e₂
 
 -- Free *type* variables, types
@@ -348,6 +400,16 @@ data _⊢_⦂_ : Context → Term → Type → Set where
      → Γ ⊢ e' ⦂ τ'
        --------------------
      → Γ ⊢ e × e' ⦂ τ × τ'
+
+  ⊢π₁ : ∀ {Γ e τ τ'}
+      → Γ ⊢ e ⦂ τ × τ'
+        --------------
+      → Γ ⊢ π₁ e ⦂ τ
+
+  ⊢π₂ : ∀ {Γ e τ τ'}
+      → Γ ⊢ e ⦂ τ × τ'
+        --------------
+      → Γ ⊢ π₂ e ⦂ τ'
 
   ⊢⟦⟧ : ∀ {Γ e τ σ}
       → Γ ⊢ e ⦂ τ

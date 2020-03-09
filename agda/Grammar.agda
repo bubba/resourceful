@@ -27,13 +27,9 @@ data Term : Set where
   readFile : Term
   readNet : Term
   _×_ : Term → Term → Term
+  π₁_ : Term → Term
+  π₂_ : Term → Term
   _⋎_ : Term → Term → Term
-
-data Value : Term → Set where
-  V-ƛ : ∀ {x N} → Value (ƛ x ⇒ N)
-  V-⟦⟧ : ∀ {e} → Value (⟦ e ⟧)
-  V-□ : Value □
-  V-× : ∀ {e₁ e₂} → Value (e₁ × e₂)
   
 infix 9 _[_:=_]
 
@@ -54,6 +50,8 @@ _[_:=_] : Term → Id → Term → Term
 readFile [ _ := _ ] = readFile
 readNet [ _ := _ ] = readNet
 (e × e') [ y := z ] = e [ y := z ] × e' [ y := z ]
+(π₁ e) [ y := z ] = π₁ (e [ y := z ])
+(π₂ e) [ y := z ] = π₂ (e [ y := z ])
 (e₁ ⋎ e₂) [ y := z ] = e₁ [ y := z ] ⋎ e₂ [ y := z ]
 
 _ : (ƛ "a" ⇒ ` "b") [ "b" := ` "c" ] ≡ ƛ "a" ⇒ ` "c"
