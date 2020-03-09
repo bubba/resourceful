@@ -67,6 +67,11 @@ data Canonical_⦂_ : Term → Type → Set where
   --       -------------------------------------------
   --     → Canonical (e₁ ⋎ e₁) ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
 
+
+unwrap⟦⟧ : ∀ {Γ v ρ τ} → Γ ⊢ ⟦ v ⟧ ⦂ IO ρ τ → Γ ⊢ v ⦂ τ
+unwrap⟦⟧ (⊢⟦⟧ ⊢v) = ⊢v
+unwrap⟦⟧ (⊢IOsub ⊢v x) = unwrap⟦⟧ ⊢v
+
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
           → Value v
@@ -76,10 +81,19 @@ canonical (⊢ƛ ⊢e) V-ƛ = C-ƛ ⊢e
 canonical (⊢□) V-□ = C-□
 canonical (⊢⟦⟧ ⊢e) V-⟦⟧ = C-⟦⟧ ⊢e
 canonical (⊢× ⊢e₁ ⊢e₂) (V-× _ _) = C-× ⊢e₁ ⊢e₂
-canonical (⊢IOsub z x) V-ƛ = {!!}
-canonical (⊢IOsub z x) V-⟦⟧ = {!!}
-canonical (⊢IOsub z x) V-□ = {!!}
-canonical (⊢IOsub z x) (V-× y y₁) = {!!}
+canonical (⊢IOsub ⊢e x) V-ƛ = ⊥-elim (f ⊢e)
+  where
+  f : ∀ {x e ρ τ} → ¬ (∅ ⊢ ƛ x ⇒ e ⦂ IO ρ τ)
+  f (⊢IOsub ⊢e x) = f ⊢e
+canonical (⊢IOsub ⊢e x) V-⟦⟧ = C-⟦⟧ (unwrap⟦⟧ ⊢e)
+canonical (⊢IOsub ⊢e x) V-□ = ⊥-elim (f ⊢e)
+  where
+  f : ∀ {ρ τ} → ¬ (∅ ⊢ □ ⦂ IO ρ τ)
+  f (⊢IOsub ⊢e x) = f ⊢e
+canonical (⊢IOsub ⊢e x) (V-× y y₁) = ⊥-elim (f ⊢e)
+  where
+  f : ∀ {e₁ e₂ ρ τ} → ¬ (∅ ⊢ e₁ × e₂ ⦂ IO ρ τ)
+  f (⊢IOsub ⊢e x) = f ⊢e
 
 data Progress (e : Term) : Set where
   step : ∀ {e'}
@@ -126,7 +140,7 @@ progress (⊢⋎ ⊢e₁ ⊢e₂ dist) with progress ⊢e₁
 ...   | step e₂↝e₂' = step (ξ-⋎₂ e₂↝e₂')
 ...   | done ve₂ with canonical ⊢e₁ ve₁ | canonical ⊢e₂ ve₂
 ...     | C-⟦⟧ _ | C-⟦⟧ _ = step β-⋎
-progress (⊢IOsub z x) = {!!}
+progress (⊢IOsub ⊢e x) = progress ⊢e
 
 contained  : ∀ { Γ x σ y σ' } → x ≢ y → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Γ , y ⦂ σ'
 contained x≢y Z = S Z x≢y
@@ -491,10 +505,6 @@ subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e
 subst {x = y} ⊢e (⊢⋎ ⊢e₁ ⊢e₂ dist) p = ⊢⋎ (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p) dist
 subst {x = y} ⊢e (⊢IOsub ⊢e' ρ≥:ρ') p = ⊢IOsub (subst ⊢e ⊢e' p) ρ≥:ρ'
 
-unwrap⟦⟧ : ∀ {Γ v ρ τ} → Γ ⊢ ⟦ v ⟧ ⦂ IO ρ τ → Γ ⊢ v ⦂ τ
-unwrap⟦⟧ (⊢⟦⟧ ⊢v) = ⊢v
-unwrap⟦⟧ (⊢IOsub ⊢v x) = unwrap⟦⟧ ⊢v
-  
 preservation : ∀ {e e' τ}
              → ∅ ⊢ e ⦂ τ
              → e ↝ e'
@@ -517,7 +527,7 @@ preservation (⊢π₁ (⊢× ⊢e₁ ⊢e₂)) β-π₁ = ⊢e₁
 preservation (⊢π₂ ⊢e) (ξ-π₂ e↝e') = ⊢π₂ (preservation ⊢e e↝e')
 preservation (⊢π₂ (⊢× ⊢e₁ ⊢e₂)) β-π₂ = ⊢e₂
 
-preservation (⊢IOsub ⊢e ρ≥:ρ') x = {!!}
+preservation (⊢IOsub ⊢e ρ≥:ρ') e↝e' = ⊢IOsub (preservation ⊢e e↝e') ρ≥:ρ'
 
 preservation (⊢⋎ ⊢e₁ ⊢e₂ dist) (ξ-⋎₁ e₁↝e₁') = ⊢⋎ (preservation ⊢e₁ e₁↝e₁') ⊢e₂ dist
 preservation (⊢⋎ ⊢e₁ ⊢e₂ dist) (ξ-⋎₂ e₂↝e₂') = ⊢⋎ ⊢e₁ (preservation ⊢e₂ e₂↝e₂') dist
