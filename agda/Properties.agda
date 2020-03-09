@@ -59,12 +59,12 @@ data Canonical_⦂_ : Term → Type → Set where
         -------------------
       → Canonical (e₁ × e₂) ⦂ τ₁ × τ₂
 
-  C-⋎ : ∀ {e₁ e₂ ρ₁ ρ₂ τ₁ τ₂}
-      → ∅ ⊢ e₁ ⦂ IO ρ₁ τ₁
-      → ∅ ⊢ e₂ ⦂ IO ρ₂ τ₂
-      → ρ₁ ∩ ρ₂ =∅
-        -------------------------------------------
-      → Canonical (e₁ ⋎ e₁) ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
+  -- C-⋎ : ∀ {e₁ e₂ ρ₁ ρ₂ τ₁ τ₂}
+  --     → ∅ ⊢ e₁ ⦂ IO ρ₁ τ₁
+  --     → ∅ ⊢ e₂ ⦂ IO ρ₂ τ₂
+  --     → ρ₁ ∩ ρ₂ =∅
+  --       -------------------------------------------
+  --     → Canonical (e₁ ⋎ e₁) ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
 
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
@@ -155,6 +155,8 @@ rename {Γ} {Δ} ρ (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename ρ Γ⊢e
 rename ρ (⊢× ⊢e₁ ⊢e₂) = ⊢× (rename ρ ⊢e₁) (rename ρ ⊢e₂)
 rename ρ ⊢readFile = ⊢readFile
 rename ρ ⊢readNet = ⊢readNet
+rename ρ (⊢⋎ ⊢e₁ ⊢e₂ dist) = ⊢⋎ (rename ρ ⊢e₁) (rename ρ ⊢e₂) dist
+rename ρ (⊢IOsub ⊢e ρ≥:ρ') = ⊢IOsub (rename ρ ⊢e) ρ≥:ρ'
 
 extend∈ : ∀ {Γ Δ}
           → (∀ {x σ} → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
@@ -218,14 +220,17 @@ extend {x = x} {e = e} (⊢ƛ {x = y} ⊢e) x∉ with x ≟ y
 extend (⊢· ⊢e₁ ⊢e₂) x∉ with ∉-++⁻ x∉
 ... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢· (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂)
 extend {Γ} {x} {σ = σ} (⊢lt {τ' = τ'} {x = y} ⊢e ⊢e') x∉ with x ≟ y | ∉-++⁻ x∉ | close (Γ , y ⦂ σ) τ'
-... | yes refl | ⟨ ∉e , ∉e' ⟩ | _ = ⊢lt (extend ⊢e ∉e) (sneakIn {!⊢e'!})
-... | no x≢y | ⟨ ∉e , ∉e' ⟩ | foo = {!!}
+... | yes refl | ⟨ ∉e , ∉e' ⟩ | closeyσ = ⊢lt (extend ⊢e ∉e) (sneakIn {!let z = extend !})
+... | no x≢y | ⟨ ∉e , ∉e' ⟩ | foo = ⊢lt (extend ⊢e ∉e) {!!}
 extend (⊢⟦⟧ ⊢e) x∉ = ⊢⟦⟧ (extend ⊢e x∉)
 extend {x = x} (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') x∉ with ∉-++⁻ {x} {FV(e)} {FV(e')} x∉
 ... | ⟨ ∉e , ∉e' ⟩ = ⊢>>= (extend ⊢e ∉e) (extend ⊢e' ∉e')
 extend ⊢□ x∉ = ⊢□
 extend ⊢readFile x∉ = ⊢readFile
 extend ⊢readNet x∉ = ⊢readNet
+extend (⊢⋎ ⊢e₁ ⊢e₂ dist) x∉ with ∉-++⁻ x∉
+... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢⋎ (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂) dist
+extend (⊢IOsub ⊢e ρ≥:ρ') x∉ = ⊢IOsub (extend ⊢e x∉) ρ≥:ρ'
 
 -- lemma 4.1
 -- extra vars in the environment can be ignored
@@ -243,6 +248,8 @@ ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore {!!} ⊢e) {!!}
 ignore ρ ⊢□ = ⊢□
 ignore ρ ⊢readFile = ⊢readFile
 ignore ρ ⊢readNet = ⊢readNet
+ignore ρ (⊢⋎ z z₁ x) = {!!}
+ignore ρ (⊢IOsub z x) = {!!}
 
 
 closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
@@ -279,6 +286,8 @@ gen (⊢>>= x x₁) σ>σ' = ⊢>>= (gen x σ>σ') (gen x₁ σ>σ')
 gen ⊢□ σ>σ' = ⊢□
 gen ⊢readFile σ>σ' = ⊢readFile
 gen ⊢readNet σ>σ' = ⊢readNet
+gen (⊢⋎ ⊢e₁ ⊢e₂ dist) σ>σ' = ⊢⋎ (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ') dist
+gen (⊢IOsub ⊢e ρ≥:ρ') σ>σ' = ⊢IOsub (gen ⊢e σ>σ') ρ≥:ρ'
 
 Γcong : ∀ {Γ x e τ σ σ'} → Γ , x ⦂ σ ⊢ e ⦂ τ → σ ≡ σ' → Γ , x ⦂ σ' ⊢ e ⦂ τ
 Γcong Γ refl = Γ
@@ -344,6 +353,8 @@ subContextTyping (⊢>>= ⊢e₁ ⊢e₂) s = ⊢>>= (subContextTyping ⊢e₁ s
 subContextTyping ⊢□ s = ⊢□
 subContextTyping ⊢readFile s = ⊢readFile
 subContextTyping ⊢readNet s = ⊢readNet
+subContextTyping (⊢⋎ ⊢e₁ ⊢e₂ dist) s = ⊢⋎ (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s) dist
+subContextTyping (⊢IOsub ⊢e ρ≥:ρ') s = ⊢IOsub (subContextTyping ⊢e s) ρ≥:ρ'
 
 
 -- -- s must cover all of αs
@@ -439,14 +450,6 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
                  prt6 : subC s⁻¹ (Γ , x' ⦂ sub s (` τ₁)) ⊢ e₁ [ x := v ] ⦂ subT s⁻¹ (subT s τ₂)
                  prt6 = subContextTyping prt5 (BJS.from bjs)
                  in roundtripSub bjs prt6
-                 
-subst {x = y} ⊢e (⊢· e e') p = ⊢· (subst ⊢e e p) (subst ⊢e e' p)
-subst {x = y} ⊢e (⊢× ⊢e₁ ⊢e₂) p = ⊢× (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p)
-subst {x = y} ⊢e ⊢□ _ = ⊢□
-subst {x = y} ⊢e ⊢readFile _ = ⊢readFile
-subst {x = y} ⊢e ⊢readNet _ = ⊢readNet
-subst {x = y} ⊢e (⊢⟦⟧ ⊢e') p = ⊢⟦⟧ (subst ⊢e ⊢e' p)
-subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e ⊢f p)
 
 -- variables renamed to match wright & felleisen
 subst {x = y} ⊢v (⊢lt {x = x} ⊢e' ⊢e'') p with x ≟ y
@@ -455,7 +458,16 @@ subst {x = y} ⊢v (⊢lt {x = x} ⊢e' ⊢e'') p with x ≟ y
                    (let swp = (swap x≢y ⊢e'')
                         s = {!!}
                         in {!!})
-
+                 
+subst {x = y} ⊢e (⊢· e e') p = ⊢· (subst ⊢e e p) (subst ⊢e e' p)
+subst {x = y} ⊢e (⊢× ⊢e₁ ⊢e₂) p = ⊢× (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p)
+subst {x = y} ⊢e ⊢□ _ = ⊢□
+subst {x = y} ⊢e ⊢readFile _ = ⊢readFile
+subst {x = y} ⊢e ⊢readNet _ = ⊢readNet
+subst {x = y} ⊢e (⊢⟦⟧ ⊢e') p = ⊢⟦⟧ (subst ⊢e ⊢e' p)
+subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e ⊢f p)
+subst {x = y} ⊢e (⊢⋎ ⊢e₁ ⊢e₂ dist) p = ⊢⋎ (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p) dist
+subst {x = y} ⊢e (⊢IOsub ⊢e' ρ≥:ρ') p = ⊢IOsub (subst ⊢e ⊢e' p) ρ≥:ρ'
   
 preservation : ∀ {e e' τ}
              → ∅ ⊢ e ⦂ τ
