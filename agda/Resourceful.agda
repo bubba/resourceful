@@ -70,8 +70,69 @@ data _↝_ : Term → Term → Set where
   β-readFile : readFile ↝ ⟦ □ ⟧
   β-readNet : readNet ↝ ⟦ □ ⟧
 
+  -- concurrency
 
+  ξ-⋎₁ : ∀ {e₁ e₂ e₁'}
+       → e₁ ↝ e₁'
+         ------------------
+       → e₁ ⋎ e₂ ↝ e₁' ⋎ e₂
 
+  ξ-⋎₂ : ∀ {e₁ e₂ e₂'}
+       → e₂ ↝ e₂'
+         ------------------
+       → e₁ ⋎ e₂ ↝ e₁ ⋎ e₂'
+
+  β-⋎ : ∀ {v w}
+        ------------------------
+      → ⟦ v ⟧ ⋎ ⟦ w ⟧ ↝ ⟦ v × w ⟧
+
+-- Distinct heaps
+infix 7 _∩_=∅ 
+data _∩_=∅ : Heap → Heap → Set where
+  DHZ : ∀ {ρ ρ'}
+      → ρ ≢ ρ'
+        -------------
+      → ` ρ ∩ ` ρ' =∅
+    
+  DHL : ∀ {ρ ρ₁ ρ₂}
+      → ρ ∩ ρ₁ =∅
+      → ρ ∩ ρ₂ =∅
+      → ρ₁ ∩ ρ₂ =∅
+        ----------------
+      → ρ ∩ (ρ₁ ∪ ρ₂) =∅
+
+  DHR : ∀ {ρ ρ₁ ρ₂}
+      → ρ ∩ ρ₁ =∅
+      → ρ ∩ ρ₂ =∅
+      → ρ₁ ∩ ρ₂ =∅
+        ----------------
+      → (ρ₁ ∪ ρ₂) ∩ ρ =∅
+
+_ : ` Net ∩ ` File =∅
+_ = DHZ (λ ())
+
+_ : (` Net ∪ ` Printer) ∩ (` Database ∪ ` File) =∅
+_ = DHL (DHR (DHZ (λ ())) (DHZ (λ ())) (DHZ (λ ())))
+      (DHR (DHZ (λ ())) (DHZ (λ ())) (DHZ (λ ()))) (DHZ (λ ()))
+
+-- heap subtyping
+infix 5 _≥:_
+data _≥:_ : Heap → Heap → Set where
+  ≥:World : ∀ {ρ} → ρ ≥: World
+  ≥:Refl : ∀ {ρ} → ρ ≥: ρ
+  ≥:∪₁ : ∀ {ρ ρ' ρ''}
+       → ρ ≥: ρ''
+         ------------
+       → ρ ≥: ρ' ∪ ρ''
+  ≥:∪₂ : ∀ {ρ ρ' ρ''}
+       → ρ ≥: ρ'
+         ------------
+       → ρ ≥: ρ' ∪ ρ''
+
+_ : ` Net ≥: World
+_ = ≥:World
+_ : ` Net ≥: ` Net ∪ ` File
+_ = ≥:∪₂ ≥:Refl
 
 infix 5 _/_
 _/_ : List Id → List Id → List Id
@@ -145,6 +206,7 @@ FV □ = []
 FV readFile = []
 FV readNet = []
 FV (e₁ × e₂) = FV e₁ ++ FV e₂
+FV (e₁ ⋎ e₂) = FV e₁ ++ FV e₂
 
 -- Free *type* variables, types
 FTVT : Type → List Id
@@ -306,6 +368,19 @@ data _⊢_⦂_ : Context → Term → Type → Set where
 
   -- resource stuff
 
+  ⊢⋎ : ∀ {Γ e₁ e₂ τ₁ τ₂ ρ₁ ρ₂}
+     → Γ ⊢ e₁ ⦂ IO ρ₁ τ₁
+     → Γ ⊢ e₂ ⦂ IO ρ₂ τ₂
+     → ρ₁ ∩ ρ₂ =∅
+       -----------------------
+     → Γ ⊢ e₁ ⋎ e₂ ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
+
+  ⊢IOsub : ∀ {Γ e τ ρ ρ'}
+         → Γ ⊢ e ⦂ IO ρ τ
+         → ρ ≥: ρ'
+           --------------
+         → Γ ⊢ e ⦂ IO ρ' τ
+          
   ⊢readFile : ∀ {Γ}
               ----------------------------
             → Γ ⊢ readFile ⦂ IO (` File) □

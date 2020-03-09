@@ -59,6 +59,13 @@ data Canonical_⦂_ : Term → Type → Set where
         -------------------
       → Canonical (e₁ × e₂) ⦂ τ₁ × τ₂
 
+  C-⋎ : ∀ {e₁ e₂ ρ₁ ρ₂ τ₁ τ₂}
+      → ∅ ⊢ e₁ ⦂ IO ρ₁ τ₁
+      → ∅ ⊢ e₂ ⦂ IO ρ₂ τ₂
+      → ρ₁ ∩ ρ₂ =∅
+        -------------------------------------------
+      → Canonical (e₁ ⋎ e₁) ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
+
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
           → Value v
@@ -68,6 +75,12 @@ canonical (⊢ƛ ⊢e) V-ƛ = C-ƛ ⊢e
 canonical (⊢□) V-□ = C-□
 canonical (⊢⟦⟧ ⊢e) V-⟦⟧ = C-⟦⟧ ⊢e
 canonical (⊢× ⊢e₁ ⊢e₂) V-× = C-× ⊢e₁ ⊢e₂
+canonical (⊢IOsub z x) V-ƛ = {!!}
+canonical (⊢IOsub z x) V-⟦⟧ = {!!}
+canonical (⊢IOsub z x) V-□ = {!!}
+canonical (⊢IOsub z x) V-× = {!!}
+-- canonical (⊢IOsub ⊢e ρ≥:ρ') V-ƛ = {!!}
+-- canonical (⊢⋎ ⊢e₁ ⊢e₂ dist) v = {!!}
 
 data Progress (e : Term) : Set where
   step : ∀ {e'}
@@ -97,6 +110,13 @@ progress (⊢lt ⊢e₁ ⊢e₂) = step β-lt
 progress (⊢× z z₁) = done V-×
 progress ⊢readFile = step β-readFile
 progress ⊢readNet = step β-readNet
+progress (⊢⋎ ⊢e₁ ⊢e₂ dist) with progress ⊢e₁
+... | step e₁↝e₁' = step (ξ-⋎₁ e₁↝e₁')
+... | done ve₁ with progress ⊢e₂
+...   | step e₂↝e₂' = step (ξ-⋎₂ e₂↝e₂')
+...   | done ve₂ with canonical ⊢e₁ ve₁ | canonical ⊢e₂ ve₂
+...     | C-⟦⟧ _ | C-⟦⟧ _ = step β-⋎
+progress (⊢IOsub z x) = {!!}
 
 contained  : ∀ { Γ x σ y σ' } → x ≢ y → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Γ , y ⦂ σ'
 contained x≢y Z = S Z x≢y
