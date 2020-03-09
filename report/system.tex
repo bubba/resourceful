@@ -35,19 +35,16 @@ resources -- provided that their resources do not overlap.
 
 \begin{grammar}
 
-  <type $\tau$> ::= () | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\sigma \tau$
+  <type $\tau$> ::= () | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\rho \tau$
   
   <type scheme $\sigma$> ::= $\forall \alpha . \sigma$ | $\tau$
 
-  <expression $e$> ::= () | $e \times e'$
+  <expression $e$> ::= () | $e \times e'$ | $\pi_1 \ e$ $\pi_2 \ e$
   \alt $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x = e}{e'}$
   % \alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
   \alt $\lift{e}$ | $e \bind e'$ | $e \curlyvee e'$
   \alt $\textsf{readFile}$
   \alt $\textsf{readNetwork}$
-  % how do we specify what resources what functions use? add an explicit
-  % type annotation expression?
-  % \alt $e : \tau$
 
   <resource $\rho$> ::= \textsf{File} | \textsf{Network} | \textsf{World}
 
@@ -190,7 +187,8 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 \begin{figure}
 
 \begin{mathpar}
-
+\boxed{\sigma \subtyp \sigma'} \\
+  
 \inferrule*[Right=Top]{ }{\sigma \subtyp \textsf{World}} \and
 \inferrule*[Right=Refl]{ }{\sigma \subtyp \sigma} \and
 \inferrule*[Right=Union1]{\sigma \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''} \and
@@ -206,6 +204,8 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 
 \begin{figure}
   \begin{mathpar}
+    \boxed{\Gamma \vdash e : \tau} \\
+    
     \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
     \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
     \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
@@ -220,15 +220,18 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
     \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
     {\Gamma \vdash e \times e' : \tau \times \tau'} \and
 
+    \inferrule*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 : \tau} \and     
+    \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \and
+
     \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \llbracket e \rrbracket : \IO_\sigma \tau} \and
     \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\sigma
-      \tau}{\Gamma \vdash e \bind e' : \IO_\sigma \tau} \and
+      \tau}{\Gamma \vdash e \bind e' : \IO_\sigma \tau} \\
     \inferrule*[Right=Conc]{\Gamma \vdash e_1 : \IO_\sigma \tau_1 \\ \Gamma \vdash e_2 : \IO_{\sigma'}
-      \tau_2 \\
-      \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
-    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2} \and
+      \tau_2 \\ \sigma \cap \sigma' = \emptyset}
+    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2} \\
+    
     \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} ()} \and
-    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNet} : \IO_{\mathsf{Net}} ()} \and
+    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNet} : \IO_{\mathsf{Net}} ()} \\
 
     \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
     {\Gamma \vdash e : \IO_{\sigma'} \tau} \and
@@ -242,14 +245,35 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 Dynamic semantics model how the program actually executes at
 runtime. It plays a crucial part in how we prove that the type system
 is sound, as we can only guarantee that our type system ensures
-error-free programs if we model what constitutes an error, and how it
-propagates.
+error-free programs if we model how the program runs.
 
-As shown in chapter~\ref{chapter:background}, the original work carried out in the Hindley-Damas-Milner systems were
-based on denotational semantics.
+As shown in chapter~\ref{chapter:background}, the original work
+carried out in the Hindley-Damas-Milner systems were based on
+denotational semantics. In our type system, we will use operational
+semantics. Operational semantics are similar to what we have seen
+before in the definition of the static semantics. We define a bunch of
+inference rules, and from these build up proofs. Tofte~\cite{tofte1988}
+had the idea of using operational semantics for not for the
+typing rules, but also for the dynamic semantics. We choose this
+approach over denotational semantics as it unifies our approach to
+modelling and proving, and to quote Mads, ``it seems a bit
+unfortunate that we should have to understand domain theory to be able
+to investigate whether a type inference system admits faulty
+programs''.
+
+Specifically, we will be using small-step operational semantics. In
+small-step operational semantics we define a relation $a \leadsto b$ which
+says that in one ``step'', $a$ \textit{reduces to} $b$. $b$ might then
+go onto reduce further if it is able to, or it could be its final
+value. Reduction can be thought of as evaluation. Small-step
+semantics differs from big-step semantics, where a relation
+$a \Downarrow b$ says that at the end of the day, $a$ will reduce to $b$, and
+$b$ will not reduce any further.
+
 
 \begin{figure}
   \begin{mathpar}
+    \boxed{e \leadsto e'} \\
     % \inferrule*{x \in \eta}{\eta \vdash x \leadsto \Gamma(x)} \and
     % \inferrule*{x \notin \eta}{\eta \vdash x \leadsto \textsf{wrong}} \and
     % \inferrule*{ }{\eta \vdash \lambda x . e \leadsto [x,e,\eta]} \and
@@ -261,27 +285,59 @@ based on denotational semantics.
     %   \eta \vdash e_2 \leadsto [x, e_0, \eta'] \\
     %   \eta, x \mapsto v \vdash e_0 \leadsto }{
     %   \eta \vdash e_1 \bind e_2 \leadsto \llbracket \rrbracket}
+
+
+    % lambda calculus + HM
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
     \inferrule{e_2 \ \textsf{value}}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
     \inferrule{}{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
+
+    % product types
+    \inferrule{e_1 \leadsto e_1'}{e_1 \times e_2 \leadsto e_1' \times e_2} \and
+    \inferrule{e_2 \leadsto e_2'}{e_1 \times e_2 \leadsto e_1 \times e_2'} \and
+
+    \inferrule{e \leadsto e'}{\pi_1 e \leadsto \pi_1 e'} \and
+    \inferrule{e \leadsto e'}{\pi_2 e \leadsto \pi_2 e'} \and
+
+    \inferrule{ }{\pi_1 e_1 \times e_2 \leadsto e_1} \and
+    \inferrule{ }{\pi_2 e_1 \times e_2 \leadsto e_2} \and
+
+    % monads
     \inferrule{e_1 \leadsto e_1'}{e_1 \bind e_2 \leadsto e_1' \bind e_2} \and
     \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 v} \and
+
+    % resource stuff
     \inferrule{e_1 \leadsto e_1'}{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'} \and
     \inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket} \and
+    
     \inferrule{ }{\textsf{readFile} \leadsto \lift{()}} \and
     \inferrule{ }{\textsf{readNet} \leadsto \lift{()}}
   \end{mathpar}
-  \caption{Semantics}
+  \caption{Dynamic Semantics}
 \end{figure}
+
+We can define $\twoheadrightarrow$ as the reflexive, transitive closure of
+$\leadsto$. What does that mean? If
+$\leadsto$ is a relation on two terms, then the transitive closure
+$\twoheadrightarrow$ is a new relation that contains $\leadsto$ and is transitive, i.e. if
+$a \twoheadrightarrow b$ and $b \twoheadrightarrow c$, then
+$a \twoheadrightarrow c$.  A reflexive transitive closure extends this so that for any
+$a$, $a \twoheadrightarrow a$.
+
+Intuitively speaking, if the small-step inference rule $a \leadsto b$ says
+that $a$ reduces to $b$ in exactly one step, then
+$a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps -- instead of
+reducing one step at a time, it goes all the way.
 
 \begin{figure}
   \begin{mathpar}
-    \inferrule{ }{ () \ \textsf{value}} \and
-    \inferrule{ }{ e_1 \times e_2 \ \textsf{value} } \and
-    \inferrule{ }{ \lift{e} \ \textsf{value} } \and
-    \inferrule{ }{ \lambda x. e \ \textsf{value} }
+    \boxed{\textsf{value} \ e} \\
+    \inferrule{ }{ \textsf{value} \ () } \and
+    \inferrule{\textsf{value} \ e_1 \\ \textsf{value} \ e_2}{ \textsf{value} \ e_1 \times e_2 } \and
+    \inferrule{ }{ \textsf{value} \ \lift{e} } \and
+    \inferrule{ }{ \textsf{value} \ \lambda x. e }
   \end{mathpar}
   \caption{Terminal values}
 \end{figure}
