@@ -12,7 +12,7 @@ infix 5 ƛ_⇒_
 infix 9 `_
 infix 7 _·_
 infix 4 lt_⇐_in'_
-infix 5 _>>=_
+infix 4 _>>=_
 infix 5 _×_
 infix 5 _⋎_
 

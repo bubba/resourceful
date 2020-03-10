@@ -46,7 +46,7 @@ data Value : Term → Set where
         ---------------
       → Value (e₁ × e₂)
 
-infix 4 _↝_
+infix 2 _↝_
 
 data _↝_ : Term → Term → Set where
 

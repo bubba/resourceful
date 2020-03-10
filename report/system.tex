@@ -13,33 +13,41 @@ The heap is very similar to the heap used in \cite{krishnaswami}
 \renewcommand{\syntleft}{}
 \renewcommand{\syntright}{}
 
+\newcommand{\unit}{\ensuremath{\raisebox{-0.35mm}{\square}}}
+
 
 \def\defaultHypSeparation{\hskip .05in}
 
-We begin by giving the grammar for our monadic language.
-It is an extension of the lambda calculus with let-polymorphism.
-We use $x$, $\lambda x . e$ and $e \ e'$ to refer to variable lookup,
-abstraction and application respectively, whilst we use the ML style
-$\letin{x = e}{e'}$ for polymorphically binding $e$ to $x$ inside
-$e'$.
+We begin by giving the grammar for our monadic language as shown in
+figure~\ref{fig:grammar}.  It is an extension of the lambda calculus
+with let-polymorphism.  We use $x$, $\lambda x . e$ and $e \ e'$ to refer to
+variable lookup, abstraction and application respectively, whilst we
+use the ML style $\letin{x = e}{e'}$ for polymorphically binding $e$
+to $x$ inside $e'$.
+
+There is also a product type, $\tau \times \tau'$, which is the same as the tuple
+\texttt{(a, b)} in Haskell. New product types can be introduced with
+$e \times e'$, and can similarly be eliminated with the projection
+expressions $\pi_1 e$ and $\pi_2 e$.
 
 More interestingly we have the monadic additions. Unlike
 Krishnaswami~\cite{krishnaswami2006} we do not separate the language
 into two expression and computation languages.
-$\llbracket e \rrbracket$ lifts a regular expression into a monad (\texttt{return} in Haskell), and $e \bind e'$ is
+$\lift{e}$ lifts a regular expression into a monad (\texttt{return} in Haskell), and $e \bind e'$ is
 the standard monadic sequencing or binding operation.
 
 However what is new to our language is the $e \curlyvee e'$ operator, which
 joins two monadic computations together into one that uses both
 resources -- provided that their resources do not overlap.
 
+\begin{figure}
 \begin{grammar}
 
-  <type $\tau$> ::= () | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\rho \tau$
+  <type $\tau$> ::= $\unit$ | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\rho \tau$
   
   <type scheme $\sigma$> ::= $\forall \alpha . \sigma$ | $\tau$
 
-  <expression $e$> ::= () | $e \times e'$ | $\pi_1 \ e$ $\pi_2 \ e$
+  <expression $e$> ::= $\unit$ | $e \times e'$ | $\pi_1 \ e$ $\pi_2 \ e$
   \alt $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x = e}{e'}$
   % \alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
   \alt $\lift{e}$ | $e \bind e'$ | $e \curlyvee e'$
@@ -51,13 +59,15 @@ resources -- provided that their resources do not overlap.
   <heap $\sigma$> ::= $\rho$ | $\sigma \cup \sigma'$
 
 \end{grammar}
+\caption{The grammar for our resourceful language.} \label{fig:grammar}
+\end{figure}
 
 \subsection{Substitution}
 Substitution on types is defined as usual, but extended to include the
 new types in our system. That is, a substitution is a map from type
 variables to types, written in the form $[\tau/\alpha]$. 
 \begin{align*}
-  () [\tau/\alpha] &= () \\
+  \unit [\tau/\alpha] &= \unit \\
   \alpha' [\tau/\alpha] &=
              \begin{cases}
                \tau & \mathsf{if} \ \alpha' = \alpha \\
@@ -70,7 +80,8 @@ variables to types, written in the form $[\tau/\alpha]$.
 \section{Static Semantics}
 
 Our static semantics, or typing rules, begin with the syntax-directed
-rules of the Hindley-Damas-Milner system.
+rules of the Hindley-Damas-Milner system of the form $\Gamma \vdash e : \tau$.
+
 \begin{mathpar}
     \inferrule*[Right=Var]{e : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash e : \tau} \and
     \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
@@ -84,24 +95,24 @@ types to terms, not type schemes~\ref{tofte}. Instantiation occurs
 directly within the \textsc{Var} rule, and generalisation occurs
 implicitly in $\bar{\Gamma}$.
   
-We also introduce the typing rule for $()$ expressions, to give us a
+We also introduce the typing rule for $\unit$ expressions, to give us a
 concrete type, as well as a rule for products which are constructed
 through $e \times e'$.
 \begin{mathpar}
-  \inferrule*[Right=Unit]{ }{\Gamma \vdash () : ()} \and
+  \inferrule*[Right=Unit]{ }{\Gamma \vdash \unit : \unit} \and
   \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
     {\Gamma \vdash e \times e' : \tau \times \tau'}
-\end{mathpar}
+  \end{mathpar}
 
 Now we introduce the monadic parts of the language. Our language only
-has one monad, the $\IO$ monad, which is parameterised by both its
-\textit{heap} and its encapsulated type. Monadic values are introduced
-into the language with either $\lift{e}$
+has one type of monad, the $\IO$ monad, which is parameterised by both
+its \textit{heap} $\rho$ and its encapsulated type. Monadic values are
+introduced into the language with either $\lift{e}$
 $\textsf{readFile}$ or $\textsf{readNet}$.
 \begin{mathpar}
-  \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \lift{e} : \IO_\sigma \tau} \and
-    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} ()} \and
-    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} ()}
+  \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \lift{e} : \IO_\rho \tau} \and
+    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} \unit} \and
+    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} \unit}
 \end{mathpar}
 
 $\textsf{readFile}$ and $\textsf{readNet}$ are examples of typical
@@ -120,7 +131,7 @@ Note that the types of the two $\IO$s must use the same
 resources. However, we want expressions such as
 $$ readFile \bind readNet $$
 to be well typed. In particular, we want the above expression to be of
-type $\IO_{\textsf{File} \cup \textsf{Net}} ()$. But if \textsc{Bind}
+type $\IO_{\textsf{File} \cup \textsf{Net}} \unit$. But if \textsc{Bind}
 requires the resources to be the same, we must first somehow ``cast''
 $\textsf{readFile}$ and $\textsf{readNet}$ to this type.
 
@@ -230,12 +241,12 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
       \tau_2 \\ \sigma \cap \sigma' = \emptyset}
     {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2} \\
     
-    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} ()} \and
-    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNet} : \IO_{\mathsf{Net}} ()} \\
+    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} \unit} \and
+    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNet} : \IO_{\mathsf{Net}} \unit} \\
 
     \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
     {\Gamma \vdash e : \IO_{\sigma'} \tau} \and
-    \inferrule*[Right=Unit]{ }{\Gamma \vdash () : ()}
+    \inferrule*[Right=Unit]{ }{\Gamma \vdash \unit : \unit}
   \end{mathpar}
 
   \caption{Typing rules}
@@ -261,14 +272,109 @@ unfortunate that we should have to understand domain theory to be able
 to investigate whether a type inference system admits faulty
 programs''.
 
+
+\subsection{Values}
+Before we talk about how we evaluate a program, we need to
+define what constitutes a finished evaluation -- that is, what
+terms are a result of a completed computation.
+
+We define a value property, and give rules describing what terms can
+be considered values in figure~\ref{fig:values}. For example, we
+cannot evaluate the $\unit$ type any further, therefore all $\unit$s
+are considered values. The same goes for product types, but only if
+both inner components are values themselves. $\unit \times \unit$ is a
+finished value, but $f a \times \unit$ might still have evaluation left to
+do on the right hand side.
+A lambda on its own is a value too --
+without being applied to an argument it cannot be evaluated any
+further. The computation inside of it is suspended.
+In a similar fashion a lifted computation cannot be computed any
+further \textit{on its own}. We will see later how binding can run
+this computation, but by itself it will not evaluate to anything.
+
+\begin{figure}
+  \begin{mathpar}
+    \boxed{\textsf{value} \ e} \\
+    \inferrule{ }{ \textsf{value} \ \unit } \and
+    \inferrule{\textsf{value} \ e_1 \\ \textsf{value} \ e_2}{ \textsf{value} \ e_1 \times e_2 } \and
+    \inferrule{ }{ \textsf{value} \ \lift{e} } \and
+    \inferrule{ }{ \textsf{value} \ \lambda x. e }
+  \end{mathpar}
+  \caption{Terminal values} \label{fig:values}
+\end{figure}
+
+\subsection{Small-step semantics}
+
 Specifically, we will be using small-step operational semantics. In
-small-step operational semantics we define a relation $a \leadsto b$ which
-says that in one ``step'', $a$ \textit{reduces to} $b$. $b$ might then
-go onto reduce further if it is able to, or it could be its final
-value. Reduction can be thought of as evaluation. Small-step
-semantics differs from big-step semantics, where a relation
-$a \Downarrow b$ says that at the end of the day, $a$ will reduce to $b$, and
-$b$ will not reduce any further.
+small-step operational semantics we define a step relation
+$a \leadsto b$ which says that in one ``step'', $a$ \textit{reduces to}
+$b$. $b$ might then go onto reduce further if it is able to, or it
+could be its final value. Reduction can be thought of as
+evaluation. Small-step semantics differs from big-step semantics,
+where a relation $a \Downarrow b$ says that at the end of the day, $a$ will
+reduce to $b$, and $b$ will not reduce any further.
+
+
+As an example, if an expression $e_1$ reduces to $e_1'$, i.e. $e_1 \leadsto
+e_1'$, then we want the $e_1$ in the application $e_1 \ e_2$ to reduces
+as well. We can write this as
+\begin{mathpar}
+  \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2}
+\end{mathpar}
+
+We call this type of reduction which takes smaller reductions and
+updates it within a bigger structure \xi-reduction. There are
+\xi-reduction for other expressions with structure inside, namely
+product types, the concurrent operator and the bind operator.
+
+Another
+type of reduction rule is \beta-reduction, which comes from the lambda
+calculus. When we apply a term to a function, we substitute the bound
+variable inside the lambda with the argument. A \beta-reduction rule
+defines this.
+\begin{mathpar}
+  \inferrule{\textsf{value} \ e_2}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ]}
+\end{mathpar}
+
+It is important to note the premise that the argument being applied to
+the lambda must be a value. This enforces a strict evaluation order,
+since in order for the term to be a value it must be completely
+reduced. A lazily evaluated semantics might forgo this extra
+requirement, so that the argument can be reduced after substitution.
+
+As mentioned earlier, lifted expressions $\lift{e}$ are suspended much
+like lambdas, and as such are values since they cannot reduce any
+further \textit{on their own}. However, with the bind operator, the
+value inside them can be extracted out and fed into a function.
+\begin{mathpar}
+  \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 \ v}
+\end{mathpar}
+
+Unlike the semantic rule for \beta-reduction, there is no premise
+enforcing that $\lift{v}$ is a value, since all lifted terms are
+values anyway.
+
+Our resourceful \textsf{readFile} and \textsf{readNet} primitives
+return dummy unit values, lifted into the monadic form. The
+concurrent operator $\curlyvee$ has the aforementioned $\xi$-reduction rules
+that allow both of its arguments to reduce down until they reach
+$\lift{v} \curlyvee \lift{w}$, at which point they can then be packaged up and
+returned in a lifted product, $\lift{v \times w}$. In terms of dynamic
+semantics, this is isomorphic to
+
+$$\lift{v} \bind \lambda v . (\lift{w} \bind (\lambda w . \lift{v \times w}))$$
+
+However, their static semantics are different. Namely, given $\Gamma \vdash
+\lift{v} : \IO_\rho \tau$,
+$$
+\Gamma \vdash \lift{v} \bind \lambda v . (\lift{v} \bind (\lambda v . \lift{v \times v})) : \IO_\rho (\tau \times \tau)
+$$
+
+But for the concurrent operator, this is a type error, since the
+premise $\rho \cup \rho = \emptyset$ does not hold.
+$$\Gamma \nvdash v \curlyvee v$$
+
+
 
 
 \begin{figure}
@@ -290,8 +396,8 @@ $b$ will not reduce any further.
     % lambda calculus + HM
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
-    \inferrule{e_2 \ \textsf{value}}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
-    \inferrule{}{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
+    \inferrule{\textsf{value} \ e_2}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
+    \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
 
     % product types
     \inferrule{e_1 \leadsto e_1'}{e_1 \times e_2 \leadsto e_1' \times e_2} \and
@@ -300,23 +406,25 @@ $b$ will not reduce any further.
     \inferrule{e \leadsto e'}{\pi_1 e \leadsto \pi_1 e'} \and
     \inferrule{e \leadsto e'}{\pi_2 e \leadsto \pi_2 e'} \and
 
-    \inferrule{ }{\pi_1 e_1 \times e_2 \leadsto e_1} \and
-    \inferrule{ }{\pi_2 e_1 \times e_2 \leadsto e_2} \and
+    \inferrule{ }{\pi_1 (e_1 \times e_2) \leadsto e_1} \and
+    \inferrule{ }{\pi_2 (e_1 \times e_2) \leadsto e_2} \and
 
     % monads
     \inferrule{e_1 \leadsto e_1'}{e_1 \bind e_2 \leadsto e_1' \bind e_2} \and
-    \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 v} \and
+    \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 \ v} \and
 
     % resource stuff
     \inferrule{e_1 \leadsto e_1'}{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'} \and
     \inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket} \and
     
-    \inferrule{ }{\textsf{readFile} \leadsto \lift{()}} \and
-    \inferrule{ }{\textsf{readNet} \leadsto \lift{()}}
+    \inferrule{ }{\textsf{readFile} \leadsto \lift{\unit}} \and
+    \inferrule{ }{\textsf{readNet} \leadsto \lift{\unit}}
   \end{mathpar}
   \caption{Dynamic Semantics}
 \end{figure}
+
+\subsection{Reduction relation}
 
 We can define $\twoheadrightarrow$ as the reflexive, transitive closure of
 $\leadsto$. What does that mean? If
@@ -332,15 +440,30 @@ $a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps -- instea
 reducing one step at a time, it goes all the way.
 
 \begin{figure}
-  \begin{mathpar}
-    \boxed{\textsf{value} \ e} \\
-    \inferrule{ }{ \textsf{value} \ () } \and
-    \inferrule{\textsf{value} \ e_1 \\ \textsf{value} \ e_2}{ \textsf{value} \ e_1 \times e_2 } \and
-    \inferrule{ }{ \textsf{value} \ \lift{e} } \and
-    \inferrule{ }{ \textsf{value} \ \lambda x. e }
-  \end{mathpar}
-  \caption{Terminal values}
+  \begin{center}
+    % todo: make these side by side
+    \tikz \graph[layered layout, grow=right, edges={
+      decoration={snake,amplitude=0.5mm,segment length=2mm,post length=1mm},decorate}] {     a -> b -> c
+  };
+
+  % give this two head arrows
+  \tikz \graph[layered layout,grow=right] {
+    a ->[orient] b -> c;
+    a ->[bend right] c;
+    { [same layer] a, b, c };
+    a ->[loop above] a;
+
+    b ->[loop above] b;
+
+    c ->[loop above] c;
+
+    % a -> c;
+    % b -> c;
+    % a -> c;
+  };
+\end{center}
 \end{figure}
+
 
 % Note that the subsumption is limited to only the heap of the $\IO$
 % monad.
@@ -352,7 +475,7 @@ reducing one step at a time, it goes all the way.
 %   \mathsf{readNetwork}
 % \end{math}
 
-% Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} ()$
+% Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} \unit$
 
 
 % \section{Semantics}
@@ -373,9 +496,9 @@ reducing one step at a time, it goes all the way.
 % Semantic domain:
 
 % \begin{align*}
-%   \mathbb{V} &= \mathbb{B}_{()} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
+%   \mathbb{V} &= \mathbb{B}_{\unit} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
 %                \mathbb{W} \\
-%   \mathbb{B}_{()} &= \{ \ () \ \} \\
+%   \mathbb{B}_{\unit} &= \{ \ \unit \ \} \\
 %   \mathbb{B}_{\mathsf{Bool}} &=
 %                                \{ \textsf{True}, \textsf{False},
 %                                \bot_{\textsf{Bool}} \} \\
@@ -542,9 +665,9 @@ reducing one step at a time, it goes all the way.
     which will allow us to use \textsc{Conc} to arrive at $\Gamma \vdash e_1 \curlyvee
     e_2 : \IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2$ as needed.
   \item[\textmd{\boxed{\textsc{Unit}}}]
-    We have $\Gamma \vdash () : ()$. If $() = \tau'$ and $\tau' > \tau$, all
-    substitutions on $()$ will result in $()$. Thus $\tau = ()$, and we
-    have already shown $\Gamma \vdash () : ()$.
+    We have $\Gamma \vdash \unit : \unit$. If $\unit = \tau'$ and $\tau' > \tau$, all
+    substitutions on $\unit$ will result in $\unit$. Thus $\tau = \unit$, and we
+    have already shown $\Gamma \vdash \unit : \unit$.
   \item[\textmd{\boxed{\textsc{ReadFile}, \textsc{ReadNet}}}]
     The same principle for \textsc{Unit} applies here to prove these
     cases.
@@ -664,12 +787,12 @@ reducing one step at a time, it goes all the way.
     \textsc{Lift} to get $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$
     (Note that \textsc{Lift} can lift into $\IO_\sigma$ for any $\sigma$)
 
-  \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{()}}}]
+  \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{\unit}}}]
     We know $\Gamma \vdash
-    \textsf{readFile} : \IO_{\textsf{File}} ()$, and we can just use
-    \textsc{Lift} to show that $\Gamma \vdash \lift{()} : \IO_{\textsf{File}}
-    ()$.
-  \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{()}}}]
+    \textsf{readFile} : \IO_{\textsf{File}} \unit$, and we can just use
+    \textsc{Lift} to show that $\Gamma \vdash \lift{\unit} : \IO_{\textsf{File}}
+    \unit$.
+  \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{\unit}}}]
     This is the same for above, except the heap is replaced with the
     singular resource $\textsf{Net}$.
   \end{description}
