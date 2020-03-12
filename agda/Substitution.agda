@@ -160,3 +160,6 @@ _ = General (SS "a" □ SZ) refl refl
 
 ≥refl : ∀ {σ} → σ ≥ σ
 ≥refl = General λ x → x
+
+>self : ∀ {τ} → ` τ > τ
+>self = General SZ refl subTSZ

@@ -4,19 +4,21 @@ open import Resourceful
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
-_ : ∅ ⊢ readFile ⋎ readNet ⦂ IO (` File ∪  ` Net) (□ × □)
-_ = ⊢⋎ ⊢readFile ⊢readNet (DHZ λ ())
+_ : ∅ ⊢ use File □ ⋎ use Net □ ⦂ IO (` File ∪  ` Net) (□ × □)
+_ = ⊢⋎ (⊢use ⊢□) (⊢use ⊢□) (DHZ λ ())
 
-_ : ∅ ⊢ readFile >>= ƛ "x" ⇒ readNet ⦂ IO (` File ∪ ` Net) □
-_ = ⊢>>= (⊢IOsub ⊢readFile (≥:∪₂ ≥:Refl)) (⊢ƛ (⊢IOsub ⊢readNet (≥:∪₁ ≥:Refl)))
+_ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO (` File ∪ ` Net) □
+_ = ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:∪₂ ≥:Refl)) (⊢ƛ (⊢IOsub (⊢use ⊢□) (≥:∪₁ ≥:Refl)))
 
-_ : ∅ ⊢ readFile >>= ƛ "x" ⇒ readNet ⦂ IO World □
-_ = ⊢>>= (⊢IOsub ⊢readFile (≥:World)) (⊢ƛ (⊢IOsub ⊢readNet ≥:World))
+_ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO World □
+_ = ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:World)) (⊢ƛ (⊢IOsub (⊢use ⊢□) ≥:World))
 
-_ : ∅ ⊢ readFile >>= ƛ "x" ⇒ readFile ⦂ IO (` File) □
-_ = ⊢>>= ⊢readFile (⊢ƛ ⊢readFile)
+_ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use File □ ⦂ IO (` File) □
+_ = ⊢>>= (⊢use ⊢□) (⊢ƛ (⊢use ⊢□))
 
-
+z : ∀ {Γ r} → Γ ⊢ ⟦ □ ⟧ ⦂ IO (` r ∪ ` r) □
+z = ⊢⟦⟧ ⊢□
+-- mustBeConc : ∀ {Γ e τ ρ} → 
 
 noResourceClash : ∀ {Γ e τ ρ} → ¬ (Γ ⊢ e ⦂ IO (ρ ∪ ρ) τ)
 noResourceClash (⊢` x x₁) = {!!}
@@ -29,6 +31,6 @@ noResourceClash (⊢>>= ⊢e ⊢e₁) = {!!}
 noResourceClash (⊢⋎ ⊢e ⊢e₁ x) = {!!}
 noResourceClash (⊢IOsub ⊢e x) = {!!}
 
-n : ¬ (∅ ⊢ readFile ⋎ readFile ⦂ IO (` File ∪  ` File) (□ × □))
-n (⊢⋎ ⊢e ⊢e₁ (DHZ x)) = x refl
-n (⊢IOsub ⊢e x) = {!!}
+-- n : ¬ (∅ ⊢ use File □ ⋎ use File □ ⦂ IO (` File ∪  ` File) (□ × □))
+-- n (⊢⋎ ⊢e ⊢e₁ (DHZ x)) = x refl
+-- n (⊢IOsub ⊢e x) = let z = n ⊢e in ?

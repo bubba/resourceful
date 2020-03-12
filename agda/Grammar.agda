@@ -16,6 +16,12 @@ infix 4 _>>=_
 infix 5 _×_
 infix 5 _⋎_
 
+data Resource : Set where
+  Net : Resource
+  File : Resource
+  Database : Resource
+  Printer : Resource
+
 data Term : Set where
   `_    : Id → Term
   ƛ_⇒_  : Id → Term → Term
@@ -24,8 +30,7 @@ data Term : Set where
   ⟦_⟧   : Term → Term
   _>>=_ : Term → Term → Term
   □     : Term
-  readFile : Term
-  readNet : Term
+  use : Resource → Term → Term
   _×_ : Term → Term → Term
   π₁_ : Term → Term
   π₂_ : Term → Term
@@ -47,8 +52,7 @@ _[_:=_] : Term → Id → Term → Term
 ⟦ e ⟧ [ y := z ] = ⟦ e [ y := z ] ⟧
 (m >>= f) [ y := z ] = m [ y := z ] >>= f [ y := z ]
 □ [ _ := _ ] = □
-readFile [ _ := _ ] = readFile
-readNet [ _ := _ ] = readNet
+use r e [ y := z ] = use r (e [ y := z ])
 (e × e') [ y := z ] = e [ y := z ] × e' [ y := z ]
 (π₁ e) [ y := z ] = π₁ (e [ y := z ])
 (π₂ e) [ y := z ] = π₂ (e [ y := z ])
@@ -66,12 +70,6 @@ _ = refl
 _ : (lt "x" ⇐ ` "y" in' ` "y") [ "y" := □ ] ≡ (lt "x" ⇐ □ in' □)
 _ = refl
 
-
-data Resource : Set where
-  Net : Resource
-  File : Resource
-  Database : Resource
-  Printer : Resource
 
 infixr 6 _∪_
 data Heap : Set where

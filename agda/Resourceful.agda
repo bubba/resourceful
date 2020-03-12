@@ -45,6 +45,7 @@ data Value : Term → Set where
       → Value e₂
         ---------------
       → Value (e₁ × e₂)
+  V-use : ∀ {r e} → Value (use r e)
 
 infix 2 _↝_
 
@@ -85,6 +86,10 @@ data _↝_ : Term → Term → Set where
           -------------------
         → ⟦ v ⟧ >>= e ↝ e · v
 
+  β-use : ∀ {r e e'}
+          -----------------------
+        → use r e >>= e' ↝ e' · e
+
   -- product types
   
   ξ-×₁ : ∀ {e₁ e₂ e₁'}
@@ -108,33 +113,28 @@ data _↝_ : Term → Term → Set where
        → π₂ e ↝ π₂ e'
 
   β-π₁ : ∀ {e₁ e₂}
-         ----------------
+         -----------------
        → π₁ (e₁ × e₂) ↝ e₁
 
   β-π₂ : ∀ {e₁ e₂}
          -----------------
        → π₂ (e₁ × e₂) ↝ e₂
 
-  -- resource primitives
-
-  β-readFile : readFile ↝ ⟦ □ ⟧
-  β-readNet : readNet ↝ ⟦ □ ⟧
-
   -- resource stuff
 
-  ξ-⋎₁ : ∀ {e₁ e₂ e₁'}
-       → e₁ ↝ e₁'
-         ------------------
-       → e₁ ⋎ e₂ ↝ e₁' ⋎ e₂
+  -- ξ-⋎₁ : ∀ {e₁ e₂ e₁'}
+  --      → e₁ ↝ e₁'
+  --        ------------------
+  --      → e₁ ⋎ e₂ ↝ e₁' ⋎ e₂
 
-  ξ-⋎₂ : ∀ {e₁ e₂ e₂'}
-       → e₂ ↝ e₂'
-         ------------------
-       → e₁ ⋎ e₂ ↝ e₁ ⋎ e₂'
+  -- ξ-⋎₂ : ∀ {e₁ e₂ e₂'}
+  --      → e₂ ↝ e₂'
+  --        ------------------
+  --      → e₁ ⋎ e₂ ↝ e₁ ⋎ e₂'
 
   β-⋎ : ∀ {v w}
-        ------------------------
-      → ⟦ v ⟧ ⋎ ⟦ w ⟧ ↝ ⟦ v × w ⟧
+        ---------------------------------------------------------
+      → v ⋎ w ↝ v >>= ƛ "v" ⇒ (w >>= (ƛ "w" ⇒ ⟦ ` "v" × ` "w" ⟧)) 
 
 -- Distinct heaps
 infix 7 _∩_=∅ 
@@ -191,6 +191,17 @@ _ : (` Net ∪ ` Printer) ∩ (` Database ∪ ` File) =∅
 _ = DHL (DHR (DHZ (λ ())) (DHZ (λ ())) (DHZ (λ ())))
       (DHR (DHZ (λ ())) (DHZ (λ ())) (DHZ (λ ()))) (DHZ (λ ()))
 
+
+data Ok : Heap → Set where
+  OkZ : ∀ {r}
+      → Ok (` r)
+  OkS : ∀ {a b}
+       → Ok a
+       → Ok b
+       → a ∩ b =∅
+        ---------------
+       → Ok (a ∪ b)
+       
 -- heap subtyping
 infix 5 _≥:_
 data _≥:_ : Heap → Heap → Set where
@@ -204,6 +215,22 @@ data _≥:_ : Heap → Heap → Set where
        → ρ ≥: ρ'
          ------------
        → ρ ≥: ρ' ∪ ρ''
+
+-- TODO: define this not auto-generated...
+≥:-trans : ∀ {a b c} → a ≥: b → b ≥: c → a ≥: c
+≥:-trans ≥:World ≥:World = ≥:World
+≥:-trans ≥:World ≥:Refl = ≥:World
+≥:-trans ≥:World (≥:∪₁ bc) = ≥:∪₁ (≥:-trans ≥:World bc)
+≥:-trans ≥:World (≥:∪₂ bc) = ≥:∪₂ (≥:-trans ≥:World bc)
+≥:-trans ≥:Refl bc = bc
+≥:-trans (≥:∪₁ ab) ≥:World = ≥:World
+≥:-trans (≥:∪₁ ab) ≥:Refl = ≥:∪₁ ab
+≥:-trans (≥:∪₁ ab) (≥:∪₁ bc) = ≥:∪₁ (≥:-trans (≥:∪₁ ab) bc)
+≥:-trans (≥:∪₁ ab) (≥:∪₂ bc) = ≥:∪₂ (≥:-trans (≥:∪₁ ab) bc)
+≥:-trans (≥:∪₂ ab) ≥:World = ≥:World
+≥:-trans (≥:∪₂ ab) ≥:Refl = ≥:∪₂ ab
+≥:-trans (≥:∪₂ ab) (≥:∪₁ bc) = ≥:∪₁ (≥:-trans (≥:∪₂ ab) bc)
+≥:-trans (≥:∪₂ ab) (≥:∪₂ bc) = ≥:∪₂ (≥:-trans (≥:∪₂ ab) bc)
 
 _ : ` Net ≥: World
 _ = ≥:World
@@ -289,8 +316,7 @@ FV (lt x ⇐ e in' e') = FV e ++ (FV e' / [ x ])
 FV ⟦ e ⟧ = FV e
 FV (e >>= e') = FV e ++ FV e'
 FV □ = []
-FV readFile = []
-FV readNet = []
+FV (use _ e) = FV e
 FV (e₁ × e₂) = FV e₁ ++ FV e₂
 FV (π₁ e) = FV e
 FV (π₂ e) = FV e
@@ -376,18 +402,17 @@ _ = refl
 _ : close ∅ □ ≡ ` □
 _ = refl
 
--- close∅ : ∀ {τ : Type} → close ∅ τ ≡ freeVars τ
--- close∅ {τ} =
---   begin
---     close ∅ τ
---   ≡⟨⟩
---     foldl (λ acc x → V x · acc) (` τ) (freeVars τ / FTVC ∅)
---   ≡⟨⟩
---     foldl (λ acc x → V x · acc) (` τ) (freeVars τ / [])
---   ≡⟨ cong (foldl (λ acc x → V x · acc) (` τ)) (/-empty {freeVars τ}) ⟩
---     foldl (λ acc x → V x · acc) (` τ) (freeVars τ)
---   ≡⟨⟩
---     {!!}
+close∅ : ∀ {τ : Type} → close ∅ τ ≡ VV (FTVT τ) τ
+close∅ {τ} =
+  begin
+    close ∅ τ
+  ≡⟨⟩
+    VV (FTVT τ / FTVC ∅) τ
+  ≡⟨⟩
+    VV (FTVT τ / []) τ
+  ≡⟨ cong (λ a → VV a τ) /-empty ⟩
+    VV (FTVT τ) τ
+  ∎
 
 infix 4 _⦂_∈_
 
@@ -447,16 +472,17 @@ data _⊢_⦂_ : Context → Term → Type → Set where
         --------------
       → Γ ⊢ π₂ e ⦂ τ'
 
-  ⊢⟦⟧ : ∀ {Γ e τ σ}
+  ⊢⟦⟧ : ∀ {Γ e τ ρ}
       → Γ ⊢ e ⦂ τ
+      → Ok ρ
         ----------------
-      → Γ ⊢ ⟦ e ⟧ ⦂ IO σ τ
+      → Γ ⊢ ⟦ e ⟧ ⦂ IO ρ τ
   
-  ⊢>>= : ∀ {Γ e e' τ τ' σ}
-       → Γ ⊢ e ⦂ (IO σ τ')
-       → Γ ⊢ e' ⦂ (τ' ⇒ IO σ τ)
+  ⊢>>= : ∀ {Γ e e' τ τ' ρ}
+       → Γ ⊢ e ⦂ (IO ρ τ')
+       → Γ ⊢ e' ⦂ (τ' ⇒ IO ρ τ)
          -------------------
-       → Γ ⊢ e >>= e' ⦂ IO σ τ
+       → Γ ⊢ e >>= e' ⦂ IO ρ τ
 
   ⊢□ : ∀ {Γ}
        
@@ -476,16 +502,14 @@ data _⊢_⦂_ : Context → Term → Type → Set where
   ⊢IOsub : ∀ {Γ e τ ρ ρ'}
          → Γ ⊢ e ⦂ IO ρ τ
          → ρ ≥: ρ'
+         → Ok ρ'
            --------------
          → Γ ⊢ e ⦂ IO ρ' τ
-          
-  ⊢readFile : ∀ {Γ}
-              ----------------------------
-            → Γ ⊢ readFile ⦂ IO (` File) □
 
-  ⊢readNet : ∀ {Γ}
-             --------------------------
-           → Γ ⊢ readNet ⦂ IO (` Net) □
+  ⊢use : ∀ {Γ e τ r}
+       → Γ ⊢ e ⦂ τ
+         ---------------
+       → Γ ⊢ use r e ⦂ IO (` r) τ
 
 _ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ( □ ⇒ □ )
 _ = ⊢ƛ ⊢□
