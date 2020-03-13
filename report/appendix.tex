@@ -1,0 +1,22 @@
+\appendix
+\chapter{Proofs}
+
+\section{Proof of the transitivity of the subheap relation} \label{proof:subheaptransitive}
+\begin{proof}
+  We want to show $a \subtyp c$. Proceed with induction on $b \subtyp c$.
+  \begin{description}
+  \item[\rm\boxed{\textsc{Top}}]
+    $c$ must be \textsf{World}, so from \textsc{Top} we have $a
+    \subtyp c$.
+  \item[\rm\boxed{\textsc{Refl}}] By definition of \textsc{Refl}, $b =
+    c$, and so we get $a \subtyp c$ from $a \subtyp b$.
+  \item[\rm\boxed{\textsc{UnionL}}] $c$ is of the form $\rho' \cup \rho''$, and
+    from the premise we have $b \subtyp \rho'$. Use the induction
+    hypothesis with $a \subtyp b$ and $b \subtyp \rho'$ to get $a \subtyp
+    \rho'$, and then \textsc{UnionL} gives us $a \subtyp \rho' \cup \rho''$.
+  \item[\rm\boxed{\textsc{UnionR}}]  $c$ is of the form $\rho'' \cup \rho'$, and
+    from the premise we have $b \subtyp \rho'$. Use the induction
+    hypothesis with $a \subtyp b$ and $b \subtyp \rho'$ to get $a \subtyp
+    \rho'$, and then \textsc{UnionR} gives us $a \subtyp \rho'' \cup \rho'$.
+  \end{description}
+\end{proof}

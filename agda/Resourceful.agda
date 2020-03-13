@@ -201,36 +201,27 @@ data Ok : Heap → Set where
        → a ∩ b =∅
         ---------------
        → Ok (a ∪ b)
+
        
 -- heap subtyping
 infix 5 _≥:_
 data _≥:_ : Heap → Heap → Set where
   ≥:World : ∀ {ρ} → ρ ≥: World
   ≥:Refl : ∀ {ρ} → ρ ≥: ρ
-  ≥:∪₁ : ∀ {ρ ρ' ρ''}
-       → ρ ≥: ρ''
-         ------------
-       → ρ ≥: ρ' ∪ ρ''
   ≥:∪₂ : ∀ {ρ ρ' ρ''}
        → ρ ≥: ρ'
          ------------
        → ρ ≥: ρ' ∪ ρ''
+  ≥:∪₁ : ∀ {ρ ρ' ρ''}
+       → ρ ≥: ρ'
+         ------------
+       → ρ ≥: ρ'' ∪ ρ'
 
--- TODO: define this not auto-generated...
 ≥:-trans : ∀ {a b c} → a ≥: b → b ≥: c → a ≥: c
-≥:-trans ≥:World ≥:World = ≥:World
-≥:-trans ≥:World ≥:Refl = ≥:World
-≥:-trans ≥:World (≥:∪₁ bc) = ≥:∪₁ (≥:-trans ≥:World bc)
-≥:-trans ≥:World (≥:∪₂ bc) = ≥:∪₂ (≥:-trans ≥:World bc)
-≥:-trans ≥:Refl bc = bc
-≥:-trans (≥:∪₁ ab) ≥:World = ≥:World
-≥:-trans (≥:∪₁ ab) ≥:Refl = ≥:∪₁ ab
-≥:-trans (≥:∪₁ ab) (≥:∪₁ bc) = ≥:∪₁ (≥:-trans (≥:∪₁ ab) bc)
-≥:-trans (≥:∪₁ ab) (≥:∪₂ bc) = ≥:∪₂ (≥:-trans (≥:∪₁ ab) bc)
-≥:-trans (≥:∪₂ ab) ≥:World = ≥:World
-≥:-trans (≥:∪₂ ab) ≥:Refl = ≥:∪₂ ab
-≥:-trans (≥:∪₂ ab) (≥:∪₁ bc) = ≥:∪₁ (≥:-trans (≥:∪₂ ab) bc)
-≥:-trans (≥:∪₂ ab) (≥:∪₂ bc) = ≥:∪₂ (≥:-trans (≥:∪₂ ab) bc)
+≥:-trans ab ≥:World = ≥:World
+≥:-trans ab ≥:Refl = ab
+≥:-trans ab (≥:∪₂ bc) = ≥:∪₂ (≥:-trans ab bc)
+≥:-trans ab (≥:∪₁ bc) = ≥:∪₁ (≥:-trans ab bc)
 
 _ : ` Net ≥: World
 _ = ≥:World
@@ -495,7 +486,7 @@ data _⊢_⦂_ : Context → Term → Type → Set where
   ⊢⋎ : ∀ {Γ e₁ e₂ τ₁ τ₂ ρ₁ ρ₂}
      → Γ ⊢ e₁ ⦂ IO ρ₁ τ₁
      → Γ ⊢ e₂ ⦂ IO ρ₂ τ₂
-     → ρ₁ ∩ ρ₂ =∅
+     → Ok (ρ₁ ∪ ρ₂)
        -----------------------
      → Γ ⊢ e₁ ⋎ e₂ ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
 

@@ -39,7 +39,7 @@ appear at the top level. Quantifiers bind type variables.
 
 Free type variables are type variables which have not be bound.
 \begin{align*}
-  \mathrm{fv}(\forall \alpha . \tau) &= \mathrm{fv}(\tau) \\
+  \mathrm{fv}(\forall \alpha . \tau) &= \mathrm{fv}(\tau) \\ {\alpha} \\
   \mathrm{fv}(()) &= \{ \} \\
   \mathrm{fv}(\alpha) &= \{ \alpha \} \\
   \mathrm{fv}(\tau \rightarrow \tau') &= \mathrm{fv}(\tau) \cup \mathrm{fv}(\tau')

@@ -1,5 +1,107 @@
 \chapter{Evaluation} \label{chapter:evaluation}
 
+\section{Heap well formedness}
+In the system defined in the previous chapter we have proved it is
+sound, and moreover we can show that every concurrent expression has a
+well typed heap -- that is a resource is not used more than once in the
+heap, and thus resources are not accessed concurrently.
+
+\begin{theorem}[Concurrenct heap is well formed]
+  If $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$, then $\textsf{ok} \ \rho$
+  \label{theorem:conc}
+\end{theorem}
+\begin{proof}
+  By induction on the possible proofs for $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$.
+  \begin{description}
+  \item[\textmd{\boxed{\textsc{Conc}}}]
+    We need to show $\textsf{ok} \ \rho_1 \cup \rho_2$, and from the premises we have $\textsf{ok} \ \rho_1 \cup \rho_2$.
+  \item[\textmd{\boxed{\textsc{Sub}}}]
+    We need to show $\textsf{ok} \ \rho'$ and from the premises, we also have $\textsf{ok} \ \rho'$. 
+  \end{description}
+\end{proof}
+As you can see, this is straightforward to prove. Perhaps it is too
+straightforward. What we would really like to prove is for all terms
+$e$:
+\newtheorem{conjecture}{Conjecture}
+\begin{conjecture}
+  If $\centerdot \vdash e : \IO_\rho \tau$, then $\textsf{ok} \ \rho$
+  \label{conjecture:strongconc}
+\end{conjecture}
+This is a stronger version of theorem~\ref{theorem:conc}. However this
+is not made easy in the system as it stands, for one simple yet
+annoying reason: Types are not necessarily well formed, and
+\textsc{Abs} allows any type to be introduced. This can be easily
+shown with the identity function.
+
+$$\inferrule*[Right=Abs]{
+  \inferrule*[Right=Var]{x : \IO_{\textsf{File} \cup \textsf{File}} \tau  \in
+    \centerdot , x : \IO_{\textsf{File} \cup \textsf{File}} \tau \\  \IO_{\textsf{File} \cup \textsf{File}} \tau >
+    \IO_{\textsf{File} \cup \textsf{File}} \tau }{\centerdot , x : \IO_{\textsf{File} \cup
+      \textsf{File}} \tau \vdash x : \IO_{\textsf{File} \cup \textsf{File}} \tau}
+}
+{\centerdot \vdash \lambda x . x : \IO_{\textsf{File} \cup \textsf{File}} \tau \rightarrow \IO_{\textsf{File} \cup \textsf{File}} \tau}
+$$
+
+It acts as a mechanism to generate types with malformed heaps, such as
+an $\IO$ monad that contains two \textsf{File}s in its heap.  In
+reality this is not an issue, as there is no way to construct a value
+to pass into this lambda. Because of this I believe that conjecture~\ref{conjecture:strongconc}this is still
+provable, but only when the context only contains well formed type
+schemes, and hence why it only applies for the empty context.
+
+We can extend this to include a relation for well-formed contexts and
+well-formed types, and use this in our definition. 
+
+\begin{mathpar}
+  \boxed{\textsf{ok} \ \Gamma} \\
+  \infer{ }{\textsf{ok} \ \centerdot} \and \infer{\textsf{ok} \ \Gamma \\ \textsf{ok}
+    \ \sigma}{\textsf{ok} \ \Gamma , x : \sigma } \\
+  \boxed{\textsf{ok} \ \sigma} \\
+  \infer{\textsf{ok} \ \tau}{\textsf{ok} \ \forall \alpha_1 , \ldots , \alpha_n \cdot \tau} \\
+  \boxed{\textsf{ok} \ \tau} \\
+  \infer{ }{\textsf{ok} \ \square} \and
+  \infer{ }{\textsf{ok} \ \alpha} \and
+  \infer{\textsf{ok} \ \tau \\ \textsf{ok} \ \tau'}{\textsf{ok} \ \tau \rightarrow \tau'}
+  \and
+  \infer{\textsf{ok} \ \tau \\ \textsf{ok} \ \tau'}{\textsf{ok} \ \tau \times \tau'}
+  \and
+  \infer{\textsf{ok} \ \tau \\ \textsf{ok} \rho}{\textsf{ok} \ \IO_\rho \tau}
+\end{mathpar}
+
+\begin{conjecture}
+  If $\textsf{ok} \ \Gamma$ and $\Gamma \vdash e : \IO_\rho \tau$, then $\textsf{ok} \ \rho$
+\end{conjecture}
+So far two lemmas have been proven to aid in the proof of the above
+conjecture.
+\begin{lemma}
+  If $\textsf{ok} \ \tau$ then for any substitution $s$, $\textsf{ok} \ \tau[s]$
+\end{lemma}
+\begin{lemma}
+  If $\textsf{ok} \ \sigma$ and $\sigma > \tau$, then $\textsf{ok} \ \tau$
+\end{lemma}
+
+This introduces a notion of ``well-typed types'' and adds quite a bit
+of extra overhead to the system, so it is left as further work.
+
+\section{Let-polymorphism}
+All this theory was motivated by a very practical cause: to provide
+some simple concurrency guarantees at the type level in a programming
+language. Thus the intention is that some of this may eventually make
+its way into a type system of an existing or novel language.
+
+Because of this, rather than just using the simply typed lambda
+calculus, the system was based off of the Hindley-Damas-Milner system
+with its polymorphic type discipline. It cannot be understated the
+amount of extra complexity and work this introduced into the proofs
+for soundness, but polymorphism is a near-essential feature in todays
+modern functional programming languages. The let polymorphism does not
+interact much with the monadic and resourceful parts of the type
+system, but it is desirable to show that the two are compatible with
+each other regardless.
+
+\section{Modelling state within the monad} \label{section:modellingstate}
+
+\section{If statements}
 
 \begin{grammar}
 

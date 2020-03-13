@@ -4,8 +4,6 @@ To formalize the system of heaped monads, I introduce a toy language
 and type system implementing the basic principles. The semantics are
 mainly based off of the Hilney-Damas-Milner type system \cite{damasmilner}
 
-The heap is very similar to the heap used in \cite{krishnaswami}
-
 \section{Syntax}
 
 \setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
@@ -13,7 +11,7 @@ The heap is very similar to the heap used in \cite{krishnaswami}
 \renewcommand{\syntleft}{}
 \renewcommand{\syntright}{}
 
-\newcommand{\unit}{\ensuremath{\raisebox{-0.35mm}{\square}}}
+%\newcommand{\square}{\ensuremath{\raisebox{-0.35mm}{\square}}}
 
 
 \def\defaultHypSeparation{\hskip .05in}
@@ -32,49 +30,147 @@ expressions $\pi_1 e$ and $\pi_2 e$.
 
 More interestingly we have the monadic additions. Unlike
 Krishnaswami~\cite{krishnaswami2006} we do not separate the language
-into two expression and computation languages.
-$\lift{e}$ lifts a regular expression into a monad (\texttt{return} in Haskell), and $e \bind e'$ is
-the standard monadic sequencing or binding operation.
+into two expression and computation languages.  $\lift{e}$, lifts a
+regular expression into the $\IO$ monad (\texttt{return} in Haskell), and
+$e \bind e'$ is the standard monadic sequencing or binding operation.
 
-However what is new to our language is the $e \curlyvee e'$ operator, which
-joins two monadic computations together into one that uses both
-resources -- provided that their resources do not overlap.
+Our language also has heaps $\rho$ and resources $r$, which are different from the
+notion of heaps in separation logic. Resources represent something
+that we want to keep track of in the type and prevent from being
+accessed concurrently, for example a file system or database. We
+provide a couple of placeholder resources to start off with.
+
+These can then be used to build up a heap, which is constructed from
+resources and merging other heaps. It is used to tag the resources
+that a computation in an $\IO$ monad might be accessing. There is also
+the notion of a \textsf{World} heap which encapsulates all possible
+resources and sub-heaps. It can be thought of as the default
+\texttt{IO} monad in Haskell, where everything acting on the real
+world is treated sequentially.
+
+$\use{r}{e}$, pronounced \textit{e using r}, which similarly to
+$\lift{e}$ lifts a value in the $\IO$ monad, but it uses the resource
+$r$ in the process, starting a new heap with that resource. Unique to
+our language is the $e \curlyvee e'$ operator. It joins two monadic
+computations together into one that uses both resources, returning a
+new heap made by merging $e$ and $e'$s heaps -- provided that they do
+not overlap and are well formed (Well formedness will be defined later
+on).
 
 \begin{figure}
 \begin{grammar}
 
-  <type $\tau$> ::= $\unit$ | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\rho \tau$
+  <type $\tau$> ::= $\square$ | $\alpha$ | $\tau \rightarrow \tau'$ | $\tau \times \tau'$ | $\textsf{IO}_\rho \tau$
   
   <type scheme $\sigma$> ::= $\forall \alpha . \sigma$ | $\tau$
 
-  <expression $e$> ::= $\unit$ | $e \times e'$ | $\pi_1 \ e$ $\pi_2 \ e$
+  <context $\Gamma$> ::= $\centerdot$ | $\Gamma , x : \sigma$
+
+  <expression $e$> ::= $\square$ | $e \times e'$ | $\pi_1 \ e$ $\pi_2 \ e$
   \alt $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x = e}{e'}$
   % \alt $\textsf{if} \ e_1 \ \textsf{then} \ e_2 \ \textsf{else} \ e_3$
-  \alt $\lift{e}$ | $e \bind e'$ | $e \curlyvee e'$
-  \alt $\textsf{readFile}$
-  \alt $\textsf{readNetwork}$
+  \alt $\lift{e}$ | $\use{r}{e}$ | $e \bind e'$ | $e \curlyvee e'$
 
-  <resource $\rho$> ::= \textsf{File} | \textsf{Network} | \textsf{World}
+  <resource $r$> ::= \textsf{File} | \textsf{Network} |
+  \textsf{Database} | \ldots
 
-  <heap $\sigma$> ::= $\rho$ | $\sigma \cup \sigma'$
+  <heap $\rho$> ::= $r$ | $\sigma \cup \sigma'$ | \textsf{World}
 
 \end{grammar}
 \caption{The grammar for our resourceful language.} \label{fig:grammar}
 \end{figure}
 
-\subsection{Substitution}
+\section{Substitution}
+Substitution may seem self-explanatory, but it is important to define
+it correctly as it will play a big part in proving essential
+properties of our system, and there are subtle differences with how it
+is defined on terms, types and type schemes.
+
 Substitution on types is defined as usual, but extended to include the
 new types in our system. That is, a substitution is a map from type
-variables to types, written in the form $[\tau/\alpha]$. 
+variables to types, written in the form $[\tau/\alpha]$.
+
 \begin{align*}
-  \unit [\tau/\alpha] &= \unit \\
+  \square [\tau/\alpha] &= \square \\
   \alpha' [\tau/\alpha] &=
              \begin{cases}
                \tau & \mathsf{if} \ \alpha' = \alpha \\
                \alpha' & \mathsf{otherwise}
              \end{cases} \\
+  (e \times e') [\tau/\alpha] &= e[\tau/\alpha] \times e'[\tau/\alpha] \\
   (\tau_1 \rightarrow \tau_2)[\tau/\alpha] &= (\tau_1[\tau/\alpha] \rightarrow \tau_2[\tau/\alpha]) \\
-  (IO_\sigma \tau')[\tau/\alpha] &= \IO_\sigma \tau'[\tau/\alpha]
+  (\IO_\sigma \tau')[\tau/\alpha] &= \IO_\sigma \tau'[\tau/\alpha]
+\end{align*}
+
+A substitution that substitutes multiple type variables at once can be
+written like $[\tau_1/\alpha_1,\ldots,\tau_m/\alpha_m]$.
+
+Substitution is also extended to type schemes, but note that his only
+substitutes \textbf{free} type variables.
+
+\begin{align*}
+  \forall \alpha' . \sigma[\tau/\alpha] &=
+            \begin{cases}
+              \forall \alpha' . \sigma & \mathsf{if} \ \alpha' = \alpha \\
+              \forall \alpha' . \sigma[\tau/\alpha] & \mathsf{otherwise}
+            \end{cases} \\
+  \tau[\tau/\alpha] &= \tau[\tau/\alpha] \ \textsf{(Substituion on type)}
+\end{align*}
+
+It should not be confused with instantiation, where the \textbf{bound}
+type variables $\forall \alpha_1 , \ldots , \alpha_n$ are substituted inside the type of a
+type scheme. Instantiation is not a function though, instead it is
+a relation $\sigma > \tau$ in which we say $\sigma$ can be instantiated to $\tau$.
+
+\begin{mathpar}
+  \boxed{\sigma > \tau} \\
+  \infer{\operatorname{dom}(s) = \{\alpha_1 , \ldots, \alpha_n\} \\ \tau'[s] = \tau}{\forall \alpha_1 , \ldots , \alpha_n
+    . \tau' > \tau}
+\end{mathpar}
+The domain of a substitution $\operatorname{dom}(s)$ is the set of
+type variables that it will replace,
+i.e.
+$\operatorname{dom}([\tau_1/\alpha,\tau_2/\beta]) = \{\alpha, \beta\}$. This relation can be
+read as, if there exists a substitution $s$ that substitutes exactly
+all the bound type variables in the type scheme
+$\forall \alpha_1, \ldots, \alpha_n . \tau'$ to give the type $\tau$, then $\forall \alpha_1, \ldots, \alpha_n . \tau' > \tau$.
+
+We then extend this to define substitution on contexts, not
+instantiation. Substitution on contexts only substitutes \textbf{free}
+type variables.
+\begin{align*}
+  \centerdot[\tau/\alpha] = \centerdot \\
+  (\Gamma , x : \sigma) [\tau/\alpha] &= \Gamma[\tau/\alpha] , x : \sigma[\tau/\alpha]
+\end{align*}
+
+Substitution is also defined on terms, replacing term variables
+instead of type variables.
+\begin{align*}
+  \square [v/\alpha] &= \square \\
+  \alpha' [v/\alpha] &=
+             \begin{cases}
+               v & \mathsf{if} \ \alpha' = \alpha \\
+               \alpha' & \mathsf{otherwise}
+             \end{cases} \\
+  (e \ e') [v/\alpha] &= e[v/\alpha] \ e'[v/\alpha] \\
+  \lambda x . e [v/\alpha] &=
+                  \begin{cases}
+                    \lambda x . e & \mathsf{if} \ x = \alpha \\
+                    \lambda x . (e [v/\alpha]) & \mathsf{otherwise}
+                  \end{cases} \\
+  \letin{x = e'}{e} [v/\alpha] &=
+                               \begin{cases}
+                                 \letin{x = (e' [v/\alpha])}{e} & \mathsf{if} \
+                                 x = \alpha \\
+                                 \letin{x = (e' [v/\alpha])}{(e [v/\alpha])}
+                                 & \mathsf{otherwise}
+                               \end{cases} \\  
+  (e_1 \times e_2) [v/\alpha] &= e_1[v/\alpha] \times e_2[v/\alpha] \\
+  (\pi_i \ e) [v/\alpha] &= {\pi_i (e [v/\alpha])}_{i = 1, 2} \\
+  \lift{e} [v/\alpha] &= \lift{e[v/\alpha]} \\
+  \use{r}{e} [v/\alpha] &= \use{r}{e[v/\alpha]} \\
+  (e \bind e') [v/\alpha] &= e[v/\alpha] \bind e'[v/\alpha] \\
+  (e_1 \curlyvee e_2) [v/\alpha] &= e_1[v/\alpha] \curlyvee e_2 [v/\alpha]
 \end{align*}
 
 \section{Static Semantics}
@@ -94,67 +190,176 @@ Note that in the syntax-directed rules, the typing judgement assigns
 types to terms, not type schemes~\ref{tofte}. Instantiation occurs
 directly within the \textsc{Var} rule, and generalisation occurs
 implicitly in $\bar{\Gamma}$.
+
+\newcommand{\fv}{\operatorname{FV}}
+
+Like before, $\bar{\Gamma}$ is defined as
+$$ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
+\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \fv(\tau) \setminus \fv(\Gamma)$$
+
+Free type variables are defined on types, type schemes and contexts as
+follows:
+\begin{align*}
+  \fv(\square) &= \{ \} \\
+  \fv(\alpha) &= \{ \alpha \} \\
+  \fv(\tau \rightarrow \tau') &= \fv(\tau) \cup \fv(\tau') \\
+  \fv(\IO_\rho \tau) &= \IO_\rho \fv(\tau) \\
+  \fv(\forall \alpha_1 , \ldots , \alpha_n . \tau) &= \fv(\tau) - \{ \alpha_1 , \ldots, \alpha_n \} \\
+  \fv(\Gamma) &= \bigcup_{x : \sigma \in \Gamma} \fv(\sigma)
+\end{align*}
   
-We also introduce the typing rule for $\unit$ expressions, to give us a
-concrete type, as well as a rule for products which are constructed
+We also introduce the typing rule for $\square$ expressions, to give us a
+concrete type, as well as a rule for products which are introduced
 through $e \times e'$.
 \begin{mathpar}
-  \inferrule*[Right=Unit]{ }{\Gamma \vdash \unit : \unit} \and
+  \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \and
   \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
     {\Gamma \vdash e \times e' : \tau \times \tau'}
-  \end{mathpar}
+\end{mathpar}
+Product types also have two eliminators available for them, projecting
+out the inner type.
+\begin{mathpar}
+  \infer*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 e : \tau} \and
+  \infer*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 e : \tau'}
+\end{mathpar}
 
 Now we introduce the monadic parts of the language. Our language only
 has one type of monad, the $\IO$ monad, which is parameterised by both
 its \textit{heap} $\rho$ and its encapsulated type. Monadic values are
-introduced into the language with either $\lift{e}$
-$\textsf{readFile}$ or $\textsf{readNet}$.
+introduced into the language with $\lift{e}$, which lifts a pure term into
+\textbf{any} \textit{well formed} heap. 
 \begin{mathpar}
-  \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \lift{e} : \IO_\rho \tau} \and
-    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} \unit} \and
-    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} \unit}
+  \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} : \IO_\rho \tau}
 \end{mathpar}
+We need to be careful what heaps we allow terms to be lifted into, as
+the entire point of this system is to avoid heaps containing duplicate
+resources. For example, it would be all to easy to just introduce an
+expression of $\IO_{File \cup File} \tau$ with \textsc{Lift}, if it was not
+for the premise $\textsf{ok} \ \rho$.
 
+$\textsf{ok} \ \rho$ is a new relation we define in
+figure~\ref{fig:heapwellformedness} to establish what heaps we
+consider to be \textit{well formed}, in a similar vein to
+Krishnaswami~\ref{krishnaswami2006}. All heaps consisting of a single
+resource are well formed, and all heaps made by unioning two other well
+formed heaps \textit{that are distinct} -- i.e. do not share any of the
+same resources -- are well formed.
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \boxed{\textsf{ok} \ \rho} \and
+    \infer{ }{\textsf{ok} \ r} \and
+    \infer{
+      \textsf{ok} \ \rho \\
+      \textsf{ok} \ \rho' \\
+      \rho \cap \rho' = \emptyset}
+    {\textsf{ok} \ \rho \cup \rho'}      
+  \end{mathpar}
+  \caption{Heap well formedness}
+  \label{fig:heapwellformedness}
+\end{figure}
+
+Whilst \textsc{Lift} lets us construct monads in any heap, we will
+eventually want to have some constructors for $\IO$monads using
+specific resources. When first designing the system, we used
+placeholder expressions for fixed resources:
+\begin{mathpar}
+  \infer{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} \square} \and
+  \infer{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} \square}
+\end{mathpar}
 $\textsf{readFile}$ and $\textsf{readNet}$ are examples of typical
 operations that can consume a specific resource -- their heap consists
-of just a single resource. The typing rule for $\lift{e}$, on the
-other hand, allows a pure expression (or possibly another monad) to be
-``lifted'' into a $\IO$ for any heap $\sigma$.
+of just a single resource. This was then generalised to
+$\use{r}{e}$, which lifts any pure term into an $\IO$ monad with a heap
+consisting of the resource $r$.
+\begin{mathpar}
+  \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r e}
+\end{mathpar}
+Note that it is defined with a single resource, not a heap. A heap
+with just one resource is always well formed, so there is no need
+for a $\textsf{ok} \ r$ premise in this judgement.
+\textsc{Use} is meant to be used to annotate terms that use resources that
+should not be accessed concurrently, whilst on the other hand
+\textsc{Lift} is for bringing pure expressions into a monadic
+computation.
 
 Once we have an $\IO$ value, we can sequence computation by binding
 it with a function that returns another $\IO$.
 \begin{mathpar}
-  \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\sigma
-    \tau'}{\Gamma \vdash e \bind e' : \IO_\sigma \tau'}
+  \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\rho
+    \tau'}{\Gamma \vdash e \bind e' : \IO_\rho \tau'}
 \end{mathpar}
 Note that the types of the two $\IO$s must use the same
 resources. However, we want expressions such as
-$$ readFile \bind readNet $$
+$$ \use{\textsf{File}}{\square} \bind \use{\textsf{Net}}{\square} $$
 to be well typed. In particular, we want the above expression to be of
-type $\IO_{\textsf{File} \cup \textsf{Net}} \unit$. But if \textsc{Bind}
+type $\IO_{\textsf{File} \cup \textsf{Net}} \square$. But if \textsc{Bind}
 requires the resources to be the same, we must first somehow ``cast''
 $\textsf{readFile}$ and $\textsf{readNet}$ to this type.
 
-Thus serves the purpose of the \textsc{Subsumption} rule.
+Thus serves the purpose of the \textsc{Sub} (subsumption) rule.
 \begin{mathpar}
-  \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
-  {\Gamma \vdash e : \IO_{\sigma'} \tau}
+  \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
+    \textsf{ok} \ \rho}
+  {\Gamma \vdash e : \IO_{\rho'} \tau}
 \end{mathpar}
-It allows something of type $\IO_\sigma \tau$ monad to be typed as $\IO_{\sigma'} \tau$, provided
-that the heap $\sigma$ is a \textit{subtype} of $\sigma'$. The subtyping
-rules for heaps, shown in figure~\ref{fig:subtyping}, define the
+It allows something of type $\IO_\rho \tau$ monad to be typed as $\IO_{\rho'} \tau$, provided
+that the heap $\rho$ is a \textit{subheap} of $\rho'$. The subheap
+rules for heaps, shown in figure~\ref{fig:subheap}, define the
 $\subtyp$ relation.
 
-Intuitively, a heap $\sigma$ can thought of being a subtype of another heap
-$\sigma'$, if $\sigma'$ subsumes $\sigma$. For example, $\textsf{Net} \subtyp
-\textsf{Net} \cup \textsf{File}$, since $\textsf{Net} \cup \textsf{File}$
-``overlaps'' with the heap $\textsf{Net}$.
+\begin{figure}
+
+\begin{mathpar}
+\boxed{\rho \subtyp \rho'} \\
+  
+\inferrule*[Right=Top]{ }{\rho \subtyp \textsf{World}} \and
+\inferrule*[Right=Refl]{ }{\rho \subtyp \rho} \and
+\inferrule*[Right=UnionL]{\rho \subtyp \rho'}{\rho \subtyp \rho' \cup \rho''} \and
+\hskip 1em
+\inferrule*[Right=UnionR]{\rho \subtyp \rho'}{\rho \subtyp \rho'' \cup \rho'}
+
+\end{mathpar}
+
+\caption{Subheap rules}
+\label{fig:subheap}
+\end{figure}
+
+Intuitively, a heap $\sigma$ can thought of being a subheap of another heap
+$\sigma'$, if $\sigma'$ subsumes $\sigma$, similarly to how subtyping works. For
+example, $\textsf{Net} \subtyp \textsf{Net} \cup \textsf{File}$, since
+$\textsf{Net} \cup \textsf{File}$ ``overlaps'' with the heap
+$\textsf{Net}$.
+
+\begin{figure}
+  \centering
+  \tikz \graph[layered layout] {
+    world/"\textsf{World}"; file/"\textsf{File}"; net/"\textsf{Net}";
+    database/"\textsf{Database}"; databasenet/"$\textsf{Database} \cup \textsf{Net}$";
+    filenet/"$\textsf{File} \cup \textsf{Net}$";
+    world -> filenet;
+    world -> databasenet;
+    databasenet -> {database, net};
+    filenet -> {file, net};
+  };
+  \caption{An example of some heaps and their subheap orderings.}
+\end{figure}
 
 If one views this relation as an ordering, then we have
 $\textsf{World}$ defined as the least upper bound -- this represents
-using all possible resources, and thus $\IO_{\textsf{World}}$ can be
-thought of as the $IO$ monad in Haskell, where sequencing interacts
-with the state of the entire world.
+using all possible resources, and as mentioned earlier
+$\IO_{\textsf{World}}$ can be thought of as the $IO$ monad in Haskell,
+where sequencing interacts with the state of the entire world.
+
+The subheaping relation is both reflexive (by definition), and transitive.
+\begin{theorem}
+  For all $a$, $b$, $c$, if $a \subtyp b$ and $b \subtyp c$ then $a
+  \subtyp c$.
+\end{theorem}
+\begin{proof}
+  By induction on $b \subtyp c$. See
+  proof~\ref{proof:subheaptransitive} in the appendix.
+\end{proof}
 
 By constraining subtyping to only resources and not actual types, we
 avoid the various issues associated with undecidability subtyping
@@ -170,48 +375,27 @@ heart and soul of this type system, by combining together heaps and
 maintaining the invariant that the resources in the heap are all
 unique.
 \begin{mathpar}
-  \inferrule*[Right=Conc]{\Gamma \vdash e_1 : \IO_\sigma \tau_1 \\ \Gamma \vdash e_2 : \IO_{\sigma'}
-    \tau_2 \\
-    \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
-  {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2}
+  \infer*[Right=Conc]{
+    \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
+    \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
+    \textsf{ok} \ \rho_1 \cup \rho_2}
+  {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2}
 \end{mathpar}
-The combined premises $\sigma \notsubtyp \sigma'$ and
-$\sigma' \notsubtyp \sigma$ ensure that the two heaps are distinct, as proved
-in lemma~\ref{lem:distinctheap}. This restriction exists as we do not
+The premises include that the new merged heap must be well formed, as we do not
 want to allow programs that try to use the same resource concurrently,
 such as
-$$\textsf{readFile} \curlyvee \textsf{readFile}$$
+$$\use{\textsf{File}}{\square} \curlyvee \use{\textsf{File}}{\square}$$
 We do however, want to allow programs that run two expressions that do
 not share any resources, like
-$$\textsf{readFile} \curlyvee \textsf{readNet}$$
+$$\use{\textsf{File}}{\square} \curlyvee \use{\textsf{Net}}{\square}$$
 
-The result of running two separate $\IO$ actions concurrently produces
+The result of running two separate $\IO$actions concurrently produces
 an expression whose type is also an $\IO$ monad, but with the two
-separate heaps joined. In the above example, we would be inferred the
+separate heaps joined. In the above example, it would be infered the
 type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 
-\begin{lemma}
-  For any two heaps $\sigma$ and $\sigma'$, if $\sigma \notsubtyp \sigma'$ and $\sigma'
-  \notsubtyp \sigma$ then the two heaps contain distinct resources.
-\end{lemma}
-
-\begin{figure}
-
-\begin{mathpar}
-\boxed{\sigma \subtyp \sigma'} \\
-  
-\inferrule*[Right=Top]{ }{\sigma \subtyp \textsf{World}} \and
-\inferrule*[Right=Refl]{ }{\sigma \subtyp \sigma} \and
-\inferrule*[Right=Union1]{\sigma \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''} \and
-\hskip 1em
-\inferrule*[Right=Union2]{\sigma' \subtyp \sigma''}{\sigma \cup \sigma' \subtyp \sigma''}
-
-\end{mathpar}
-
-\caption{Resource subtyping rules}
-\label{fig:subtyping}
-\end{figure}
-
+All together these rules define the typing judgement, and are
+displayed in full in figure~\ref{fig:typingrules}.
 
 \begin{figure}
   \begin{mathpar}
@@ -227,29 +411,31 @@ type $\IO_{\textsf{File} \cup \textsf{Net}}$.
     % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
     % e_3 : \tau} \and
 
-
+    \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \\
     \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
     {\Gamma \vdash e \times e' : \tau \times \tau'} \and
 
     \inferrule*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 : \tau} \and     
-    \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \and
+    \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \\
 
-    \inferrule*[Right=Lift]{\Gamma \vdash e : \tau}{\Gamma \vdash \llbracket e \rrbracket : \IO_\sigma \tau} \and
-    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\sigma \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\sigma
-      \tau}{\Gamma \vdash e \bind e' : \IO_\sigma \tau} \\
-    \inferrule*[Right=Conc]{\Gamma \vdash e_1 : \IO_\sigma \tau_1 \\ \Gamma \vdash e_2 : \IO_{\sigma'}
-      \tau_2 \\ \sigma \cap \sigma' = \emptyset}
-    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \ \tau_1 \times \tau_2} \\
+    \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} :
+      \IO_\rho \tau} \and
+    \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r e} \\
+    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
+      \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau} \\
+    \infer*[Right=Conc]{
+      \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
+      \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
+      \textsf{ok} \ \rho_1 \cup \rho_2}
+    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2} \and
     
-    \inferrule*[Right=ReadFile]{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} \unit} \and
-    \inferrule*[Right=ReadNet]{ }{\Gamma \vdash \mathsf{readNet} : \IO_{\mathsf{Net}} \unit} \\
+    \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
+      \textsf{ok} \ \rho}
+    {\Gamma \vdash e : \IO_{\rho'} \tau}
 
-    \inferrule*[Right=Subsumption]{\Gamma \vdash e : \IO_\sigma \tau \\ \sigma \subtyp \sigma'}
-    {\Gamma \vdash e : \IO_{\sigma'} \tau} \and
-    \inferrule*[Right=Unit]{ }{\Gamma \vdash \unit : \unit}
   \end{mathpar}
 
-  \caption{Typing rules}
+  \caption{Typing rules} \label{fig:typingrules}
 \end{figure}
 
 \section{Dynamic semantics}
@@ -280,10 +466,10 @@ terms are a result of a completed computation.
 
 We define a value property, and give rules describing what terms can
 be considered values in figure~\ref{fig:values}. For example, we
-cannot evaluate the $\unit$ type any further, therefore all $\unit$s
+cannot evaluate the $\square$ type any further, therefore all $\square$s
 are considered values. The same goes for product types, but only if
-both inner components are values themselves. $\unit \times \unit$ is a
-finished value, but $f a \times \unit$ might still have evaluation left to
+both inner components are values themselves. $\square \times \square$ is a
+finished value, but $f \ e \times \square$ might still have evaluation left to
 do on the right hand side.
 A lambda on its own is a value too --
 without being applied to an argument it cannot be evaluated any
@@ -295,7 +481,7 @@ this computation, but by itself it will not evaluate to anything.
 \begin{figure}
   \begin{mathpar}
     \boxed{\textsf{value} \ e} \\
-    \inferrule{ }{ \textsf{value} \ \unit } \and
+    \inferrule{ }{ \textsf{value} \ \square } \and
     \inferrule{\textsf{value} \ e_1 \\ \textsf{value} \ e_2}{ \textsf{value} \ e_1 \times e_2 } \and
     \inferrule{ }{ \textsf{value} \ \lift{e} } \and
     \inferrule{ }{ \textsf{value} \ \lambda x. e }
@@ -347,25 +533,55 @@ like lambdas, and as such are values since they cannot reduce any
 further \textit{on their own}. However, with the bind operator, the
 value inside them can be extracted out and fed into a function.
 \begin{mathpar}
-  \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 \ v}
+  \inferrule{ }{\lift{e} \bind e' \leadsto e' \ e}
 \end{mathpar}
 
 Unlike the semantic rule for \beta-reduction, there is no premise
-enforcing that $\lift{v}$ is a value, since all lifted terms are
+enforcing that $\lift{e}$ is a value, since all lifted terms are
 values anyway.
 
-Our resourceful \textsf{readFile} and \textsf{readNet} primitives
-return dummy unit values, lifted into the monadic form. The
-concurrent operator $\curlyvee$ has the aforementioned $\xi$-reduction rules
-that allow both of its arguments to reduce down until they reach
-$\lift{v} \curlyvee \lift{w}$, at which point they can then be packaged up and
-returned in a lifted product, $\lift{v \times w}$. In terms of dynamic
-semantics, this is isomorphic to
+For an expression lifted into a resourceful $\IO$ monad with
+$\use{\rho}{e}$, one might be tempted to just reduce this to a $lift{e}$.
+\begin{mathpar}
+  \infer{ }{\use{r}{e} \leadsto \lift{e}}
+\end{mathpar}
 
-$$\lift{v} \bind \lambda v . (\lift{w} \bind (\lambda w . \lift{v \times w}))$$
+And we could then also define the reduction for concurrency like so:
+\begin{mathpar}
+\inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket}
+\end{mathpar}
 
-However, their static semantics are different. Namely, given $\Gamma \vdash
-\lift{v} : \IO_\rho \tau$,
+However the intermediate $\lift{e}$ can be confusing -- the purpose of
+the lift operator is to lift a pure value into any possible resource
+bound monad. When we see a lift, we think of the typing judgement that
+allows it to fit any heap, when in fact a use should restrict what
+heaps it can go into. For these reasons, we instead define its
+reduction identically to lift.
+\begin{mathpar}
+  \inferrule{ }{\use{r}{e} \bind e' \leadsto e' \ e}
+\end{mathpar}
+
+Concurrency is then define as chaining together two binds, and
+returning the lifted product of the two results.
+\begin{mathpar}
+  \inferrule{ }{v \curlyvee w \leadsto
+    v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})}
+\end{mathpar}
+
+This might seem like the opposite of concurrency -- executing the
+computation in sequence -- but because our monad does not have any
+state (see section~\ref{section:modellingstate},
+${v \bind \lambda v . (w \bind (\lambda w . \lift{v \times w}))}$ is identical to
+$w \bind \lambda w . (v \bind (\lambda v . \lift{v \times w}))$. In fact the previous
+definition for concurrency as
+$\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w\rrbracket$ will have the same reduction steps at
+the end of the day. In an actual implementation in a programming
+language, the concurrent operator should be replaced with something
+actually concurrent.
+
+Although the $v \curlyvee w$ might evaluate to two separate $\bind$s, their
+static semantics are different. Namely, given
+$\Gamma \vdash \lift{v} : \IO_\rho \tau$,
 $$
 \Gamma \vdash \lift{v} \bind \lambda v . (\lift{v} \bind (\lambda v . \lift{v \times v})) : \IO_\rho (\tau \times \tau)
 $$
@@ -373,9 +589,6 @@ $$
 But for the concurrent operator, this is a type error, since the
 premise $\rho \cup \rho = \emptyset$ does not hold.
 $$\Gamma \nvdash v \curlyvee v$$
-
-
-
 
 \begin{figure}
   \begin{mathpar}
@@ -397,7 +610,7 @@ $$\Gamma \nvdash v \curlyvee v$$
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
     \inferrule{\textsf{value} \ e_2}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
-    \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \and
+    \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \\
 
     % product types
     \inferrule{e_1 \leadsto e_1'}{e_1 \times e_2 \leadsto e_1' \times e_2} \and
@@ -412,16 +625,13 @@ $$\Gamma \nvdash v \curlyvee v$$
     % monads
     \inferrule{e_1 \leadsto e_1'}{e_1 \bind e_2 \leadsto e_1' \bind e_2} \and
     \inferrule{ }{\lift{v} \bind e_2 \leadsto e_2 \ v} \and
+    \inferrule{ }{\use{r}{e} \bind e' \leadsto e' \ e} \\
 
     % resource stuff
-    \inferrule{e_1 \leadsto e_1'}{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2} \and
-    \inferrule{e_2 \leadsto e_2'}{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'} \and
-    \inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket} \and
-    
-    \inferrule{ }{\textsf{readFile} \leadsto \lift{\unit}} \and
-    \inferrule{ }{\textsf{readNet} \leadsto \lift{\unit}}
+    \inferrule{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times
+        w})} \
   \end{mathpar}
-  \caption{Dynamic Semantics}
+  \caption{Dynamic Semantics} \label{fig:reduction}
 \end{figure}
 
 \subsection{Reduction relation}
@@ -475,7 +685,7 @@ reducing one step at a time, it goes all the way.
 %   \mathsf{readNetwork}
 % \end{math}
 
-% Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} \unit$
+% Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} \square$
 
 
 % \section{Semantics}
@@ -496,9 +706,9 @@ reducing one step at a time, it goes all the way.
 % Semantic domain:
 
 % \begin{align*}
-%   \mathbb{V} &= \mathbb{B}_{\unit} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
+%   \mathbb{V} &= \mathbb{B}_{\square} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
 %                \mathbb{W} \\
-%   \mathbb{B}_{\unit} &= \{ \ \unit \ \} \\
+%   \mathbb{B}_{\square} &= \{ \ \square \ \} \\
 %   \mathbb{B}_{\mathsf{Bool}} &=
 %                                \{ \textsf{True}, \textsf{False},
 %                                \bot_{\textsf{Bool}} \} \\
@@ -665,20 +875,20 @@ reducing one step at a time, it goes all the way.
     which will allow us to use \textsc{Conc} to arrive at $\Gamma \vdash e_1 \curlyvee
     e_2 : \IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2$ as needed.
   \item[\textmd{\boxed{\textsc{Unit}}}]
-    We have $\Gamma \vdash \unit : \unit$. If $\unit = \tau'$ and $\tau' > \tau$, all
-    substitutions on $\unit$ will result in $\unit$. Thus $\tau = \unit$, and we
-    have already shown $\Gamma \vdash \unit : \unit$.
+    We have $\Gamma \vdash \square : \square$. If $\square = \tau'$ and $\tau' > \tau$, all
+    substitutions on $\square$ will result in $\square$. Thus $\tau = \square$, and we
+    have already shown $\Gamma \vdash \square : \square$.
   \item[\textmd{\boxed{\textsc{ReadFile}, \textsc{ReadNet}}}]
     The same principle for \textsc{Unit} applies here to prove these
     cases.
-  \item[\textmd{\boxed{\textsc{Subsumption}}}]
+  \item[\textmd{\boxed{\textsc{Sub}}}]
     For the conclusion $\Gamma \vdash e : \IO_{\sigma'} \tau'$, we again have that
     $\IO_{\sigma'} \tau' > \IO_{\sigma'} \tau$. Therefore there exists a substitution $S$
     from the former type to the latter, and by the definition of
     substitution on $\IO$, must be a substitution from $\tau'$ to $\tau$.
 
     Thus we can take the premise $\Gamma \vdash e : \IO_\sigma \tau'$, and knowing that
-    $\tau' > \tau$ apply the induction hypothesis and \textsc{Subsumption}
+    $\tau' > \tau$ apply the induction hypothesis and \textsc{Sub}
     to arrive at $\Gamma \vdash e : \IO_{\sigma'} \tau$ as needed.
   \end{description}
 \end{proof}
@@ -787,12 +997,12 @@ reducing one step at a time, it goes all the way.
     \textsc{Lift} to get $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$
     (Note that \textsc{Lift} can lift into $\IO_\sigma$ for any $\sigma$)
 
-  \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{\unit}}}]
+  \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{\square}}}]
     We know $\Gamma \vdash
-    \textsf{readFile} : \IO_{\textsf{File}} \unit$, and we can just use
-    \textsc{Lift} to show that $\Gamma \vdash \lift{\unit} : \IO_{\textsf{File}}
-    \unit$.
-  \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{\unit}}}]
+    \textsf{readFile} : \IO_{\textsf{File}} \square$, and we can just use
+    \textsc{Lift} to show that $\Gamma \vdash \lift{\square} : \IO_{\textsf{File}}
+    \square$.
+  \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{\square}}}]
     This is the same for above, except the heap is replaced with the
     singular resource $\textsf{Net}$.
   \end{description}
