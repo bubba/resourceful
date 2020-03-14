@@ -662,23 +662,23 @@ reducing one step at a time, it goes all the way.
     % todo: make these side by side
     \tikz \graph[layered layout, grow=right, edges={
       decoration={snake,amplitude=0.5mm,segment length=2mm,post length=1mm},decorate}] {     a -> b -> c
-  };
+    };
+    \qquad
+    % give this two head arrows
+    \tikz \graph[layered layout,grow=right,edges={->>}] {
+      a ->[orient] b -> c;
+      a ->[bend right] c;
+      { [same layer] a, b, c };
+      a ->[loop above] a;
 
-  % give this two head arrows
-  \tikz \graph[layered layout,grow=right] {
-    a ->[orient] b -> c;
-    a ->[bend right] c;
-    { [same layer] a, b, c };
-    a ->[loop above] a;
+      b ->[loop above] b;
 
-    b ->[loop above] b;
+      c ->[loop above] c;
 
-    c ->[loop above] c;
-
-    % a -> c;
-    % b -> c;
-    % a -> c;
-  };
+      % a -> c;
+      % b -> c;
+      % a -> c;
+    };
 \end{center}
 \end{figure}
 
