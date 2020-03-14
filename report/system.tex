@@ -248,12 +248,13 @@ same resources -- are well formed.
   \centering
   \begin{mathpar}
     \boxed{\textsf{ok} \ \rho} \and
+    \infer{ }{\textsf{ok} \ \textsf{World}} \and
     \infer{ }{\textsf{ok} \ r} \and
     \infer{
       \textsf{ok} \ \rho \\
       \textsf{ok} \ \rho' \\
       \rho \cap \rho' = \emptyset}
-    {\textsf{ok} \ \rho \cup \rho'}      
+    {\textsf{ok} \ \rho \cup \rho'}    
   \end{mathpar}
   \caption{Heap well formedness}
   \label{fig:heapwellformedness}
@@ -395,7 +396,14 @@ separate heaps joined. In the above example, it would be infered the
 type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 
 All together these rules define the typing judgement, and are
-displayed in full in figure~\ref{fig:typingrules}.
+displayed in full in figure~\ref{fig:typingrules}. Let's look at some
+examples at how they can be used to derive types for various
+programs.
+
+\begin{mathpar}
+  \infer{ }
+  {\centerdot \vdash let x = \lambda y . \lift{\square} in x \bind \lambda z . x}
+\end{mathpar}
 
 \begin{figure}
   \begin{mathpar}
@@ -587,8 +595,8 @@ $$
 $$
 
 But for the concurrent operator, this is a type error, since the
-premise $\rho \cup \rho = \emptyset$ does not hold.
-$$\Gamma \nvdash v \curlyvee v$$
+premise $\textsf{ok} \ \rho \cup \rho$ does not hold: There is no type in any context
+that can be given to $v \curlyvee v$
 
 \begin{figure}
   \begin{mathpar}
@@ -769,7 +777,9 @@ reducing one step at a time, it goes all the way.
 
 % Semantic domain + semantic function = semantic algebra
 
-\section{Type safety}
+\section{Type Safety}
+
+A type system is no good unless we can prove it's worth its salt.
 
 \begin{lemma}
   If $\sigma' > \sigma$ and $\Gamma,x : \sigma' \vdash e : \tau$, then $\Gamma, x : \sigma \vdash e : \tau$.

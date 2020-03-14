@@ -15,6 +15,8 @@ infix 4 lt_⇐_in'_
 infix 4 _>>=_
 infix 5 _×_
 infix 5 _⋎_
+infix 6 ⟦_⟧
+infix 6 use
 
 data Resource : Set where
   Net : Resource

@@ -5,32 +5,36 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
 _ : ∅ ⊢ use File □ ⋎ use Net □ ⦂ IO (` File ∪  ` Net) (□ × □)
-_ = ⊢⋎ (⊢use ⊢□) (⊢use ⊢□) (DHZ λ ())
+_ = ⊢⋎ (⊢use ⊢□) (⊢use ⊢□) (OkS OkZ OkZ (DHZ λ ()))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO (` File ∪ ` Net) □
-_ = ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:∪₂ ≥:Refl)) (⊢ƛ (⊢IOsub (⊢use ⊢□) (≥:∪₁ ≥:Refl)))
+_ = let ok = OkS OkZ OkZ (DHZ λ ())
+        in ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:∪₂ ≥:Refl) ok)
+                (⊢ƛ (⊢IOsub (⊢use ⊢□) (≥:∪₁ ≥:Refl) ok))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO World □
-_ = ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:World)) (⊢ƛ (⊢IOsub (⊢use ⊢□) ≥:World))
+_ = ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:World) OkWorld) (⊢ƛ (⊢IOsub (⊢use ⊢□) ≥:World OkWorld))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use File □ ⦂ IO (` File) □
 _ = ⊢>>= (⊢use ⊢□) (⊢ƛ (⊢use ⊢□))
 
-z : ∀ {Γ r} → Γ ⊢ ⟦ □ ⟧ ⦂ IO (` r ∪ ` r) □
-z = ⊢⟦⟧ ⊢□
+¬x∩x=∅ : ∀ {ρ} → ¬ (ρ ∩ ρ =∅)
+¬x∩x=∅ (DHZ x) = x refl
+¬x∩x=∅ (DHL dist dist₁ dist₂) = ¬x∩x=∅ (distinct-∪ˡ (distinct-sym dist))
+¬x∩x=∅ (DHR dist dist₁ dist₂) = ¬x∩x=∅ (distinct-∪ʳ (distinct-sym dist₁))
+¬okρ∪ρ : ∀ {ρ} → ¬ Ok (ρ ∪ ρ)
+¬okρ∪ρ (OkS ok ok₁ dist) = ¬x∩x=∅ dist
+
+z : ∀ {Γ r} → ¬ (Γ ⊢ ⟦ □ ⟧ ⦂ IO (` r ∪ ` r) □)
+z (⊢⟦⟧ ⊢e ok) = ¬okρ∪ρ ok
+z (⊢IOsub _ _ ok) = ¬okρ∪ρ ok
+
 -- mustBeConc : ∀ {Γ e τ ρ} → 
 
-noResourceClash : ∀ {Γ e τ ρ} → ¬ (Γ ⊢ e ⦂ IO (ρ ∪ ρ) τ)
-noResourceClash (⊢` x x₁) = {!!}
-noResourceClash (⊢· ⊢e ⊢e₁) = {!!}
-noResourceClash (⊢lt ⊢e ⊢e₁) = {!!}
-noResourceClash (⊢π₁ ⊢e) = {!!}
-noResourceClash (⊢π₂ ⊢e) = {!!}
-noResourceClash (⊢⟦⟧ ⊢e) = {!!}
-noResourceClash (⊢>>= ⊢e ⊢e₁) = {!!}
-noResourceClash (⊢⋎ ⊢e ⊢e₁ x) = {!!}
-noResourceClash (⊢IOsub ⊢e x) = {!!}
 
 -- n : ¬ (∅ ⊢ use File □ ⋎ use File □ ⦂ IO (` File ∪  ` File) (□ × □))
 -- n (⊢⋎ ⊢e ⊢e₁ (DHZ x)) = x refl
 -- n (⊢IOsub ⊢e x) = let z = n ⊢e in ?
+
+_ : ∅ ⊢ lt "x" ⇐ (ƛ "y" ⇒ ⟦ □ ⟧) in' (` "x" >>= (ƛ "z" ⇒ use File (` "z"))) ⦂ IO (` File) □
+_ = ⊢lt {!!} {!!}
