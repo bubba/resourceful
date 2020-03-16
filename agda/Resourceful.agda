@@ -371,16 +371,12 @@ toVVClose τ =
 -- ≥freeVars {σ'} {σ} σ≥σ' () | []
 -- ≥freeVars {σ'} {σ} σ≥σ' (there x∈) | x ∷ z = {!!}
 
-postulate close> : ∀ {Γ x σ σ' τ}
-                 → σ ≥ σ'
-                 → close (Γ , x ⦂ σ) τ ≡ close (Γ , x ⦂ σ') τ
--- close> {Γ} {x} {σ} {σ'} (General f) = {!!}
---   where freeVarsLess : FTVC (Γ , x ⦂ σ') ⊆ FTVC (Γ , x ⦂ σ)
---         freeVarsLess α = {!!}
 
---         g : FTV σ' ⊆ FTV σ
---         g α∈σ' = {!!}
-       
+-- postulate ftv≥ : ∀ {σ σ'} → σ ≥ σ' → FTV σ' ⊆ FTV σ
+
+-- some of the FTVs in σ get bound in σ ≥ σ'
+-- same thing happens for the FTVs in Γ , x ⦂ σ and Γ , x ⦂ σ'
+postulate close≥ : ∀ {Γ x σ σ' τ} → σ ≥ σ' → close(Γ , x ⦂ σ) τ ≥ close (Γ , x ⦂ σ') τ
 
 _ : FTVC (∅ , "x" ⦂ ` (` "a")) ≡ [ "a" ]
 _ = refl

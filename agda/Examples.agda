@@ -36,5 +36,9 @@ z (⊢IOsub _ _ ok) = ¬okρ∪ρ ok
 -- n (⊢⋎ ⊢e ⊢e₁ (DHZ x)) = x refl
 -- n (⊢IOsub ⊢e x) = let z = n ⊢e in ?
 
-_ : ∅ ⊢ lt "x" ⇐ (ƛ "y" ⇒ ⟦ □ ⟧) in' (` "x" >>= (ƛ "z" ⇒ use File (` "z"))) ⦂ IO (` File) □
-_ = ⊢lt {!!} {!!}
+_ : ∅ ⊢ lt "x" ⇐ (ƛ "y" ⇒ ⟦ □ ⟧) in' ((` "x" · □) >>= (ƛ "z" ⇒ use File (` "z"))) ⦂ IO (` File) □
+_ = ⊢lt (⊢ƛ {τ' = ` "α"}
+            (⊢⟦⟧ ⊢□ OkZ))
+        (⊢>>= (⊢· (⊢` Z (General (SS "α" □ SZ) refl refl))
+                  ⊢□)
+              (⊢ƛ (⊢use (⊢` Z (General SZ refl subTSZ)))))

@@ -306,11 +306,11 @@ ignore ρ (⊢⋎ z z₁ x) = {!!}
 ignore ρ (⊢IOsub z ρ≥:ρ' ok) = ⊢IOsub (ignore ρ z) ρ≥:ρ' ok
 
 
-closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
-       → Γ , x ⦂ close (Γ' , y ⦂ σ') τ' ⊢ e ⦂ τ
-       → σ ≥ σ'
-       → Γ , x ⦂ close (Γ' , y ⦂ σ) τ' ⊢ e ⦂ τ
-closeσ {Γ} {Γ'} {x} {y} {σ} {σ'} {e} τ' τ ⊢e⦂τ' σ>σ' rewrite close> {Γ'} {y} {σ} {σ'} {τ'} σ>σ' = ⊢e⦂τ'
+-- closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
+--        → Γ , x ⦂ close (Γ' , y ⦂ σ') τ' ⊢ e ⦂ τ
+--        → σ ≥ σ'
+--        → Γ , x ⦂ close (Γ' , y ⦂ σ) τ' ⊢ e ⦂ τ
+-- closeσ {Γ} {Γ'} {x} {y} {σ} {σ'} {e} τ' τ ⊢e⦂τ' σ>σ' rewrite close> {Γ'} {y} {σ} {σ'} {τ'} σ>σ' = ⊢e⦂τ'
 
 -- wright & felleisen lemma 4.6
 gen : ∀ {Γ e x σ σ' τ} → Γ , x ⦂ σ' ⊢ e ⦂ τ
@@ -326,13 +326,13 @@ gen {x = y} (⊢ƛ {x = x} ⊢e) σ>σ' with x ≟ y
 gen (⊢· ⊢e' ⊢e) σ>σ' = ⊢· (gen ⊢e' σ>σ') (gen ⊢e σ>σ')
 
 gen {Γ} {x = y} {σ = σ} {σ' = σ'} (⊢lt {Γ , y ⦂ σ'} {τ = τ} {τ' = τ'} {x = x} ⊢e'⦂τ' ⊢e⦂τ) σ>σ' with x ≟ y
-... | yes refl = ⊢lt (gen ⊢e'⦂τ' σ>σ') (sneakIn (closeσ {Γ} {Γ} {x} {y} {σ} {σ'} τ' τ (drop ⊢e⦂τ) σ>σ'))
+... | yes refl = ⊢lt (gen ⊢e'⦂τ' σ>σ') (sneakIn (gen (drop ⊢e⦂τ) (close≥ {Γ} {x} σ>σ')))
 ... | no x≢y =
       let ⊢e⦂τswp = swap x≢y ⊢e⦂τ
           ⊢e⦂τswp' = gen ⊢e⦂τswp σ>σ'
           ⊢e⦂τswp'' = swap (≢-sym x≢y) ⊢e⦂τswp'
-          z = closeσ {Γ , y ⦂ σ} {Γ} {x} {y} τ' τ ⊢e⦂τswp'' σ>σ'
-          in ⊢lt (gen ⊢e'⦂τ' σ>σ') z
+          ⊢e⦂τhyp = gen ⊢e⦂τswp'' (close≥ {Γ} {x} σ>σ')
+          in ⊢lt (gen ⊢e'⦂τ' σ>σ') ⊢e⦂τ
 
 gen (⊢× ⊢e₁ ⊢e₂) σ>σ' = ⊢× (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ')
 gen (⊢π₁ ⊢e) σ>σ' = ⊢π₁ (gen ⊢e σ>σ')
