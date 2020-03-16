@@ -89,7 +89,6 @@ is defined on terms, types and type schemes.
 Substitution on types is defined as usual, but extended to include the
 new types in our system. That is, a substitution is a map from type
 variables to types, written in the form $[\tau/\alpha]$.
-
 \begin{align*}
   \square [\tau/\alpha] &= \square \\
   \alpha' [\tau/\alpha] &=
@@ -107,7 +106,6 @@ written like $[\tau_1/\alpha_1,\ldots,\tau_m/\alpha_m]$.
 
 Substitution is also extended to type schemes, but note that his only
 substitutes \textbf{free} type variables.
-
 \begin{align*}
   \forall \alpha' . \sigma[\tau/\alpha] &=
             \begin{cases}
@@ -121,7 +119,6 @@ It should not be confused with instantiation, where the \textbf{bound}
 type variables $\forall \alpha_1 , \ldots , \alpha_n$ are substituted inside the type of a
 type scheme. Instantiation is not a function though, instead it is
 a relation $\sigma > \tau$ in which we say $\sigma$ can be instantiated to $\tau$.
-
 \begin{mathpar}
   \boxed{\sigma > \tau} \\
   \infer{\operatorname{dom}(s) = \{\alpha_1 , \ldots, \alpha_n\} \\ \tau'[s] = \tau}{\forall \alpha_1 , \ldots , \alpha_n
@@ -133,7 +130,12 @@ i.e.
 $\operatorname{dom}([\tau_1/\alpha,\tau_2/\beta]) = \{\alpha, \beta\}$. This relation can be
 read as, if there exists a substitution $s$ that substitutes exactly
 all the bound type variables in the type scheme
-$\forall \alpha_1, \ldots, \alpha_n . \tau'$ to give the type $\tau$, then $\forall \alpha_1, \ldots, \alpha_n . \tau' > \tau$.
+$\forall \alpha_1, \ldots, \alpha_n . \tau'$ to give the type $\tau$, then $\forall \alpha_1, \ldots, \alpha_n . \tau' >
+\tau$.
+
+Furthermore we define the relation $\sigma > \sigma'$ on type schemes as well,
+where for any two type schemes $\sigma$ and $\sigma'$,
+$\sigma > \sigma'$ if for all $\tau$, $\sigma' > \tau \rightarrow \sigma > \tau$.
 
 We then extend this to define substitution on contexts, not
 instantiation. Substitution on contexts only substitutes \textbf{free}
@@ -142,9 +144,9 @@ type variables.
   \centerdot[\tau/\alpha] = \centerdot \\
   (\Gamma , x : \sigma) [\tau/\alpha] &= \Gamma[\tau/\alpha] , x : \sigma[\tau/\alpha]
 \end{align*}
-
 Substitution is also defined on terms, replacing term variables
 instead of type variables.
+
 \begin{align*}
   \square [v/\alpha] &= \square \\
   \alpha' [v/\alpha] &=
@@ -182,19 +184,19 @@ rules of the Hindley-Damas-Milner system of the form $\Gamma \vdash e : \tau$.
     \inferrule*[Right=Var]{e : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash e : \tau} \and
     \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
     \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
-    \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e' : \tau}
+    \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e' : \tau}
     {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
   \end{mathpar}
 
 Note that in the syntax-directed rules, the typing judgement assigns
 types to terms, not type schemes~\ref{tofte}. Instantiation occurs
 directly within the \textsc{Var} rule, and generalisation occurs
-implicitly in $\bar{\Gamma}$.
+implicitly in $\overline{\Gamma}$.
 
 \newcommand{\fv}{\operatorname{FV}}
 
-Like before, $\bar{\Gamma}$ is defined as
-$$ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
+Like before, $\overline{\Gamma}$ is defined as
+$$ \overline{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
 \textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \fv(\tau) \setminus \fv(\Gamma)$$
 
 Free type variables are defined on types, type schemes and contexts as
@@ -400,10 +402,49 @@ displayed in full in figure~\ref{fig:typingrules}. Let's look at some
 examples at how they can be used to derive types for various
 programs.
 
+
 \begin{mathpar}
-  \infer{ }
-  {\centerdot \vdash let x = \lambda y . \lift{\square} in x \bind \lambda z . x}
+  \mprset {sep=1em}
+  \infer{
+    \infer{
+      \infer{}{\centerdot, y : \alpha \vdash \square : \square}
+    } {
+      \centerdot , y : \alpha \vdash \llbracket \square \rrbracket : \IO_{\textsf{File}} \square
+    } \\
+    \textsf{ok} \ \textsf{File}
+  }
+  { \centerdot \vdash \lambda y . \lift{\square} : \alpha \rightarrow \IO_{\textsf{File}} \square \\ \mathbf{(1)} }
+  \\
+  \infer{
+    \infer{
+      \infer{}{\centerdot,x :\alpha \rightarrow \IO_{\textsf{File}} \square \vdash x : \alpha \rightarrow
+        \IO_{\textsf{File}} \square}
+      \\\\
+      \infer{}{\centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square \vdash \square : \square}
+    }{\centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square  \vdash x \ \square :
+      \IO_{\textsf{File}} \square}
+    \\
+    \infer {
+      \infer{
+        \infer{z : \alpha \in \centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square, z : \alpha \\ \alpha > \square}
+        {\centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square, z : \alpha \vdash z : \square}
+      }
+      {\centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square , z : \alpha \vdash \llbracket z
+        \rrbracket_{\textsf{File}} : \IO_{\textsf{File}} \square}
+    }{
+      \centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square  \vdash \lambda z . \llbracket z
+      \rrbracket_{\textsf{File}} : \IO_{\textsf{File}} \square
+    }
+  }{
+    \centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square \vdash (x \ \square) \bind \lambda z . \llbracket z
+    \rrbracket_{\textsf{File}} : \IO_{\textsf{File}} \square \\ \mathbf{(2)}
+  }
+  
+  \infer{ \mathbf{(1)} \\ \mathbf{(2)} } {\centerdot \vdash \letin{x = \lambda y
+      . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z \rrbracket_{\textsf{File}}} :
+    \IO_{\textsf{File}} \square}
 \end{mathpar}
+
 
 \begin{figure}
   \begin{mathpar}
@@ -413,8 +454,8 @@ programs.
     \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
     \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
       \tau'} \and
-    \inferrule*[Right=Let]{\Gamma \vdash e : \tau \\ \Gamma,x : \bar{\Gamma}(\tau) \vdash e' : \tau'}
-    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau'} \and
+    \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
+    {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau} \and
     % \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
     % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
     % e_3 : \tau} \and
@@ -617,8 +658,8 @@ that can be given to $v \curlyvee v$
     % lambda calculus + HM
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
-    \inferrule{\textsf{value} \ e_2}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ] } \and
-    \inferrule{ }{\letin{x = e_1}{e_2} \leadsto e_2 [ e_1 / x]} \\
+    \inferrule{\textsf{value} \ e'}{ (\lambda x . e) e' \leadsto e [ e' / x ] } \and
+    \inferrule{ }{\letin{x = e}{e'} \leadsto e' [e / x]} \\
 
     % product types
     \inferrule{e_1 \leadsto e_1'}{e_1 \times e_2 \leadsto e_1' \times e_2} \and
@@ -659,12 +700,12 @@ reducing one step at a time, it goes all the way.
 
 \begin{figure}
   \begin{center}
-    % todo: make these side by side
     \tikz \graph[layered layout, grow=right, edges={
-      decoration={snake,amplitude=0.5mm,segment length=2mm,post length=1mm},decorate}] {     a -> b -> c
+      decoration={snake,amplitude=0.5mm,segment length=2mm,post
+        length=1mm},decorate}] {
+      a -> b -> c
     };
     \qquad
-    % give this two head arrows
     \tikz \graph[layered layout,grow=right,edges={->>}] {
       a ->[orient] b -> c;
       a ->[bend right] c;
@@ -779,14 +820,133 @@ reducing one step at a time, it goes all the way.
 
 \section{Type Safety}
 
-A type system is no good unless we can prove it's worth its salt.
+A type system is no good unless we can prove it's worth its salt. In
+this section we will prove a number of lemmas and theorems which will
+eventually show that the type system is sound. We will begin with a
+couple of properties about contexts that we will later use on in
+various other proofs. The first states that if we have two variables
+in the context with the same names but different type schemes, then we
+can ignore the first one as it is overshadowed by the second -- any
+reference to $x$ will result in $x : \sigma'$.
+\begin{lemma} \label{lem:drop}
+  If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
+\end{lemma}
+The second states that we can sneak in another variable before another
+variable of the same name, for the exact same reason.
+\begin{lemma} \label{lem:sneak}
+  If $\Gamma , x : \sigma' \vdash e : \tau$, then for any $\sigma$, $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$
+\end{lemma}
+We can then also say that if two variables $x$ and $y$ are indeed
+different, we are free to permute them and swap them about.
+\begin{lemma} \label{lem:swap}
+  If $x \neq y$ and $\Gamma , x : \sigma, y : \sigma' \vdash e : \tau$, then $\Gamma , y : \sigma' , x : \sigma \vdash e
+  : \tau$
+\end{lemma}
 
-\begin{lemma}
-  If $\sigma' > \sigma$ and $\Gamma,x : \sigma' \vdash e : \tau$, then $\Gamma, x : \sigma \vdash e : \tau$.
-  \label{lem:generalInContext}
+We will also need to show this property about instantiation and the
+close function.
+\begin{lemma} \label{lem:close>}
+  If $\sigma > \sigma'$ then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma, x : \sigma'}(\tau)$.
 \end{lemma}
 \begin{proof}
-  Proved by Milner and Damas. Need to extend to this system?
+  We provide an informal proof as follows.
+  \begin{enumerate}
+  \item If $\sigma > \sigma'$, then for every $\tau$ that $\sigma > \tau$, $\sigma' > \tau$.
+  \item So $\sigma$ must parameterise over at least the same number of type
+    variables if not \textit{more} than $\sigma'$.
+  \item So $\sigma$ has at least the same number of free type variables if
+    not \textit{less} than $\sigma'$.
+  \item By definition of the close function,
+    $\overline{\Gamma, x : \sigma}(\tau)$ will then have at least the same number
+    of bound type variables if not \textit{more} than
+    $\overline{\Gamma, x : \sigma'}(\tau)$.
+  \item So if $\overline{\Gamma, x : \sigma'}(\tau)$ can be instantiated to some
+    $\tau$, then $\overline{\Gamma, x : \sigma}(\tau)$ can also be instantiated to
+    that $\tau$, as it has enough bound type variables to handle
+    everything the former can -- if it had less type variables than the
+    former, then it would not be able to instantiate these types, but
+    for the converse excess type variables can be mapped to whatever.
+  \end{enumerate}
+\end{proof}
+
+Now we prove the generalisation theorem, which states that if a type
+scheme inside the context is an instantiation of another type scheme,
+then we can use the more general type scheme and preserve how things
+are typed. This is an adaptation of a lemma from Wright and
+Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
+adaptation of a lemma from Damas and Milner.
+
+\begin{theorem}[Generalisation]
+  If $\Gamma, x : \sigma' \vdash e : \tau$ and $\sigma > \sigma'$, then ${\Gamma, x : \sigma \vdash e : \tau}$.
+  \label{lem:generalInContext}
+\end{theorem}
+\begin{proof}
+  Begin with induction on the proof for $\Gamma , x : \sigma' \vdash e : \tau$.
+  \begin{description}
+  \item[\rm\textsc{Var}]
+    From the premises we have $x : \sigma' \in \Gamma$ and $\sigma' > \tau$. We also have
+    $\sigma > \sigma'$ but by definition of $\sigma > \sigma'$, if $\sigma' > \tau$ then $\sigma > \tau$.
+    And we also have by definition $x : \sigma \in \Gamma , x : \sigma$. So putting the
+    pieces together, we can use \textsc{Var} to get
+    \begin{mathpar}
+      \infer{x : \sigma \in \Gamma , x : \sigma \\ \sigma > \tau}
+      {\Gamma , x : \sigma \vdash x : \tau}
+    \end{mathpar}
+  \item[\rm\textsc{Abs}]
+    We have $\Gamma , x : \sigma' \vdash \lambda y . e : \tau$. If $x = y$, then we can safely
+    say the premise $\Gamma , x : \sigma' , y : \sigma'' \vdash e : \tau$ becomes $\Gamma , y :
+    \sigma'' \vdash e : \tau$  due to lemma~\ref{lem:drop}. And from this we can
+    then use lemma~\ref{lem:sneak} to get $\Gamma, x : \sigma, y : \sigma'' \vdash e : \tau$,
+    and ultimately $\Gamma , x : \sigma \vdash \lambda y . e : \tau$.
+
+    If $x \neq y$, then we can get $\Gamma , y : \sigma'' , x : \sigma' \vdash e : \tau$ via
+    lemma~\ref{lem:swap}. The induction hypothesis then results in $\Gamma
+    , y : \sigma'' , x : \sigma \vdash e : \tau$, which we can then swap back again to
+    get $\Gamma , x : \sigma , y : \sigma'' \vdash e : \tau$ and so $\Gamma , x : \sigma \vdash \lambda y . e :
+    \tau$.
+  \item[\rm\textsc{Let}]
+    For $\letin{y = e'}{e}$, we have $\Gamma , x : \sigma' \vdash e' : \tau'$ and $\Gamma , x :
+    \sigma' , y : \overline{\Gamma , x : \sigma'}(\tau') \vdash e : \tau$, and we aim to show
+    $\Gamma , x : \sigma \vdash \letin{y=e'}{e} : \tau$.
+    
+    First off, we need to convert the $y : \overline{\Gamma , x : \sigma'}(\tau')$ to a
+    $y : \overline{\Gamma, x : \sigma}(\tau')$ somehow. But it can be shown that if $\sigma >
+    \sigma'$, then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma , x : \sigma'}(\tau)$ due
+    to lemma~\ref{lem:close>}. So by the inductive hypothesis,
+    we are able to get $\Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$.
+
+    If $x = y$ then we can drop $x :
+    \sigma'$ from the context and sneak it back in as $\Gamma , x : \sigma, y :
+    \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$ with lemma~\ref{lem:drop} and
+    lemma~\ref{lem:sneak}. The induction hypothesis then gives us $\Gamma ,
+    x : \sigma \vdash e' : \tau'$ and we construct the proof back together with
+    \textsc{Let} to give $\Gamma , x : \sigma \vdash \letin{y = e'}{e} : \tau$.
+
+    If $x \neq y$, then the proof is a bit more complicated. We take the
+    following steps:
+    \begin{align*}
+      \Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau \\
+      \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma' \vdash e : \tau &&  \text{by
+                                                            swapping,
+                                                            lemma~\ref{lem:swap}}
+      \\
+      \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma \vdash e : \tau && \text{by
+                                                           inductive
+                                                           hypothesis} \\
+      \Gamma , x : \sigma , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau && \text{by swapping again}
+    \end{align*}
+    And proceed to construct the proof for \textsc{Let} as previously.
+  \item[\rm\textsc{App}]
+    From the premises we have $\Gamma , x : \sigma' \vdash e : \tau' \rightarrow \tau$ and $\Gamma , x : \sigma' \vdash
+    e' : \tau'$. We wish to show $\Gamma , x : \sigma \vdash e \ e' : \tau$.
+    We apply the induction hypothesis to get $\Gamma , x : \sigma \vdash e : \tau' \rightarrow \tau$
+    and  $\Gamma , x : \sigma \vdash e' : \tau$. Then use \textsc{App} to build up a
+    proof of $\Gamma , x : \sigma \vdash e \ e' : \tau$.
+  \item[The remaining cases] The rest of the possible proofs for
+    $\Gamma , x : \sigma' \vdash e : \tau$ can all be proved by applying the
+    induction hypothesis on their structure, much like the case for
+    \textsc{App}, and so are omitted for brevity.
+  \end{description}
 \end{proof}
 
 \begin{lemma}
@@ -838,12 +998,12 @@ A type system is no good unless we can prove it's worth its salt.
   \item[\textmd{\boxed{\textsc{Let}}}]
     For $\tau' > \tau$, we have
     \begin{mathpar}
-      \inferrule{\Gamma \vdash e_1 : \tau'' \\ \Gamma, x : \bar{\Gamma}(\tau'') \vdash e_2 :
+      \inferrule{\Gamma \vdash e_1 : \tau'' \\ \Gamma, x : \overline{\Gamma}(\tau'') \vdash e_2 :
         \tau'}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau'}
     \end{mathpar}
     We just need to apply the induction hypothesis on the second
     premise, obtaining
-    $\Gamma, x : \bar{\Gamma}(\tau'') \vdash e_2 : \tau$, and thus
+    $\Gamma, x : \overline{\Gamma}(\tau'') \vdash e_2 : \tau$, and thus
     $\Gamma \vdash \letin{x = e_1}{e_2} : \tau$.
   \item[\textmd{\boxed{\textsc{Product}}}]
     Our expression will have some type $\Gamma \vdash e_1 \times e_2 : \tau_1' \times \tau_2'$, where $\tau_1' \times
@@ -956,9 +1116,9 @@ A type system is no good unless we can prove it's worth its salt.
 
   \item[\boxed{\letin{x = e_1}{e_2} \leadsto e_2[e_1/x]}]
     $$
-    \inferrule*[Right=Let]{\Gamma \vdash e_1 : \tau' \\ \Gamma, x : \bar{\Gamma}(\tau') \vdash e_2 : \tau}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau}
+    \inferrule*[Right=Let]{\Gamma \vdash e_1 : \tau' \\ \Gamma, x : \overline{\Gamma}(\tau') \vdash e_2 : \tau}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau}
     $$
-    As $\bar{\Gamma}(\tau') = \forall \alpha_1 \ldots \alpha_n \tau'$ where $\{\alpha_1,\ldots,\alpha_n\} =
+    As $\overline{\Gamma}(\tau') = \forall \alpha_1 \ldots \alpha_n \tau'$ where $\{\alpha_1,\ldots,\alpha_n\} =
     \textsf{FTV}(\tau') \backslash \textsf{FTV}(\Gamma)$, we know that $\{\alpha_1,\ldots,\alpha_n\} \cap
     \textsf{FTV}(\Gamma) = \emptyset$.
     So by lemma~\ref{lemma:substitution} we have $\Gamma \vdash e_2 [e_1/x] : \tau$.
