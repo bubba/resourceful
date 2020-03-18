@@ -405,7 +405,7 @@ displayed in full in figure~\ref{fig:typingrules}. Let's look at some
 examples at how they can be used to derive types for various
 programs.
 
-\subsection{Bind statements}
+\subsection{Monadic binding}
 Here we show a proof tree for the expression
 $$\letin{x = \lambda y . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z
   \rrbracket_{\textsf{File}}}$$
@@ -489,7 +489,84 @@ $\mathbf{(1)}$ and $\mathbf{(2)}$ all infer $x$ to have different types.
 \end{mathpar}
 
 \subsection{Concurrency}
+Here is our first example of accessing two resources concurrently --
+with a bit of imagination one can think of this as reading a file
+from a disk whilst simultaneously fetching data over the network.
+\begin{mathpar}
+  \mprset {sep=1em}
+  \infer{
+    % app
+    \infer{
+      %abs
+      \infer{
+        % use
+        \infer{
+          \centerdot, x : \alpha \vdash x : \alpha \\
+          \textsf{ok} \ \textsf{File}
+        }{\centerdot, x : \alpha \vdash \llbracket x \rrbracket_{\textsf{File}} : \IO_{\textsf{File}} \alpha}
+      }{\centerdot \vdash \lambda x . \llbracket x \rrbracket_{\textsf{File}} : \alpha \rightarrow \IO_{\textsf{File}} \alpha}
+      \\
+      \centerdot \vdash \square : \square
+    }{\centerdot \vdash (\lambda x . \llbracket x \rrbracket_{\textsf{File}}) \ \square : \IO_{\textsf{File}} \square}
+    \\
+    \infer{ %use
+      \centerdot \vdash \square : \square \\ \textsf{ok} \ \textsf{Net}
+    }{\centerdot \vdash \llbracket \square \rrbracket_{\textsf{Net}} : \IO_{\textsf{Net}} \square}
+    \\
+    \textsf{File} \cap \textsf{Net} = \emptyset
+  }
+  {\centerdot \vdash (\lambda x . \llbracket x \rrbracket_{\textsf{File}}) \ \square) \curlyvee \llbracket \square \rrbracket_{\textsf{Net}} : \IO_{\textsf{File} \cup \textsf{Net}} \square \times \square}
+\end{mathpar}
 
+\subsection{Subsumption}
+Assuming there is a function inside our context called
+\textsf{writeFile} with the type, $\square \rightarrow \IO_{\textsf{File}} \square$, we can
+subsume its heap to be part of a larger heap, namely
+$\textsf{File} \cup \textsf{Net}$. We will show this with the expression
+$$ \llbracket \square \rrbracket_{\textsf{File}} \curlyvee \llbracket \square \rrbracket_{\textsf{Net}}
+\bind
+\lambda x . \textsf{writeFile} \ (\pi_1 \ x)
+$$
+{
+  \begin{mathpar}
+    \Gamma = \centerdot, \textsf{writeFile} : \square \rightarrow \IO_{\textsf{File}} \square \\
+    \infer{ %conc
+      \infer{ %use
+        \Gamma \vdash \square : \square
+      }{\Gamma \vdash \llbracket \square \rrbracket_{\textsf{File}} : \IO_{\textsf{File}} \square} \\
+      \infer{ %use
+        \Gamma \vdash \square : \square
+      }{\Gamma \vdash \llbracket \square \rrbracket_{\textsf{Net}} : \IO_{\textsf{Net}} \square} \\
+      \textsf{File} \cap \textsf{Net} = \emptyset
+    }
+    {\Gamma \vdash \llbracket \square \rrbracket_{\textsf{File}} \curlyvee \llbracket \square \rrbracket_{\textsf{Net}} : \IO_{\textsf{File}
+        \cup \textsf{Net}} \square \\ \mathbf{(1)}}
+    \\
+    \infer{ %app
+      \Gamma , x : \square \times \square \vdash \textsf{writeFile} : \square \rightarrow \IO_{\textsf{File}} \square
+      \\
+      \infer{
+        \Gamma , x : \square \times \square \vdash x : \square \times \square
+      }{\Gamma , x : \square \times \square \vdash \pi_1 \ x : \square}
+    }{\Gamma , x : \square \times \square \vdash \textsf{writeFile} \ (\pi_1 \ x) :
+      \IO_{\textsf{File}} \square \\ \mathbf{(2)}}
+    \\
+    \infer{ %bind
+      \mathbf{(1)} \\
+      \infer{ %abs
+        \infer*[Right=Sub]{ %sub
+          \mathbf{(2)} \\
+          \textsf{File} \geq: \textsf{File} \cup \textsf{Net} \\
+          \textsf{ok} \ \textsf{File} \cup \textsf{Net}
+        }{\Gamma, x : \square \times \square \vdash \textsf{writeFile} \ (\pi_1 \ x) : \IO_{\textsf{File} \cup \textsf{Net}} \square}
+      }{\Gamma \vdash \lambda x . \textsf{writeFile} \ (\pi_1 \ x) : \IO_{\textsf{File} \cup \textsf{Net}} \square}
+    }{\Gamma \vdash
+      \llbracket \square \rrbracket_{\textsf{File}} \curlyvee \llbracket \square \rrbracket_{\textsf{Net}}
+      \bind
+      \lambda x . \textsf{writeFile} \ (\pi_1 \ x)
+      : \IO_{\textsf{File} \cup \textsf{Net}} \square}
+  \end{mathpar}
+}
 
 \begin{figure}
   \begin{mathpar}
