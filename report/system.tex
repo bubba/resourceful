@@ -57,6 +57,9 @@ new heap made by merging $e$ and $e'$s heaps -- provided that they do
 not overlap and are well formed (Well formedness will be defined later
 on).
 
+Note that for our type schemes, we may omit the bindings and write
+$\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as in the context.
+
 \begin{figure}
 \begin{grammar}
 
@@ -402,7 +405,13 @@ displayed in full in figure~\ref{fig:typingrules}. Let's look at some
 examples at how they can be used to derive types for various
 programs.
 
-
+\subsection{Bind statements}
+Here we show a proof tree for the expression
+$$\letin{x = \lambda y . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z
+  \rrbracket_{\textsf{File}}}$$
+We have a use of the lift operator, from which we can then infer
+must be a heap of \textsf{File}, because of the use operator
+restricting it later down the line.
 \begin{mathpar}
   \mprset {sep=1em}
   \infer{
@@ -424,7 +433,7 @@ programs.
     }{\centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square  \vdash x \ \square :
       \IO_{\textsf{File}} \square}
     \\
-    \infer {
+    \infer{
       \infer{
         \infer{z : \alpha \in \centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square, z : \alpha \\ \alpha > \square}
         {\centerdot, x : \alpha \rightarrow \IO_{\textsf{File}} \square, z : \alpha \vdash z : \square}
@@ -444,6 +453,42 @@ programs.
       . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z \rrbracket_{\textsf{File}}} :
     \IO_{\textsf{File}} \square}
 \end{mathpar}
+
+\subsection{Let polymorphism}
+This example doesn't contain any resourceful elements, but is just an
+example of how let polymorphism allows the same variable lookup to be
+inferred different types on each call site. Note how the premises in
+$\mathbf{(1)}$ and $\mathbf{(2)}$ all infer $x$ to have different types.
+\begin{mathpar}
+  % app
+  \infer{
+    . , x : \alpha \rightarrow \alpha \vdash x : (\square \rightarrow \square) \rightarrow (\square \rightarrow \square) \\
+    . , x : \alpha \rightarrow \alpha \vdash x : \square \rightarrow \square
+  }
+  {\centerdot, x : \alpha \rightarrow \alpha \vdash x \ x : \square \rightarrow \square \\ \mathbf{(1)}}
+  \\
+  \infer{
+    . , x : \alpha \rightarrow \alpha \vdash x : \square \rightarrow \square \\
+    . , x : \alpha \rightarrow \alpha \vdash \square : \square
+  }
+  {\centerdot, x : \alpha \rightarrow \alpha \vdash x \ \square : \square \\ \mathbf{(2)}}
+  \\
+  \infer{
+    \infer{
+      \infer{
+        y : \alpha \in \centerdot , y : \alpha \\ \alpha > \alpha
+      }{\centerdot , y : \alpha \vdash y : \alpha}
+    }
+    {\centerdot \vdash \lambda y . y : \alpha \rightarrow \alpha} \\
+    % app
+    \infer{
+      \mathbf{(1)} \\ \mathbf{(2)}
+    }{\centerdot, x : \alpha \rightarrow \alpha \vdash (x \ x) \ ( x \ \square) : \square}
+  }
+  { \centerdot \vdash \letin{x = \lambda y . y}{(x \ x) \ (x \ \square)} : \square}
+\end{mathpar}
+
+\subsection{Concurrency}
 
 
 \begin{figure}
