@@ -555,4 +555,8 @@ disjoint-sym (DisThere x∉ d) = disjoint-insert (disjoint-sym d) x∉
 disjointWeaken : ∀ {x xs ys} → Disjoint (x ∷ xs) ys → Disjoint xs ys
 disjointWeaken (DisThere _ d) = d
 
+postulate disjointSubContext : ∀ {Γ s} → Disjoint (subRegion s) (FTVC Γ) → subC s Γ ≡ Γ
+
+postulate disjointSubTypeScheme : ∀ {αs τ s} → Disjoint (subRegion s) αs → sub s (VV αs τ) ≡ VV αs τ
+
 postulate freshTypeVars : (αs : List Id) → ∃[ βs ] (Disjoint αs βs)
