@@ -194,6 +194,41 @@ nice property of the system.
 
 \section{If statements}
 
+\section{Heap polymorphism}
+It would be convenient if we were able to have expressions like the
+following well-typed:
+\begin{align*}
+\Gamma &= \centerdot , f : \square \rightarrow \IO_{\textsf{File}} \square, g : \square \rightarrow \IO_{\textsf{Net}} \square \\
+\Gamma &\vdash \letin{x = \llbracket \square \rrbracket}{(x \bind f) \curlyvee (x \bind g)} : \IO_{\textsf{File} \cup
+  \textsf{Net}} \square \times \square
+\end{align*}
+This is not possible in the current type system: $x$ needs to be both
+$\IO_{\textsf{File}}$ and $\IO_{\textsf{Net}}$ simultaneously! This is
+very much the same question that Hindley, Damas and Milner set out to
+solve, except instead of polymorphic \textit{types} we want to have
+polymorphic \textit{heaps}.
+The basic idea for this would involve extending the definition of a
+heap to allow for variable lookup:
+\begin{grammar}
+  <heap $\rho$> ::= $r$ | $\sigma \cup \sigma'$ | \textsf{World} | $\textbf{h}$
+\end{grammar}
+And then redefining substitutions so that it is a pair of a map from
+type variables to types, and a map from heap variables to heaps.
+$$ S : ( \alpha \mapsto \tau \times h \mapsto \rho ) $$
+Then in the definition of substitution, whenever a mapping from a heap
+variable to heap is encountered we would apply the substitution.
+\begin{align*}
+  (\IO_{\rho'} \tau)[h/\rho] &= \IO_{\rho'[h/\rho]} \tau \\
+  r[h/\rho] &= r  && \textsf{Definining substitution on heaps now} \\
+  (\rho_1 \cup \rho_2)[h/\rho] &= \rho_1[h/\rho] \cup \rho_2[h/\rho] \\
+  \textsf{World}[h/\rho] &= \textsf{World} \\
+  h'[h/\rho] &=
+            \begin{cases}
+              \rho & \mathsf{if} h' = h \\
+              h' & \mathsf{otherwise}
+            \end{cases}
+\end{align*}
+
 %%% Local Variables:
 %%% TeX-master: "report"
 %%% TeX-engine: luatex
