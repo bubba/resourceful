@@ -4,11 +4,14 @@ open import Grammar public
 open import Substitution public
 open import Data.Empty using (⊥; ⊥-elim)
 
-open import Data.List using (List; _∷_; [_]; []; foldl; filter; any; _++_)
+open import Data.List using (List; _∷_; [_]; []; foldl; filter; any; _++_; deduplicate)
 open import Data.List.Membership.Setoid.Properties
 import Data.List.Relation.Binary.Subset.Setoid as Subset
 
-open import Data.String using (String; _≟_; _==_; _≈_)
+open import Data.List.Fresh using (List#; _∷#_)
+import Data.List.Fresh as Fresh
+
+open import Data.String using (String; _≟_; _==_)
 open import Data.String.Properties using (≡-setoid)
 open module SubsetString = Subset ≡-setoid
 
@@ -19,11 +22,12 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 import Data.List.Membership.Setoid as Membership
 open module MembershipString = Membership ≡-setoid using (_∈_; _∉_; find)
 
+open import Relation.Binary using (Rel)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Nullary.Negation using (¬?)
 open import Relation.Unary using (Pred; Decidable)
-open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _∎)
 open import Agda.Builtin.Bool
 open import Data.Bool using (not)
 
@@ -314,18 +318,26 @@ FV (π₁ e) = FV e
 FV (π₂ e) = FV e
 FV (e₁ ⋎ e₂) = FV e₁ ++ FV e₂
 
+UList : (A : Set) → Set
+UList A = List# A _≢_
+
+-- _++U_ : ∀ {A : Set} → UList A → UList A → UList A
+-- a ++U b = {!!}
+
 -- Free *type* variables, types
+-- TODO: change list with a fresh list with ≢ relation
 FTVT : Type → List Id
-FTVT (` α) = [ α ]
+FTVT (` α) = α ∷ []
 FTVT □ = []
-FTVT (a ⇒ b) = FTVT a ++ FTVT b
+FTVT (a ⇒ b) = deduplicate _≟_ (FTVT a ++ FTVT b)
 FTVT (IO σ τ) = FTVT τ
-FTVT (a × b) = FTVT a ++ FTVT b
+FTVT (a × b) = deduplicate _≟_ (FTVT a ++ FTVT b)
 
 subRegion : Substitution → List Id
 subRegion SZ = []
 subRegion (SS α τ s) = FTVT τ ++ subRegion s
 
+-- _/#_ : ∀ {a r} {A : Set a} {R : Rel A r} → List# A R → List# A R → List# A R
 
 -- Free *type* variables
 FTV : TypeScheme → List Id
@@ -336,6 +348,9 @@ FTV (` τ) = FTVT τ
 FTVC : Context → List Id
 FTVC ∅ = []
 FTVC (c , x ⦂ σ) = FTVC c ++ FTV σ
+
+-- UListToList : ∀ {A : Set} → UList A → List A
+-- UListToList a = {!!}
 
 close : Context → Type → TypeScheme
 close Γ τ = VV (FTVT τ / FTVC Γ) τ
@@ -503,10 +518,10 @@ _ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ( □ ⇒ □ )
 _ = ⊢ƛ ⊢□
 
 _ : ∅ , "x" ⦂ (V "x" · (` (` "x" ⇒ ` "x"))) ⊢ (` "x" · □) ⦂ □
-_ = ⊢· (⊢` Z (General (SS "x" □ SZ) refl refl)) ⊢□
+_ = ⊢· (⊢` Z (Inst (SS "x" □ SZ) refl refl)) ⊢□
 
 _ : ∅ ⊢ ƛ "x" ⇒ (` "x") ⦂ ( ` "α" ⇒ ` "α" )
-_ = ⊢ƛ (⊢` Z (General SZ refl refl))
+_ = ⊢ƛ (⊢` Z (Inst SZ refl refl))
 
 postulate roundtripSub : ∀ {Γ x σ e τ}
                → (s : BJS)

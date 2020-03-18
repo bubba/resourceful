@@ -21,7 +21,7 @@ import Data.List.Membership.Setoid as Membership
 open module MembershipString = Membership ≡-setoid using (_∈_;_∉_; find)
 open import Data.List.Membership.Setoid.Properties
 
-open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+open Relation.Binary.PropositionalEquality.≡-Reasoning using (begin_; _≡⟨⟩_; _∎)
 
 open import Data.Product
   using (proj₁; proj₂; ∃; ∃-syntax)
@@ -332,7 +332,7 @@ gen {Γ} {x = y} {σ = σ} {σ' = σ'} (⊢lt {Γ , y ⦂ σ'} {τ = τ} {τ' = 
           ⊢e⦂τswp' = gen ⊢e⦂τswp σ>σ'
           ⊢e⦂τswp'' = swap (≢-sym x≢y) ⊢e⦂τswp'
           ⊢e⦂τhyp = gen ⊢e⦂τswp'' (close≥ {Γ} {x} σ>σ')
-          in ⊢lt (gen ⊢e'⦂τ' σ>σ') ⊢e⦂τ
+          in ⊢lt (gen ⊢e'⦂τ' σ>σ') ⊢e⦂τhyp
 
 gen (⊢× ⊢e₁ ⊢e₂) σ>σ' = ⊢× (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ')
 gen (⊢π₁ ⊢e) σ>σ' = ⊢π₁ (gen ⊢e σ>σ')
@@ -355,7 +355,7 @@ gen (⊢IOsub ⊢e ρ≥:ρ' ok) σ>σ' = ⊢IOsub (gen ⊢e σ>σ') ρ≥:ρ' o
 
 
 sub> : ∀ {s σ τ} → σ > τ → sub s σ > subT s τ
-sub> {s} {σ} (General s' x y) = General (s' ∘ˢ s) {!!} {!!}
+sub> {s} {σ} (Inst s' x y) = Inst (s' ∘ˢ s) {!!} {!!}
 
 -- tofte lemma 2.6
 -- lemma26 : ∀ {s σ σ' τ} → σ > τ → σ ⇒ s ⇒ σ' → σ' > subT s τ)
@@ -467,7 +467,7 @@ subst : ∀ {Γ x e e' αs τ τ'}
       → Disjoint αs (FTVC Γ)
         -------------------
       → Γ ⊢ e' [ x := e ] ⦂ τ'
-subst {Γ} {x = y} {e} {αs = αs} {τ = τ} {τ' = τ'} ⊢e (⊢` {x = x} Z (General s ds≡αs refl)) ∉Γ
+subst {Γ} {x = y} {e} {αs = αs} {τ = τ} {τ' = τ'} ⊢e (⊢` {x = x} Z (Inst s ds≡αs refl)) ∉Γ
   rewrite TSvars≡ {αs} {τ} with ds≡αs | x ≟ y
 ... | refl | yes refl = prf (prt2 prt1)
     where prt1 : subC s Γ ⊢ e ⦂ subT s τ
@@ -569,7 +569,7 @@ oktsub {s} {□} okt = Ok□
 oktsub {s} {τ × τ₁} (Ok× okt okt₁) = Ok× (oktsub okt) (oktsub okt₁)
 
 oktstoτ : ∀ {σ τ} → OkTS σ → σ > τ → OkT τ
-oktstoτ {σ} (OkTSZ {αs} {τ} okτ) (General s x₁ refl) with oktsub {s} okτ | TStype (VV αs τ) | extractVV≡ {αs} {τ}
+oktstoτ {σ} (OkTSZ {αs} {τ} okτ) (Inst s x₁ refl) with oktsub {s} okτ | TStype (VV αs τ) | extractVV≡ {αs} {τ}
 ... | oks | .τ | refl = oks
 
 mustBeOk : ∀ {Γ e ρ τ} → OkC Γ → Γ ⊢ e ⦂ IO ρ τ → Ok ρ

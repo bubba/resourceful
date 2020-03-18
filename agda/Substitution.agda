@@ -129,7 +129,7 @@ _ = refl
 
 infixr 3 _>_
 data _>_ : TypeScheme → Type → Set where
-  General : ∀ {σ τ}
+  Inst : ∀ {σ τ}
     → (s : Substitution)
     → subDomain s ≡ TSvars σ
     → subT s (TStype σ) ≡ τ
@@ -137,13 +137,13 @@ data _>_ : TypeScheme → Type → Set where
     → σ > τ
 
 data _≥_ : (σ : TypeScheme) → (σ' : TypeScheme) → Set where
-  General : ∀ {σ σ'}
-            → (∀ {τ} → σ' > τ → σ > τ)
-            -------------------
-            → σ ≥ σ'
+  Inst : ∀ {σ σ'}
+       → (∀ {τ} → σ' > τ → σ > τ)
+         -------------------
+       → σ ≥ σ'
 
 _ : V "a" · (` (` "a" ⇒ ` "a")) > (□ ⇒ □)
-_ = General (SS "a" □ SZ) refl refl
+_ = Inst (SS "a" □ SZ) refl refl
 
 
 -- inst∘ : ∀ (s1 s2 σ) → inst (s2 ∘ s1) σ ≡ inst s2 (sub s1 σ)
@@ -151,15 +151,15 @@ _ = General (SS "a" □ SZ) refl refl
 -- inst∘ (SS i τ s1) s2 σ = inst∘ {!!} s2 σ
 
 -- ≥trans : ∀ {σ σ' σ''} → σ ≥ σ' → σ' ≥ σ'' → σ ≥ σ''
--- ≥trans {σ} {σ'} (General s1 s1p) (General s2 s2p) = General (s2 ∘ s1) (trans (trans (asdf s1 s2 σ) a) s2p)
+-- ≥trans {σ} {σ'} (Inst s1 s1p) (Inst s2 s2p) = Inst (s2 ∘ s1) (trans (trans (asdf s1 s2 σ) a) s2p)
 --   where a : sub s2 (sub s1 σ) ≡ sub s2 σ'
 --         a = cong (sub s2) s1p
 
 >trans : ∀ {σ σ' τ} → σ ≥ σ' → σ' > τ → σ > τ
->trans {σ} {σ'} (General f) σ'>τ = f σ'>τ
+>trans {σ} {σ'} (Inst f) σ'>τ = f σ'>τ
 
 ≥refl : ∀ {σ} → σ ≥ σ
-≥refl = General λ x → x
+≥refl = Inst λ x → x
 
 >self : ∀ {τ} → ` τ > τ
->self = General SZ refl subTSZ
+>self = Inst SZ refl subTSZ

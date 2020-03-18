@@ -29,16 +29,38 @@ z : ∀ {Γ r} → ¬ (Γ ⊢ ⟦ □ ⟧ ⦂ IO (` r ∪ ` r) □)
 z (⊢⟦⟧ ⊢e ok) = ¬okρ∪ρ ok
 z (⊢IOsub _ _ ok) = ¬okρ∪ρ ok
 
--- mustBeConc : ∀ {Γ e τ ρ} → 
-
-
--- n : ¬ (∅ ⊢ use File □ ⋎ use File □ ⦂ IO (` File ∪  ` File) (□ × □))
--- n (⊢⋎ ⊢e ⊢e₁ (DHZ x)) = x refl
--- n (⊢IOsub ⊢e x) = let z = n ⊢e in ?
-
+-- monadic binding and how lifting adapts to the resource
 _ : ∅ ⊢ lt "x" ⇐ (ƛ "y" ⇒ ⟦ □ ⟧) in' ((` "x" · □) >>= (ƛ "z" ⇒ use File (` "z"))) ⦂ IO (` File) □
 _ = ⊢lt (⊢ƛ {τ' = ` "α"}
             (⊢⟦⟧ ⊢□ OkZ))
-        (⊢>>= (⊢· (⊢` Z (General (SS "α" □ SZ) refl refl))
+        (⊢>>= (⊢· (⊢` Z (Inst (SS "α" □ SZ) refl refl))
                   ⊢□)
-              (⊢ƛ (⊢use (⊢` Z (General SZ refl subTSZ)))))
+              (⊢ƛ (⊢use (⊢` Z (Inst SZ refl subTSZ)))))
+
+-- let polymoprhism
+_ : ∅ ⊢ lt "x" ⇐ (ƛ "z" ⇒ ` "z") in' (` "x" · ` "x") · (` "x" · □ ) ⦂ □
+_ = ⊢lt (⊢ƛ {τ' = ` "α"} {τ = ` "α"} (⊢` Z (Inst SZ refl refl)))
+        (⊢· (⊢· (⊢` Z (Inst (SS "α" (□ ⇒ □) SZ) refl refl))
+                (⊢` Z (Inst (SS "α" □ SZ) refl refl)))
+            (⊢· (⊢` Z (Inst (SS "α" □ SZ) refl refl))
+                ⊢□))
+
+-- a simple usage of the concurrency operator
+_ : ∅ ⊢ ((ƛ "x" ⇒ use File (` "x")) · □) ⋎ (use Net □) ⦂ IO (` File ∪ ` Net) (□ × □)
+_ = ⊢⋎ (⊢· (⊢ƛ (⊢use (⊢` Z (Inst SZ refl refl))))
+           ⊢□)
+       (⊢use ⊢□) (OkS OkZ OkZ (DHZ (λ ())))
+
+
+-- an example of how IO monads can be subsumed into using more resources
+-- than necessary
+_ : ∅ , "writeFile" ⦂ ` (□ ⇒ IO (` File) □)
+    ⊢ (use File □) ⋎ (use Net □) >>= ƛ "x" ⇒ (` "writeFile") · (π₁ (` "x"))
+      ⦂ IO (` File ∪ ` Net) (□)
+_ = ⊢>>= (⊢⋎ (⊢use ⊢□) (⊢use ⊢□) okFN)
+         (⊢ƛ (⊢IOsub (⊢· (⊢` (S Z (λ ())) (Inst SZ refl refl))
+                         (⊢π₁ (⊢` Z (Inst SZ refl refl))))
+                     (≥:∪₂ ≥:Refl)
+                     okFN))
+  where okFN : Ok (` File ∪ ` Net)
+        okFN = OkS OkZ OkZ (DHZ (λ ()))

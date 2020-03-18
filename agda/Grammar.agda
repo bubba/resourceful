@@ -34,8 +34,8 @@ data Term : Set where
   □     : Term
   use : Resource → Term → Term
   _×_ : Term → Term → Term
-  π₁_ : Term → Term
-  π₂_ : Term → Term
+  π₁ : Term → Term
+  π₂ : Term → Term
   _⋎_ : Term → Term → Term
   
 infix 9 _[_:=_]
@@ -87,6 +87,7 @@ data Type : Set where
   □ : Type
   _×_ : Type → Type → Type
 
+infixl 6 V_·_
 data TypeScheme : Set where
   V_·_ : Id → TypeScheme → TypeScheme
   `_ : Type → TypeScheme
