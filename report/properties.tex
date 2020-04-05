@@ -1,0 +1,328 @@
+A type system is no good unless we can prove it is worth its salt. In
+this section we will prove a number of lemmas and theorems which will
+eventually show that the type system is sound. We will begin with a
+couple of properties about contexts that we will later use on in
+various other proofs. The first states that if we have two variables
+in the context with the same names but different type schemes, then we
+can ignore the first one as it is overshadowed by the second -- any
+reference to $x$ will result in $x : \sigma'$.
+\begin{lemma} \label{lem:drop}
+  If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
+\end{lemma}
+The second states that we can sneak in another variable before another
+variable of the same name, for the exact same reason.
+\begin{lemma} \label{lem:sneak}
+  If $\Gamma , x : \sigma' \vdash e : \tau$, then for any $\sigma$, $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$
+\end{lemma}
+We can then also say that if two variables $x$ and $y$ are indeed
+different, we are free to permute them and swap them about.
+\begin{lemma} \label{lem:swap}
+  If $x \neq y$ and $\Gamma , x : \sigma, y : \sigma' \vdash e : \tau$, then $\Gamma , y : \sigma' , x : \sigma \vdash e
+  : \tau$
+\end{lemma}
+
+We will also need to show this property about instantiation and the
+close function.
+\begin{lemma} \label{lem:close>}
+  If $\sigma > \sigma'$ then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma, x : \sigma'}(\tau)$.
+\end{lemma}
+\begin{proof}
+  We provide an informal proof as follows.
+  \begin{enumerate}
+  \item If $\sigma > \sigma'$, then for every $\tau$ that $\sigma > \tau$, $\sigma' > \tau$.
+  \item So $\sigma$ must parameterise over at least the same number of type
+    variables if not \textit{more} than $\sigma'$.
+  \item So $\sigma$ has at least the same number of free type variables if
+    not \textit{less} than $\sigma'$.
+  \item By definition of the close function,
+    $\overline{\Gamma, x : \sigma}(\tau)$ will then have at least the same number
+    of bound type variables if not \textit{more} than
+    $\overline{\Gamma, x : \sigma'}(\tau)$.
+  \item So if $\overline{\Gamma, x : \sigma'}(\tau)$ can be instantiated to some
+    $\tau$, then $\overline{\Gamma, x : \sigma}(\tau)$ can also be instantiated to
+    that $\tau$, as it has enough bound type variables to handle
+    everything the former can -- if it had less type variables than the
+    former, then it would not be able to instantiate these types, but
+    for the converse excess type variables can be mapped to whatever.
+  \end{enumerate}
+\end{proof}
+
+Now we prove the generalisation theorem, which states that if a type
+scheme inside the context is an instantiation of another type scheme,
+then we can use the more general type scheme and preserve how things
+are typed. This is an adaptation of a lemma from Wright and
+Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
+adaptation of a lemma from Damas and Milner.
+
+\begin{theorem}[Generalisation]
+  If $\Gamma, x : \sigma' \vdash e : \tau$ and $\sigma > \sigma'$, then ${\Gamma, x : \sigma \vdash e : \tau}$.
+  \label{lem:generalInContext}
+\end{theorem}
+\begin{proof}
+  Begin with induction on the proof for $\Gamma , x : \sigma' \vdash e : \tau$.
+  \begin{description}
+  \item[\rm\textsc{Var}]
+    From the premises we have $x : \sigma' \in \Gamma$ and $\sigma' > \tau$. We also have
+    $\sigma > \sigma'$ but by definition of $\sigma > \sigma'$, if $\sigma' > \tau$ then $\sigma > \tau$.
+    And we also have by definition $x : \sigma \in \Gamma , x : \sigma$. So putting the
+    pieces together, we can use \textsc{Var} to get
+    \begin{mathpar}
+      \infer{x : \sigma \in \Gamma , x : \sigma \\ \sigma > \tau}
+      {\Gamma , x : \sigma \vdash x : \tau}
+    \end{mathpar}
+  \item[\rm\textsc{Abs}]
+    We have $\Gamma , x : \sigma' \vdash \lambda y . e : \tau$. If $x = y$, then we can safely
+    say the premise $\Gamma , x : \sigma' , y : \sigma'' \vdash e : \tau$ becomes $\Gamma , y :
+    \sigma'' \vdash e : \tau$  due to lemma~\ref{lem:drop}. And from this we can
+    then use lemma~\ref{lem:sneak} to get $\Gamma, x : \sigma, y : \sigma'' \vdash e : \tau$,
+    and ultimately $\Gamma , x : \sigma \vdash \lambda y . e : \tau$.
+
+    If $x \neq y$, then we can get $\Gamma , y : \sigma'' , x : \sigma' \vdash e : \tau$ via
+    lemma~\ref{lem:swap}. The induction hypothesis then results in $\Gamma
+    , y : \sigma'' , x : \sigma \vdash e : \tau$, which we can then swap back again to
+    get $\Gamma , x : \sigma , y : \sigma'' \vdash e : \tau$ and so $\Gamma , x : \sigma \vdash \lambda y . e :
+    \tau$.
+  \item[\rm\textsc{Let}]
+    For $\letin{y = e'}{e}$, we have $\Gamma , x : \sigma' \vdash e' : \tau'$ and $\Gamma , x :
+    \sigma' , y : \overline{\Gamma , x : \sigma'}(\tau') \vdash e : \tau$, and we aim to show
+    $\Gamma , x : \sigma \vdash \letin{y=e'}{e} : \tau$.
+    
+    First off, we need to convert the $y : \overline{\Gamma , x : \sigma'}(\tau')$ to a
+    $y : \overline{\Gamma, x : \sigma}(\tau')$ somehow. But it can be shown that if $\sigma >
+    \sigma'$, then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma , x : \sigma'}(\tau)$ due
+    to lemma~\ref{lem:close>}. So by the inductive hypothesis,
+    we are able to get $\Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$.
+
+    If $x = y$ then we can drop $x :
+    \sigma'$ from the context and sneak it back in as $\Gamma , x : \sigma, y :
+    \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$ with lemma~\ref{lem:drop} and
+    lemma~\ref{lem:sneak}. The induction hypothesis then gives us $\Gamma ,
+    x : \sigma \vdash e' : \tau'$ and we construct the proof back together with
+    \textsc{Let} to give $\Gamma , x : \sigma \vdash \letin{y = e'}{e} : \tau$.
+
+    If $x \neq y$, then the proof is a bit more complicated. We take the
+    following steps:
+    \begin{align*}
+      \Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau \\
+      \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma' \vdash e : \tau &&  \text{by
+                                                            swapping,
+                                                            lemma~\ref{lem:swap}}
+      \\
+      \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma \vdash e : \tau && \text{by
+                                                           inductive
+                                                           hypothesis} \\
+      \Gamma , x : \sigma , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau && \text{by swapping again}
+    \end{align*}
+    And proceed to construct the proof for \textsc{Let} as previously.
+  \item[\rm\textsc{App}]
+    From the premises we have $\Gamma , x : \sigma' \vdash e : \tau' \rightarrow \tau$ and $\Gamma , x : \sigma' \vdash
+    e' : \tau'$. We wish to show $\Gamma , x : \sigma \vdash e \ e' : \tau$.
+    We apply the induction hypothesis to get $\Gamma , x : \sigma \vdash e : \tau' \rightarrow \tau$
+    and  $\Gamma , x : \sigma \vdash e' : \tau$. Then use \textsc{App} to build up a
+    proof of $\Gamma , x : \sigma \vdash e \ e' : \tau$.
+  \item[The remaining cases] The rest of the possible proofs for
+    $\Gamma , x : \sigma' \vdash e : \tau$ can all be proved by applying the
+    induction hypothesis on their structure, much like the case for
+    \textsc{App}, and so are omitted for brevity.
+  \end{description}
+\end{proof}
+
+
+\begin{lemma} \label{lem:ignore}
+  TODO
+\end{lemma}
+
+\begin{lemma} \label{lem:subContextTyping}
+  If $\Gamma \vdash e : \tau$, then for any substitution $s$, $\Gamma[s] \vdash e : \tau[s]$.
+\end{lemma}
+
+
+Another important lemma that we need to show is the substitution
+lemma, which relates to substituting a variable for an expression,
+whose type we can prove. The following proof is adapted from Wright
+and Felleisen~\cite{wright1994}.
+
+\begin{lemma}[Substitution] \label{lem:substitution}
+  If $\Gamma \vdash e : \tau$ and ${\Gamma , x : \forall \alpha_1, \ldots, \alpha_n . \tau \vdash e' : \tau'}$, and ${x \notin \dom(\Gamma)}$ and
+  ${\alpha_1 , \ldots, \alpha_n \cap \ftv(\Gamma) = \emptyset}$, then ${\Gamma \vdash e' [e/x] : \tau'}$.
+\end{lemma}
+Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x_n :
+\sigma_n)$ is defined as $\{ x_1 , \ldots , x_n \}$.
+\begin{proof}
+  Begin with induction on the proof of $\Gamma , x : \forall \alpha_1, \ldots, \alpha_n . \tau \vdash e'
+  : \tau'$. For brevity we will sometimes refer to $\forall \alpha_1,\ldots,\alpha_n . \tau$ as $\sigma$.
+  \begin{description}
+  \item[\rm\textsc{Var}] We have
+    $\Gamma , x : \sigma \vdash y : \tau'$ and want to show $\Gamma \vdash y[e/x] : \tau'$.
+
+    If $y \neq x$, then by definition $y [e/x] = y$, so we just need to
+    show $\Gamma \vdash y : \tau'$. From the premises we also have
+    $y : \tau' \in \Gamma , x : \sigma$, but since $y \ne x$ we have $y : \tau' \in \Gamma$. And
+    from here we can use \textsc{Var} to get $\Gamma \vdash y : \tau'$.
+
+    If $y = x$, then we need to show $\Gamma \vdash x : \tau'$. From the premise of
+    ${\Gamma , x : \forall \alpha_1\ldots\alpha_n . \tau \vdash x : \tau'}$ we have
+    ${\forall \alpha_1\ldots\alpha_n . \tau > \tau'}$, so there exists a substitution
+    $s$ which replaces exactly $\alpha_1,\ldots,\alpha_n$, such that
+    $\tau[s] = \tau'$.
+
+    We can use lemma~\ref{lem:subContextTyping} to get
+    $\Gamma[s] \vdash e : \tau[s]$, or $\Gamma[s] \vdash e : \tau'$. And furthermore, because
+    ${\alpha_1 , \ldots, \alpha_n \cap \ftv(\Gamma) = \emptyset}$, applying $s$ to $\Gamma$ will do
+    nothing since $\Gamma$'s free type variables are distinct, i.e. $\Gamma =
+    \Gamma[s]$. Leaving us with $\Gamma \vdash e : \tau'$ as required.
+
+  \item[\rm\textsc{Abs}]
+    We have $\Gamma , x : \sigma \vdash \lambda y . e' : \tau_1 \rightarrow \tau_2$ and want to show $\Gamma \vdash (\lambda y
+    . e')[e/x] : \tau_1 \rightarrow \tau_2$. Similarly to the case for $\textsc{var}$, we
+    first check to see if $x = y$.
+
+    If $y = x$, then the inner binding of $y$ will shadow $x$. That
+    is, we have the premise $\Gamma , x : \sigma, x : \tau_1 \vdash e' : \tau_2$, and we can
+    drop the previous $x$ from the context with
+    lemma~\ref{lem:drop} to get $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
+    By definition, if $x = y$ then $(\lambda y . e')[e/x] = \lambda y . e'$, so we
+    just need to show $\Gamma \vdash \lambda y . e' : \tau_1 \rightarrow \tau_2$, which can construct
+    with \textsc{Abs} and $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
+
+    If $y \ne x$, then we the proof is more involved. From the premises
+    we have
+    $$\Gamma , x : \alpha_1,\ldots,\alpha_n . \tau , y : \tau_1 \vdash e' : \tau_2$$.
+    We start by choosing a substitution $s$, which maps $\alpha_1 , \ldots, \alpha_n$
+    to fresh type variables $\alpha'_1, \ldots,\alpha'_n$. Additionally, they are
+    distinct as follows.
+    $$\ftv(\Gamma) \cap \alpha_1,\ldots,\alpha_n \cap \alpha'_1,\ldots,\alpha'_n = \emptyset$$
+
+    Now we manipulate the premise in the following order.
+    \begin{align*}
+      \Gamma , y : \tau_1 , x : \forall\alpha_1\ldots\alpha_n . \tau &\vdash e' : \tau_2 && \text{by swapping,
+                                                   lemma~\ref{lem:swap}}
+      \\
+      (\Gamma , y : \tau_1 , x : \forall\alpha_1\ldots\alpha_n . \tau)[s] &\vdash e' : \tau_2 && \text{by
+                                                     lemma~\ref{lem:subContextTyping}}
+      \\
+      \Gamma , y : \tau_1[s] , x : (\forall\alpha_1\ldots\alpha_n . \tau)[s] &\vdash e' : \tau_2 &&
+                                                            \text{since
+                                                            } \Gamma[s] = \Gamma
+    \end{align*}
+    And since the range of $s$ is exactly $\alpha_1,\ldots,\alpha_n$, we have
+    $(\forall \alpha_1\ldots\alpha_n . \tau)[s] = \forall \alpha_1\ldots\alpha_n . \tau$ -- substitution only
+    substitutes free type variables, not bound type variables, and
+    here any possible free type variables are being shadowed.
+    \begin{equation}
+      \Gamma , y : \tau_1[s] , x : \forall \alpha_1\ldots\alpha_n . \tau \vdash e' : \tau_2
+      \label{eq:substAbs2}
+    \end{equation}
+
+    % $\Gamma(z) = (\Gamma , y : \tau_1[s])(z)$ for all $z \in \fv(e)$
+    We can apply lemma~\ref{lem:ignore} to $\Gamma \vdash e : \tau$, giving us
+    \begin{equation}
+      \Gamma , y : \tau_1[s] \vdash e : \tau\label{eq:substAbs3}
+    \end{equation}
+    And when we combine $x \notin \dom(\Gamma)$ with the fact that $x \ne y$, we get
+    \begin{equation}
+      x \notin \dom(\Gamma , y : \tau_1[s])
+      \label{eq:substAbsNotIn}
+    \end{equation}
+    Because of how we chose $s$, we also have
+    \begin{equation}
+      \ftv(\Gamma, y : \tau_1[s]) \cap {\alpha_1,\ldots,\alpha_n} = \emptyset\label{eq:substAbs4}
+    \end{equation}
+    Eventually, we use (\ref{eq:substAbs3}), (\ref{eq:substAbs2}),
+    (\ref{eq:substAbsNotIn}) and (\ref{eq:substAbs4}) with the
+    induction hypothesis to arrive at
+    \[ \Gamma , y : \tau_1[s] \vdash e' [e/x] : \tau_2[s] \]
+    But $s$ is a bijection due to how we chose it: That means an
+    inverse, $s^{-1}$ exists. We ``apply it to both sides'' with
+    lemma~\ref{lem:subContextTyping}
+    \begin{align*}
+      (\Gamma , y : \tau_1[s])[s^{-1}] &\vdash e' [e/x] : (\tau_2[s])[s^{-1}] \\
+      (\Gamma , y : \tau_1[s])[s^{-1}] &\vdash e' [e/x] : \tau_2 \\
+      \Gamma[s^{-1}] , y : \tau_1[s][s^{-1}] &\vdash e' [e/x] : \tau_2 \\
+      \Gamma[s^{-1}], y : \tau_1 &\vdash e' [e/x] : \tau_2
+    \end{align*}
+    But because $\alpha'_1 , \ldots, \alpha'_n \cap \ftv(\Gamma) = \emptyset$, we can get rid of that
+    last substitution and arrive at ${\Gamma, y : \tau_1 \vdash e' [e/x] : \tau_2}$.
+    From here, we build our way back up with \textsc{Abs}.
+    \begin{align*}
+      \Gamma \vdash \lambda y . (e' [e/x]) : \tau_1 \rightarrow \tau_2 \\
+      \Gamma \vdash (\lambda y . e')[e/x] : \tau_1 \rightarrow \tau_2 && \text{because } x \ne y
+    \end{align*}
+    
+  \item{\rm\textsc{Let}} We have ${\Gamma , x : \sigma \vdash \letin{y = e_1}{e_2} :
+      \tau'}$
+    and want to show ${\Gamma \vdash (\letin{y = e_1}{e_2})[e/x] : \tau'}$.
+    
+    The first premise can be fed directly into the induction hypothesis
+    \begin{align}
+      \Gamma , x : \forall \alpha_1\ldots\alpha_n . \tau \vdash e_1 : \tau_1 \nonumber \\
+      \Gamma \vdash e_1 [e / x] : \tau_1 \label{eq:substLet7}
+    \end{align}
+
+    Now if $x = y$, we take the second premise as follows
+    \begin{align*}
+      \Gamma , x : \forall \alpha_1\ldots\alpha_n . \tau , x : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1)
+      \vdash e_2 : \tau' \\
+      \Gamma , x : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1) \vdash e_2 : \tau' &&
+                                                                \text{by
+                                                                lemma~\ref{lem:drop}}
+      \\
+      \Gamma \vdash \letin{x = e_1[e / x]}{e_2} : \tau' && \text{by \textsc{Let}}
+    \end{align*}
+    Since $x = y$, by the definition of substitution
+    $\letin{y=e_1[e/x]}{e_2}$ is equivalent to $\letin{y=e_1}{e_2})[e/x]$.
+    And so we reach our goal
+    \[\Gamma \vdash (\letin{y = e_1}{e_2})[e/x] : \tau'\]
+
+  If we are unfortuante enough that $y \ne x$, then from the second
+  premise we use the swap lemma to get
+  \begin{equation} \label{eq:substLet8}
+    \Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1), x : \forall \alpha_1\ldots\alpha_n . \tau  \vdash
+    e_2 : \tau
+  \end{equation}
+  And since we have $\Gamma \vdash e : \tau$, from lemma~\ref{lem:subContextTyping}
+  there is
+  \begin{equation} \label{eq:substLet9}
+  \Gamma , y : \overline{\Gamma , x :\forall\alpha_1\ldots\alpha_n . \tau}(\tau_1) \vdash e : \tau    
+  \end{equation}
+  Now we want to call the inductive hypothesis on (\ref{eq:substLet8})
+  and (\ref{eq:substLet9}), but that means we first need to show
+  \[\{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1))
+    = \emptyset\]
+  We do this as follows:
+  \begin{align*}
+    & \{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1)) \\
+    &\subseteq \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\Gamma) \cup \ftv(\overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n
+      . \tau}(\tau_1))) \\
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1))
+    \\
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\tau_1) \setminus (\ftv(\tau_1) \setminus \ftv(\Gamma,x:\forall
+      \alpha_1\ldots\alpha_n.\tau))) \\
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\tau_1) \cap \ftv(\Gamma, x : \forall \alpha_1\ldots\alpha_n . \tau) \\
+    &\subseteq \{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\Gamma, x : \forall \alpha_1\ldots\alpha_n . \tau) \\
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\Gamma) \cup \ftv(\forall \alpha_1\ldots\alpha_n . \tau)) \\
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\forall \alpha_1\ldots\alpha_n . \tau) \\
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\tau) \setminus \{\alpha_1,\ldots,\alpha_n\} \\
+    &= \emptyset
+  \end{align*}
+  And then we can use it to arrive at
+  \[ \Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n.\tau}(\tau) \vdash e_2 [e/x] : \tau' \]
+  The next part involves an observation, that for any $x$ and $\sigma$ in
+  any $\Gamma$, ${\overline{\Gamma}(y) > \overline{\Gamma, x : \sigma}(y)}$, as closing
+  over a context with a \textit{smaller} domain will result in the
+  type scheme having \textit{more} bound type variables -- i.e. it is
+  more general. Therefore we can use the generalisation lemma,
+  lemma~\ref{lem:generalisation}, to get
+  \begin{align*}
+    \Gamma , y : \overline{\Gamma}(\tau) \vdash e_2[e/x] : \tau' \\
+    \Gamma \vdash \letin{y = e_1[e/x]}{e_2[e/x]} : \tau' && \text{with \textsc{Let}
+                                               and
+                                               (\ref{eq:substLet7})}
+    \\
+    \Gamma \vdash (\letin{y = e_1}{e_2})[e/x] : \tau' && \text{by definition of substitution}
+  \end{align*}
+  
+  \item[The remaining cases] The rest of the proofs for $\Gamma \vdash e'[e/x] :
+    \tau'$ are proved by applying the induction hypothesis on their structure.
+  \end{description}
+\end{proof}
