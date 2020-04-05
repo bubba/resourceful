@@ -286,55 +286,7 @@ extend (⊢⋎ ⊢e₁ ⊢e₂ dist) x∉ with ∉-++⁻ x∉
 extend (⊢IOsub ⊢e ρ≥:ρ' ok) x∉ = ⊢IOsub (extend ⊢e x∉) ρ≥:ρ' ok
 
 
-ignore-++ˡ : ∀ {Γ Δ p q}
-      → (∀ {x σ} → x ∈ p ++ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
-      → (∀ {x σ} → x ∈ p → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
-ignore-++ˡ f x∈p = f (∈-++⁺ˡ ≡-setoid x∈p)
 
-ignore-++ʳ : ∀ {Γ Δ p q}
-      → (∀ {x σ} → x ∈ p ++ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
-      → (∀ {x σ} → x ∈ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
-ignore-++ʳ {p = p} f x∈p = f (∈-++⁺ʳ ≡-setoid p x∈p)
-
--- lemma 4.1
--- extra vars in the environment can be ignored
-ignore : ∀ {Γ Δ e τ}
-       → (∀ {x σ} → x ∈ FV(e) → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
-       → Γ ⊢ e ⦂ τ
-       → Δ ⊢ e ⦂ τ
-ignore ρ (⊢` x∈ σ>τ) = ⊢` (ρ (here refl) x∈) σ>τ
-ignore {Γ} {Δ} ρ (⊢ƛ {x = y} {τ' = τ'} {e = e} ⊢e) = ⊢ƛ (ignore f ⊢e)
-  where
-  f : ∀ {x σ} → x ∈ FV e → x ⦂ σ ∈ Γ , y ⦂ ` τ' → x ⦂ σ ∈ Δ , y ⦂ ` τ'
-  f x∈FV Z = Z
-  f x∈FV (S x∈Γ x≢y) = let z = ρ (/-∈≢ x∈FV x≢y) x∈Γ in S z x≢y
-
-ignore ρ (⊢× ⊢e₁ ⊢e₂) = ⊢× (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂)
-ignore ρ (⊢π₁ ⊢e) = ⊢π₁ (ignore ρ ⊢e)
-ignore ρ (⊢π₂ ⊢e) = ⊢π₂ (ignore ρ ⊢e)
-ignore ρ (⊢· ⊢e₁ ⊢e₂) = ⊢· (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂)
-ignore {Γ} {Δ} {e} ρ (⊢lt {e = e'} {e' = e''} {τ = τ} {τ' = τ'} {x = y} ⊢e ⊢e') = ⊢lt (ignore (ignore-++ˡ ρ) ⊢e) f
-  where
-
-  -- close≡ : ∀ {τ} → close Γ τ ≡ close Δ {τ}
-
-  g : ∀ {x σ} → x ∈ FV e' → x ⦂ σ ∈ Γ , y ⦂ close Γ τ' → x ⦂ σ ∈ Δ , y ⦂ close Δ τ'
-  g {x} x∈FV Z with x ≟ y
-  ... | yes refl = {!!}
-  ... | no x≢y = ⊥-elim (x≢y refl)
-  g {x} x∈FV (S x∈Γ x≢y) with x ≟ y
-  ... | yes refl = ⊥-elim (x≢y refl)
-  ... | no _ = let z = ignore-++ʳ {Γ} {Δ} {FV(e'')} {FV(e') / [ y ]} ρ
-                   y = z (/-∈≢ x∈FV x≢y) x∈Γ in S y x≢y
-  f : Δ , y ⦂ close Δ τ' ⊢ e' ⦂ τ
-  f = ignore g ⊢e'
-
-ignore ρ (⊢⟦⟧ ⊢e cl) = ⊢⟦⟧ (ignore ρ ⊢e) cl
-ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore (ignore-++ˡ ρ) ⊢e) (ignore (ignore-++ʳ ρ) ⊢e')
-ignore ρ ⊢□ = ⊢□
-ignore ρ (⊢use ⊢e) = ⊢use (ignore ρ ⊢e)
-ignore ρ (⊢⋎ ⊢e₁ ⊢e₂ ok) = ⊢⋎ (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂) ok
-ignore ρ (⊢IOsub z ρ≥:ρ' ok) = ⊢IOsub (ignore ρ z) ρ≥:ρ' ok
 
 
 
@@ -375,6 +327,77 @@ gen ⊢□ σ>σ' = ⊢□
 gen (⊢use ⊢e) σ>σ' = ⊢use (gen ⊢e σ>σ')
 gen (⊢⋎ ⊢e₁ ⊢e₂ dist) σ>σ' = ⊢⋎ (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ') dist
 gen (⊢IOsub ⊢e ρ≥:ρ' ok) σ>σ' = ⊢IOsub (gen ⊢e σ>σ') ρ≥:ρ' ok
+
+postulate fvsClosed : ∀ {Γ e τ x} → Γ ⊢ e ⦂ τ → x ∈ FV(e) → ∃[ σ ] (x ⦂ σ ∈ Γ)
+-- fvsClosed (⊢` {σ = σ} x∈ σ>τ) (here refl) = ⟨ σ , x∈ ⟩
+-- fvsClosed {x = x} (⊢ƛ {x = y} ⊢e) x∈fv with x ≟ y
+-- ... | yes refl = {!!}
+-- ... | no x≢y = {!!}
+-- fvsClosed (⊢· ⊢e ⊢e₁) x∈ = {!!}
+-- fvsClosed (⊢lt ⊢e ⊢e₁) x∈ = {!!}
+-- fvsClosed (⊢× ⊢e ⊢e₁) x∈ = {!!}
+-- fvsClosed (⊢π₁ ⊢e) x∈ = {!!}
+-- fvsClosed (⊢π₂ ⊢e) x∈ = {!!}
+-- fvsClosed (⊢⟦⟧ ⊢e x) x∈ = {!!}
+-- fvsClosed (⊢>>= ⊢e ⊢e₁) x∈ = {!!}
+-- fvsClosed (⊢⋎ ⊢e ⊢e₁ x) x∈ = {!!}
+-- fvsClosed (⊢IOsub ⊢e x x₁) x∈ = {!!}
+-- fvsClosed (⊢use ⊢e) x∈ = {!!}
+
+ignore-++ˡ : ∀ {Γ Δ p q}
+      → (∀ {x σ} → x ∈ p ++ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+      → (∀ {x σ} → x ∈ p → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+ignore-++ˡ f x∈p = f (∈-++⁺ˡ ≡-setoid x∈p)
+
+ignore-++ʳ : ∀ {Γ Δ p q}
+      → (∀ {x σ} → x ∈ p ++ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+      → (∀ {x σ} → x ∈ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+ignore-++ʳ {p = p} f x∈p = f (∈-++⁺ʳ ≡-setoid p x∈p)
+
+-- lemma 4.1
+-- extra vars in the environment can be ignored
+ignore : ∀ {Γ Δ e τ}
+       → (∀ {x σ} → x ∈ FV(e) → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+       → Γ ⊢ e ⦂ τ
+       → Δ ⊢ e ⦂ τ
+ignore ρ (⊢` x∈ σ>τ) = ⊢` (ρ (here refl) x∈) σ>τ
+ignore {Γ} {Δ} ρ (⊢ƛ {x = y} {τ' = τ'} {e = e} ⊢e) = ⊢ƛ (ignore f ⊢e)
+  where
+  f : ∀ {x σ} → x ∈ FV e → x ⦂ σ ∈ Γ , y ⦂ ` τ' → x ⦂ σ ∈ Δ , y ⦂ ` τ'
+  f x∈FV Z = Z
+  f x∈FV (S x∈Γ x≢y) = let z = ρ (/-∈≢ x∈FV x≢y) x∈Γ in S z x≢y
+
+ignore ρ (⊢× ⊢e₁ ⊢e₂) = ⊢× (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂)
+ignore ρ (⊢π₁ ⊢e) = ⊢π₁ (ignore ρ ⊢e)
+ignore ρ (⊢π₂ ⊢e) = ⊢π₂ (ignore ρ ⊢e)
+ignore ρ (⊢· ⊢e₁ ⊢e₂) = ⊢· (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂)
+ignore {Γ} {Δ} {e} ρ (⊢lt {e = e'} {e' = e''} {τ = τ} {τ' = τ'} {x = y} ⊢e ⊢e') = ⊢lt (ignore (ignore-++ˡ ρ) ⊢e) (h ⊢e') 
+  where
+
+  g : ∀ {x σ} → x ∈ FV e' → x ⦂ σ ∈ Γ , y ⦂ close Δ τ' → x ⦂ σ ∈ Δ , y ⦂ close Δ τ'
+  g x∈FV Z = Z
+  g {x} x∈FV (S x∈Γ x≢y) with x ≟ y
+  ... | yes refl = ⊥-elim (x≢y refl)
+  ... | no _ = let z = ignore-++ʳ {Γ} {Δ} {FV(e'')} {FV(e') / [ y ]} ρ
+                   y = z (/-∈≢ x∈FV x≢y) x∈Γ in S y x≢y
+ 
+  f : ∀ {Γ Δ τ} → close Δ τ > τ → Disjoint (FTV (close Δ τ)) (TSvars (close Γ τ)) → close Δ τ ≥ close Γ τ
+  f clΔ>τ dj = {!!}
+
+  i : ∀ {Γ τ} → close Γ τ > τ
+  i {Γ} = {!!}
+
+  h : Γ , y ⦂ close Γ τ' ⊢ e' ⦂ τ → Δ , y ⦂ close Δ τ' ⊢ e' ⦂ τ
+  h ⊢e' = let z : Γ , y ⦂ close Δ τ' ⊢ e' ⦂ τ
+              z = gen ⊢e' (f {Γ} {Δ} i {!DisThere!})
+           in ignore g z
+
+ignore ρ (⊢⟦⟧ ⊢e cl) = ⊢⟦⟧ (ignore ρ ⊢e) cl
+ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore (ignore-++ˡ ρ) ⊢e) (ignore (ignore-++ʳ ρ) ⊢e')
+ignore ρ ⊢□ = ⊢□
+ignore ρ (⊢use ⊢e) = ⊢use (ignore ρ ⊢e)
+ignore ρ (⊢⋎ ⊢e₁ ⊢e₂ ok) = ⊢⋎ (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂) ok
+ignore ρ (⊢IOsub z ρ≥:ρ' ok) = ⊢IOsub (ignore ρ z) ρ≥:ρ' ok
 
 Γcong : ∀ {Γ x e τ σ σ'} → Γ , x ⦂ σ ⊢ e ⦂ τ → σ ≡ σ' → Γ , x ⦂ σ' ⊢ e ⦂ τ
 Γcong Γ refl = Γ
@@ -442,32 +465,6 @@ subContextTyping (⊢use ⊢e) s = ⊢use (subContextTyping ⊢e s)
 subContextTyping (⊢⋎ ⊢e₁ ⊢e₂ dist) s = ⊢⋎ (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s) dist
 subContextTyping (⊢IOsub ⊢e ρ≥:ρ' ok) s = ⊢IOsub (subContextTyping ⊢e s) ρ≥:ρ' ok
 
-
--- -- s must cover all of αs
--- fooo : ∀ {τ τ' e Γ}
---      → (s : Substitution)
---      → subT s τ ≡ τ'
---      → Γ ⊢ e ⦂ subT s τ
---      → Γ ⊢ e ⦂ τ'
--- fooo s refl ⊢e = ⊢e
-
--- data NotInContext : List Id → Context → Set where
---   NotHere : ∀ {Γ} → NotInContext [] Γ
---   NotThere : ∀ {Γ α αs}
---          → α ∉ freeVarsC Γ
---          → NotInContext αs Γ
---          → NotInContext (α ∷ αs) Γ
-
--- notIn∅ : ∀ {αs : List Id} → NotInContext αs ∅
--- notIn∅ {[]} = NotHere
--- notIn∅ {x ∷ αs} = NotThere (λ ()) notIn∅
-
--- notInExtend : ∀ {Γ αs x σ} → NotInContext αs Γ → Disjoint αs (freeVarsTS σ) → NotInContext αs (Γ , x ⦂ σ)
--- notInExtend NotHere _ = NotHere
--- notInExtend (NotThere {α = α} ∉σ notin) (DisThere ∉Γ p) = NotThere (∉-++⁺ˡ {α} ∉σ ∉Γ) (notInExtend notin p)
-
--- absHelper : ∀ {Γ z e x σ} → z ∈ FV e → Γ ⦅ z ⦆ ≡ Γ , x' ⦂ σ ⦅ z ⦆
-
 -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
 absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
              → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
@@ -478,17 +475,17 @@ absSubChoose {αs = αs} ⊢e with freshTypeVars αs
 subC∅ : (s : Substitution) → subC s ∅ ≡ ∅
 subC∅ _ = refl
 
-FTVC∉FTV : ∀ {Γ x σ α} → α ∉ FTVC (Γ , x ⦂ σ) → α ∉ FTV σ
-FTVC∉FTV {Γ} {x} {σ} ∉Γ with FTV σ |  FTVC (Γ , x ⦂ σ)
-... | z | y = {!!}
-
-sub∉FTVC : ∀ {Γ α τ s} → α ∉ FTVC Γ → subC (SS α τ s) Γ ≡ subC s Γ
-sub∉FTVC {∅} x∉ = refl
-sub∉FTVC {Γ , x ⦂ σ} {α} {τ} {s} x∉ = {!!}
+-- i know this is true!
+postulate sub∉FTVC : ∀ {Γ α τ s} → α ∉ FTVC Γ → subC (SS α τ s) Γ ≡ subC s Γ
+-- sub∉FTVC {∅} x∉ = refl
+-- sub∉FTVC {Γ , x ⦂ σ} {α} {τ} {s} x∉ = {!!}
   
 disjointSub : ∀ {Γ s} → Disjoint (subDomain s) (FTVC Γ) → subC s Γ ≡ Γ
 disjointSub {Γ} {SZ} DisHere = subCSZ
 disjointSub {Γ} {SS α σ s} (DisThere x dj) rewrite sub∉FTVC {Γ} {α} {σ} {s} x = disjointSub dj
+
+∉∈≢ : ∀ {x y a} → x ∉ a → y ∈ a → x ≢ y
+∉∈≢ x∉a y∈a refl = ⊥-elim (x∉a y∈a)
 
 -- wright & felleisen lemma 4.4
 subst : ∀ {Γ x e e' αs τ τ'}
@@ -553,10 +550,13 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
                  prt2 : Γ , x' ⦂ sub s (` τ₁) , x ⦂ VV αs τ ⊢ e₁ ⦂ subT s τ₂
                  prt2 = prt2help {s = s} (disjointSubTypeScheme {s = s} djsαs) prt2''
 
+                 prt3' : x' ∉ FV v
+                 prt3' = {!!}
                  prt3 : Γ , x' ⦂ sub s (` τ₁) ⊢ v ⦂ τ
-                 prt3 = ignore (λ x₁ x₂ → {!!}) ⊢e
+                 prt3 = ignore (λ x∈FVv x∈Γ → S x∈Γ (≢-sym (∉∈≢ prt3' x∈FVv))) ⊢e
+                 
                  prt4 : Disjoint αs (FTVC (Γ , x' ⦂ sub s (` τ₁)))
-                 prt4 = {!!}
+                 prt4 = disjoint-sym {!!} -- need to show Disjoint (FTV (sub (BJS.to bjs) (` τ₁))) αs
                  prt5 : Γ , x' ⦂ sub s (` τ₁) ⊢ e₁ [ x := v ] ⦂ subT s τ₂
                  prt5 = subst {Γ , x' ⦂ sub s (` τ₁)} prt3 prt2 prt4
                  prt6 : subC s⁻¹ (Γ , x' ⦂ sub s (` τ₁)) ⊢ e₁ [ x := v ] ⦂ subT s⁻¹ (subT s τ₂)
@@ -582,112 +582,6 @@ subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e
 subst {x = y} ⊢e (⊢⋎ ⊢e₁ ⊢e₂ dist) p = ⊢⋎ (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p) dist
 subst {x = y} ⊢e (⊢IOsub ⊢e' ρ≥:ρ' ok) p = ⊢IOsub (subst ⊢e ⊢e' p) ρ≥:ρ' ok
 
-data OkT : Type → Set where
-  Ok□ : OkT □
-  Ok⇒ : ∀ {τ τ'}
-      → OkT τ
-      → OkT τ'
-      → OkT (τ ⇒ τ')
-  Ok× : ∀ {τ τ'}
-      → OkT τ → OkT τ'
-      → OkT (τ × τ')
-  OkIO : ∀ {ρ τ}
-      → OkT τ
-      → Ok ρ
-      → OkT (IO ρ τ)
-
-data OkTS : TypeScheme → Set where
-  OkTSZ : ∀ {αs τ} → OkT τ → OkTS (VV αs τ)
-  -- OkTSZ : ∀ {τ}
-  --       → OkT τ
-  --       → OkTS (` τ)
-  -- OkTSS : ∀ {σ α}
-  --       → OkTS σ
-  --       → OkTS (V α · σ)
-
-data OkC : Context → Set where
-  OkCZ : OkC ∅
-  OkCS : ∀ {Γ x σ}
-       → OkC Γ
-       → OkTS σ
-       → OkC (Γ , x ⦂ σ)
-
-
--- OkC Γ → x ⦂ σ ∈ Γ → OkT 
--- if ∅ ⊢ e ⦂ IO ρ τ, then either (∃ v ρ' τ'. st ρ'≥ρ and ∅ ⊢ ⟦ v ⟧ IO ρ' τ') or (∃ v r τ'. st ` r≥:ρ ∅ ⊢ use r v ⦂ IO ρ τ')
-
--- IOroot : ∀ {e ρ τ}
---        → ∅ ⊢ e ⦂
--- OkT τ →  > τ → OkT τ  
-oktsub : ∀ {s τ} → OkT τ → OkT (subT s τ)
-oktsub {s} {τ ⇒ τ₁} (Ok⇒ okt okt₁) = Ok⇒ (oktsub okt) (oktsub okt₁)
-oktsub {s} {IO x τ} (OkIO okt x₁) = OkIO (oktsub okt) x₁ 
-oktsub {s} {□} okt = Ok□
-oktsub {s} {τ × τ₁} (Ok× okt okt₁) = Ok× (oktsub okt) (oktsub okt₁)
-
-oktstoτ : ∀ {σ τ} → OkTS σ → σ > τ → OkT τ
-oktstoτ {σ} (OkTSZ {αs} {τ} okτ) (Inst s x₁ refl) with oktsub {s} okτ | TStype (VV αs τ) | extractVV≡ {αs} {τ}
-... | oks | .τ | refl = oks
-
-mustBeOk : ∀ {Γ e ρ τ} → OkC Γ → Γ ⊢ e ⦂ IO ρ τ → Ok ρ
-absHelper : ∀ {Γ τ τ' e' e ρ}
-          → OkC Γ
-          → Γ ⊢ e' ⦂ τ
-          → Γ ⊢ e ⦂ τ ⇒ IO ρ τ'
-          → Ok ρ
-
-absHelper okc ⊢e' (⊢` Z x₁) = {!!}
-absHelper okc ⊢e' (⊢` (S x x₂) x₁) = {!!}
-absHelper okc ⊢e' (⊢ƛ ⊢e) = mustBeOk (OkCS okc {!!}) ⊢e
-absHelper okc ⊢e' (⊢· ⊢e ⊢e₁) = {!!}
-absHelper okc ⊢e' (⊢lt ⊢e ⊢e₁) = {!!}
-absHelper okc ⊢e' (⊢π₁ ⊢e) = {!!}
-absHelper okc ⊢e' (⊢π₂ ⊢e) = {!!}
-
-negasdf : ∀ {Γ e τ ρ} → ¬ (Γ ⊢ e ⦂ IO ρ τ → ¬ (Ok ρ))
-negasdf ⊢e = {!!}
-
-asdf : ∀ {Γ e τ ρ} → OkC Γ → Γ ⊢ e ⦂ IO ρ τ → OkT (IO ρ τ)
-asdf (OkCS okc okts) (⊢` Z σ>τ) = oktstoτ okts σ>τ
-asdf (OkCS okc okts) (⊢` (S x∈ x₁) σ>τ) = asdf okc (⊢` x∈ σ>τ)
--- asdf okc (⊢ƛ ⊢e) = let z = asdf (OkCS okc {!!}) ⊢e in {!!}
--- this can always be typed: (λ x . x) : IO wrong t → IO wrong τ
-asdf okc (⊢· ⊢e ⊢e₁) = {!!} -- ⊢e can be (λ x . x) : IO wrong t → IO wrong t
-asdf okc (⊢lt ⊢e ⊢e₁) = {!!}
-asdf okc (⊢π₁ ⊢e) = {!!}
-asdf okc (⊢π₂ ⊢e) = {!!}
-asdf okc (⊢⟦⟧ ⊢e x) = {!!}
-asdf okc (⊢>>= ⊢e ⊢e₁) = {!!}
-asdf okc (⊢⋎ ⊢e ⊢e₁ x) = {!!}
-asdf okc (⊢IOsub ⊢e x x₁) = {!!}
-asdf okc (⊢use ⊢e) = {!!}
-
--- absHelper okc (⊢` x x₁) = let z = mustBeOk okc {!⊢` x x₁!} in {!!}
--- absHelper okc (⊢ƛ ⊢e) = mustBeOk (OkCS okc (OkTSZ {!!})) ⊢e
--- absHelper okc (⊢· ⊢e ⊢e₁) = {!!}
--- absHelper okc (⊢lt ⊢e ⊢e₁) = {!!}
--- absHelper okc (⊢π₁ ⊢e) = {!!}
--- absHelper okc (⊢π₂ ⊢e) = {!!}
-
--- too narrow: need to expand from ∅
--- but with ` x, someone can just stick in a type x ⦂ IO (`File∪`File) □ ∈ Γ
--- key observation here:
--- for a type of IO ρ τ to be introduced
--- it must come from either ⊢⟦⟧ or ⊢use
-mustBeOk (OkCS okc x) (⊢` Z σ>τ) with oktstoτ x σ>τ
-... | OkIO z okρ = okρ
-mustBeOk (OkCS okc x) (⊢` (S x∈ x₁) σ>τ) = mustBeOk okc (⊢` x∈ σ>τ)
-mustBeOk okc (⊢· ⊢e ⊢e') = {!!}
-mustBeOk OkCZ (⊢lt ⊢e ⊢e') = let eok = mustBeOk (OkCS OkCZ {!OkTS!}) ⊢e' in {!!}
-mustBeOk (OkCS okc x) (⊢lt ⊢e ⊢e') = let eok = mustBeOk (OkCS okc {!!}) {!!} in {!!}
-mustBeOk okc (⊢π₁ ⊢e) = {!!}
-mustBeOk okc (⊢π₂ ⊢e) = {!!}
-mustBeOk okc (⊢⟦⟧ ⊢e ok) = ok
-mustBeOk okc (⊢>>= ⊢e ⊢e₁) = mustBeOk okc ⊢e
-mustBeOk okc (⊢⋎ ⊢e₁ ⊢e₂ ok) = ok
-mustBeOk okc (⊢IOsub ⊢e x ok) = ok
-mustBeOk okc (⊢use ⊢e) = OkZ
-
 preservation : ∀ {e e' τ}
              → ∅ ⊢ e ⦂ τ
              → e ↝ e'
@@ -712,16 +606,12 @@ preservation (⊢π₂ (⊢× ⊢e₁ ⊢e₂)) β-π₂ = ⊢e₂
 
 preservation (⊢IOsub ⊢e ρ≥:ρ' ok) e↝e' = ⊢IOsub (preservation ⊢e e↝e') ρ≥:ρ' ok
 
--- preservation (⊢⋎ ⊢e₁ ⊢e₂ dist) (ξ-⋎₁ e₁↝e₁') = ⊢⋎ (preservation ⊢e₁ e₁↝e₁') ⊢e₂ dist
--- preservation (⊢⋎ ⊢e₁ ⊢e₂ dist) (ξ-⋎₂ e₂↝e₂') = ⊢⋎ ⊢e₁ (preservation ⊢e₂ e₂↝e₂') dist
 preservation (⊢⋎ ⊢e₁ ⊢e₂ ok) β-⋎ =
   let ⊢`v = ⊢` (S Z (λ ())) >self
       ⊢`w = ⊢` Z >self
       ⊢>>=inner = ⊢>>= (⊢IOsub (weaken ⊢e₂) (≥:∪₁ ≥:Refl) ok) (⊢ƛ (⊢⟦⟧ (⊢× ⊢`v ⊢`w) ok))
   in ⊢>>= (⊢IOsub ⊢e₁ (≥:∪₂ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
 
--- preservation (⊢>>= ⊢rf ⊢e) β-readFile rewrite readFile≡□ ⊢rf = ⊢· ⊢e ⊢□
--- preservation (⊢>>= ⊢rn ⊢e) β-readNet rewrite readNet≡□ ⊢rn = ⊢· ⊢e ⊢□
 preservation (⊢>>= ⊢u ⊢e') β-use = ⊢· ⊢e' (f ⊢u)
   where f : ∀ {Γ r e ρ τ} → Γ ⊢ use r e ⦂ IO ρ τ → Γ ⊢ e ⦂ τ
         f (⊢use ⊢e) = ⊢e

@@ -84,9 +84,9 @@ $\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as
 \end{figure}
 
 \section{Substitution}
-Substitution may seem self-explanatory, but it is important to define
-it correctly as it will play a big part in proving essential
-properties of our system, and there are subtle differences with how it
+Substitution may seem self-explanatory, but it is important we define
+it crystal clear as it will play an imperative role in proving essential
+properties of our system, and there exist subtle differences with how it
 is defined on terms, types and type schemes.
 
 Substitution on types is defined as usual, but extended to include the
@@ -107,7 +107,7 @@ variables to types, written in the form $[\tau/\alpha]$ for a single type.
 A substitution that substitutes multiple type variables at once can be
 written like $[\tau_1/\alpha_1,\ldots,\tau_m/\alpha_m]$.
 
-Substitution is also extended to type schemes, but note that his only
+Substitution is also extended to type schemes, but note that this only
 substitutes \textbf{free} type variables.
 \begin{align*}
   \forall \alpha' . \sigma[\tau/\alpha] &=
@@ -118,19 +118,21 @@ substitutes \textbf{free} type variables.
   \tau[\tau/\alpha] &= \tau[\tau/\alpha] \ \textsf{(Substituion on type)}
 \end{align*}
 
+\newcommand{\dom}{\operatorname{dom}}
+
 It should not be confused with instantiation, where the \textbf{bound}
 type variables $\forall \alpha_1 , \ldots , \alpha_n$ are substituted inside the type of a
-type scheme. Instantiation is not a function though, instead it is
+type scheme. Instantiation is not a function though: instead it is
 a relation $\sigma > \tau$ in which we say $\sigma$ can be instantiated to $\tau$.
 \begin{mathpar}
   \boxed{\sigma > \tau} \\
-  \infer{\operatorname{dom}(s) = \{\alpha_1 , \ldots, \alpha_n\} \\ \tau'[s] = \tau}{\forall \alpha_1 , \ldots , \alpha_n
+  \infer{\dom(s) = \{\alpha_1 , \ldots, \alpha_n\} \\ \tau'[s] = \tau}{\forall \alpha_1 , \ldots , \alpha_n
     . \tau' > \tau}
 \end{mathpar}
 The domain of a substitution $\operatorname{dom}(s)$ is the set of
 type variables that it will replace,
 i.e.
-$\operatorname{dom}([\tau_1/\alpha,\tau_2/\beta]) = \{\alpha, \beta\}$. This relation can be
+$\dom([\tau_1/\alpha,\tau_2/\beta]) = \{\alpha, \beta\}$. This relation can be
 read as, if there exists a substitution $s$ that substitutes exactly
 all the bound type variables in the type scheme
 $\forall \alpha_1, \ldots, \alpha_n . \tau'$ to give the type $\tau$, then $\forall \alpha_1, \ldots, \alpha_n . \tau' >
@@ -196,21 +198,35 @@ types to terms, not type schemes~\ref{tofte}. Instantiation occurs
 directly within the \textsc{Var} rule, and generalisation occurs
 implicitly in $\overline{\Gamma}$.
 
+\newcommand{\ftv}{\operatorname{FTV}}
 \newcommand{\fv}{\operatorname{FV}}
 
 Like before, $\overline{\Gamma}$ is defined as
 $$ \overline{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
-\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \fv(\tau) \setminus \fv(\Gamma)$$
+\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \ftv(\tau) \setminus \ftv(\Gamma)$$
 
 Free type variables are defined on types, type schemes and contexts as
 follows:
 \begin{align*}
-  \fv(\square) &= \{ \} \\
-  \fv(\alpha) &= \{ \alpha \} \\
-  \fv(\tau \rightarrow \tau') &= \fv(\tau) \cup \fv(\tau') \\
-  \fv(\IO_\rho \tau) &= \IO_\rho \fv(\tau) \\
-  \fv(\forall \alpha_1 , \ldots , \alpha_n . \tau) &= \fv(\tau) - \{ \alpha_1 , \ldots, \alpha_n \} \\
-  \fv(\Gamma) &= \bigcup_{x : \sigma \in \Gamma} \fv(\sigma)
+  \ftv(\square) &= \emptyset \\
+  \ftv(\alpha) &= \{ \alpha \} \\
+  \ftv(\tau \rightarrow \tau') &= \ftv(\tau) \cup \ftv(\tau') \\
+  \ftv(\IO_\rho \tau) &= \IO_\rho \ftv(\tau) \\
+  \ftv(\forall \alpha_1 , \ldots , \alpha_n . \tau) &= \ftv(\tau) - \{ \alpha_1 , \ldots, \alpha_n \} \\
+  \ftv(\Gamma) &= \bigcup_{x : \sigma \in \Gamma} \ftv(\sigma)
+\end{align*}
+
+Free variables are defined on terms -- be careful not to mix these up
+with free type variables!
+\begin{align*}
+  \fv(x) = \{ x \} && \fv(\lambda x . e) = \fv(e) \setminus \{ x \} \\
+  \fv(e \ e') = \fv(e) \cup \fv(e') && \fv(\letin{x = e}{e'}) = \fv(e) \cup
+                                    (\fv(e') \setminus \{ x \}) \\
+  \fv(\lift{e}) = \fv(e) && \fv(e \bind e') = \fv(e) \cup \fv(e') \\
+  \fv(\square) = \emptyset && \fv(\use{r}{e}) = \fv(e) \\
+  \fv(e_1 \times e_2) = \fv(e_1) \cup \fv(e_2) && \fv(\pi_i e) = \fv(e)_{i = 1,
+                                          2} \\
+  \fv(e_1 \curlyvee e_2) = \fv(e_1) \cup \fv(e_2)
 \end{align*}
   
 We also introduce the typing rule for $\square$ expressions, to give us a
@@ -712,7 +728,7 @@ enforcing that $\lift{e}$ is a value, since all lifted terms are
 values anyway.
 
 For an expression lifted into a resourceful $\IO$ monad with
-$\use{\rho}{e}$, one might be tempted to just reduce this to a $lift{e}$.
+$\use{\rho}{e}$, one might be tempted to just reduce this to a $\lift{e}$.
 \begin{mathpar}
   \infer{ }{\use{r}{e} \leadsto \lift{e}}
 \end{mathpar}
@@ -732,7 +748,7 @@ reduction identically to lift.
   \inferrule{ }{\use{r}{e} \bind e' \leadsto e' \ e}
 \end{mathpar}
 
-Concurrency is then define as chaining together two binds, and
+Concurrency is then defined as chaining together two binds, and
 returning the lifted product of the two results.
 \begin{mathpar}
   \inferrule{ }{v \curlyvee w \leadsto
@@ -818,7 +834,11 @@ $a$, $a \twoheadrightarrow a$.
 Intuitively speaking, if the small-step inference rule $a \leadsto b$ says
 that $a$ reduces to $b$ in exactly one step, then
 $a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps -- instead of
-reducing one step at a time, it goes all the way.
+reducing one step at a time, it goes all the way. As an example, if we
+have the expression ${(\lambda x . x \ \square) \ (\lambda y . y)}$ then have the following relations:
+$$ (\lambda x . x \ \square) \ (\lambda y . y) \leadsto (\lambda y . y) \ \square \leadsto \square $$
+$$ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square$$
+
 
 \begin{figure}
   \begin{center}
@@ -843,6 +863,8 @@ reducing one step at a time, it goes all the way.
       % a -> c;
     };
 \end{center}
+\caption{Left: the $\leadsto$ relation. Right: The reflexive, transitive
+  closure of $\leadsto$, the reduction relation $\twoheadrightarrow$.} \label{fig:reduction}
 \end{figure}
 
 
@@ -942,385 +964,258 @@ reducing one step at a time, it goes all the way.
 
 \section{Type Safety}
 
-A type system is no good unless we can prove it's worth its salt. In
-this section we will prove a number of lemmas and theorems which will
-eventually show that the type system is sound. We will begin with a
-couple of properties about contexts that we will later use on in
-various other proofs. The first states that if we have two variables
-in the context with the same names but different type schemes, then we
-can ignore the first one as it is overshadowed by the second -- any
-reference to $x$ will result in $x : \sigma'$.
-\begin{lemma} \label{lem:drop}
-  If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
-\end{lemma}
-The second states that we can sneak in another variable before another
-variable of the same name, for the exact same reason.
-\begin{lemma} \label{lem:sneak}
-  If $\Gamma , x : \sigma' \vdash e : \tau$, then for any $\sigma$, $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$
-\end{lemma}
-We can then also say that if two variables $x$ and $y$ are indeed
-different, we are free to permute them and swap them about.
-\begin{lemma} \label{lem:swap}
-  If $x \neq y$ and $\Gamma , x : \sigma, y : \sigma' \vdash e : \tau$, then $\Gamma , y : \sigma' , x : \sigma \vdash e
-  : \tau$
-\end{lemma}
+\input{properties}
 
-We will also need to show this property about instantiation and the
-close function.
-\begin{lemma} \label{lem:close>}
-  If $\sigma > \sigma'$ then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma, x : \sigma'}(\tau)$.
-\end{lemma}
-\begin{proof}
-  We provide an informal proof as follows.
-  \begin{enumerate}
-  \item If $\sigma > \sigma'$, then for every $\tau$ that $\sigma > \tau$, $\sigma' > \tau$.
-  \item So $\sigma$ must parameterise over at least the same number of type
-    variables if not \textit{more} than $\sigma'$.
-  \item So $\sigma$ has at least the same number of free type variables if
-    not \textit{less} than $\sigma'$.
-  \item By definition of the close function,
-    $\overline{\Gamma, x : \sigma}(\tau)$ will then have at least the same number
-    of bound type variables if not \textit{more} than
-    $\overline{\Gamma, x : \sigma'}(\tau)$.
-  \item So if $\overline{\Gamma, x : \sigma'}(\tau)$ can be instantiated to some
-    $\tau$, then $\overline{\Gamma, x : \sigma}(\tau)$ can also be instantiated to
-    that $\tau$, as it has enough bound type variables to handle
-    everything the former can -- if it had less type variables than the
-    former, then it would not be able to instantiate these types, but
-    for the converse excess type variables can be mapped to whatever.
-  \end{enumerate}
-\end{proof}
+% \begin{lemma}
+%   If $\Gamma \vdash e : \tau'$ and $\tau' > \tau$, then $\Gamma \vdash e : \tau$.
+% \end{lemma}
+% \begin{proof}
+%   We prove this by induction on the proof for $\Gamma \vdash e : \tau'$.
+%   \begin{description}
+%   \item[\textmd{\boxed{\textsc{Var}}}]
+%     From the premise we have some $\tau''$ where $x : \tau'' \in \Gamma$ and $\tau'' >
+%     \tau'$. By transitivity we then have $\tau'' > \tau$. And thus we apply
+%     \textsc{Var} again with $x : \tau'' \in \Gamma$ and $\tau'' > \tau$ to get $\Gamma
+%     \vdash e : \tau$. 
+%   \item[\textmd{\boxed{\textsc{App}}}]
+%     With $\Gamma \vdash e e' : \tau'$, the premises for this rule are $\Gamma \vdash e : \tau'' \rightarrow \tau'$ and $\Gamma \vdash e' :
+%     \tau''$.
+%     The definition of $\tau' > \tau$ is that there exists a
+%     substitution $S$ that replaces any bound type variables, such that
+%     $S(\tau') = \tau$.
+%     Therefore if $\tau' > \tau$, then $\tau'' \rightarrow \tau' > \tau'' \rightarrow \tau$ as we can use the
+%     same substitution $S$. 
+%     Now that we have $\tau'' \rightarrow \tau' > \tau'' \rightarrow \tau$ and $\Gamma \vdash e : \tau'' \rightarrow
+%     \tau'$, we can use the induction hypothesis to obtain $\Gamma \vdash e : \tau'' \rightarrow
+%     \tau$. From here we reapply \textsc{App} to get $\Gamma \vdash e e' : \tau$ as
+%     needed.
+%   \item[\textmd{\boxed{\textsc{Abs}}}]
+%     Our proof tree will look like
+%     \begin{mathpar}
+%       \inferrule{\Gamma,x : \tau_1' \vdash e : \tau_2'}{\Gamma \vdash \lambda x . e : \tau_1' \rightarrow \tau_2'}
+%     \end{mathpar}
+%     and we will have $\tau' = \tau_1' \rightarrow \tau_2'$. When we think of $\tau' > \tau$, we
+%     have $\tau_1' \rightarrow \tau_2' > \tau$. So there is some substitution that will
+%     bring us to $\tau$.
 
-Now we prove the generalisation theorem, which states that if a type
-scheme inside the context is an instantiation of another type scheme,
-then we can use the more general type scheme and preserve how things
-are typed. This is an adaptation of a lemma from Wright and
-Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
-adaptation of a lemma from Damas and Milner.
+%     But if you look at the structure of $\tau_1' \rightarrow \tau_2'$, the
+%     substitution must bring us to another type of
+%     $\tau_1 \rightarrow \tau_2$.  The substitution will either replace something in
+%     $\tau_1'$, something in $\tau_2'$, or both, but since $>$ is reflexive
+%     with an empty substitution, both $\tau_1' > \tau_1$ and
+%     $\tau_2' > \tau_2$ hold. Therefore it is enough to prove $\Gamma \vdash \lambda x . e :
+%     \tau_1 \rightarrow \tau_2$.
 
-\begin{theorem}[Generalisation]
-  If $\Gamma, x : \sigma' \vdash e : \tau$ and $\sigma > \sigma'$, then ${\Gamma, x : \sigma \vdash e : \tau}$.
-  \label{lem:generalInContext}
-\end{theorem}
-\begin{proof}
-  Begin with induction on the proof for $\Gamma , x : \sigma' \vdash e : \tau$.
-  \begin{description}
-  \item[\rm\textsc{Var}]
-    From the premises we have $x : \sigma' \in \Gamma$ and $\sigma' > \tau$. We also have
-    $\sigma > \sigma'$ but by definition of $\sigma > \sigma'$, if $\sigma' > \tau$ then $\sigma > \tau$.
-    And we also have by definition $x : \sigma \in \Gamma , x : \sigma$. So putting the
-    pieces together, we can use \textsc{Var} to get
-    \begin{mathpar}
-      \infer{x : \sigma \in \Gamma , x : \sigma \\ \sigma > \tau}
-      {\Gamma , x : \sigma \vdash x : \tau}
-    \end{mathpar}
-  \item[\rm\textsc{Abs}]
-    We have $\Gamma , x : \sigma' \vdash \lambda y . e : \tau$. If $x = y$, then we can safely
-    say the premise $\Gamma , x : \sigma' , y : \sigma'' \vdash e : \tau$ becomes $\Gamma , y :
-    \sigma'' \vdash e : \tau$  due to lemma~\ref{lem:drop}. And from this we can
-    then use lemma~\ref{lem:sneak} to get $\Gamma, x : \sigma, y : \sigma'' \vdash e : \tau$,
-    and ultimately $\Gamma , x : \sigma \vdash \lambda y . e : \tau$.
-
-    If $x \neq y$, then we can get $\Gamma , y : \sigma'' , x : \sigma' \vdash e : \tau$ via
-    lemma~\ref{lem:swap}. The induction hypothesis then results in $\Gamma
-    , y : \sigma'' , x : \sigma \vdash e : \tau$, which we can then swap back again to
-    get $\Gamma , x : \sigma , y : \sigma'' \vdash e : \tau$ and so $\Gamma , x : \sigma \vdash \lambda y . e :
-    \tau$.
-  \item[\rm\textsc{Let}]
-    For $\letin{y = e'}{e}$, we have $\Gamma , x : \sigma' \vdash e' : \tau'$ and $\Gamma , x :
-    \sigma' , y : \overline{\Gamma , x : \sigma'}(\tau') \vdash e : \tau$, and we aim to show
-    $\Gamma , x : \sigma \vdash \letin{y=e'}{e} : \tau$.
+%     We can proceed to use lemma~\ref{lem:generalInContext} with
+%     $\tau_1' > \tau_1$ and $\Gamma,x : \tau_1' \vdash e : \tau_2'$, to get
+%     $\Gamma, x : \tau_1 \vdash e : \tau_2'$.  And by applying the induction hypothesis
+%     with $\tau_2' > \tau_2$, we get $\Gamma, x : \tau_1 \vdash e : \tau_2$. From here we
+%     proceed by reapplying \textsc{Abs} to get $\Gamma \vdash \lambda x . e : \tau_1 \rightarrow
+%     \tau_2$.
+%   \item[\textmd{\boxed{\textsc{Let}}}]
+%     For $\tau' > \tau$, we have
+%     \begin{mathpar}
+%       \inferrule{\Gamma \vdash e_1 : \tau'' \\ \Gamma, x : \overline{\Gamma}(\tau'') \vdash e_2 :
+%         \tau'}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau'}
+%     \end{mathpar}
+%     We just need to apply the induction hypothesis on the second
+%     premise, obtaining
+%     $\Gamma, x : \overline{\Gamma}(\tau'') \vdash e_2 : \tau$, and thus
+%     $\Gamma \vdash \letin{x = e_1}{e_2} : \tau$.
+%   \item[\textmd{\boxed{\textsc{Product}}}]
+%     Our expression will have some type $\Gamma \vdash e_1 \times e_2 : \tau_1' \times \tau_2'$, where $\tau_1' \times
+%     \tau_2' < \tau$. Similar to the case for \textsc{Abs}, due to the
+%     structure of $\tau_1' \times \tau_2'$, any substitution that will change it
+%     to $\tau$ will result in a type of $\tau_1 \times \tau_2$, for some $\tau_1$ and
+%     $\tau_2$ where $\tau_1' < \tau_1$ and $\tau_2' < \tau_2$. 
+%     Therefore if we can prove $\Gamma \vdash e_1 \times e_2 : \tau_1 \times \tau_2$, we will
+%     have proved $\Gamma \vdash e_1 \times e_2 : \tau$.
     
-    First off, we need to convert the $y : \overline{\Gamma , x : \sigma'}(\tau')$ to a
-    $y : \overline{\Gamma, x : \sigma}(\tau')$ somehow. But it can be shown that if $\sigma >
-    \sigma'$, then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma , x : \sigma'}(\tau)$ due
-    to lemma~\ref{lem:close>}. So by the inductive hypothesis,
-    we are able to get $\Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$.
+%     Taking the premises of \textsc{Product}, we get $\Gamma \vdash e_1 : \tau_1'$
+%     and $\Gamma \vdash e_2 : \tau_2'$. Apply the induction hypothesis on both, giving
+%     $\Gamma \vdash e_1 : \tau_1$ and $\Gamma \vdash e_2 : \tau_2$, and reapply \textsc{Product} to
+%     arrive at $\Gamma \vdash e_1 \times e_2 : \tau_1 \times \tau_2$.
+%   \item[\textmd{\boxed{\textsc{Lift}}}]
+%     If we have $\Gamma \vdash \lift{e} : \IO_\sigma \tau'$ and $\tau' > \tau$, then we need to
+%     show $\Gamma \vdash \lift{e} : \IO_\sigma \tau$. Take the premise $\Gamma \vdash e : \tau'$,
+%     and use the induction hypothesis to get $\Gamma \vdash e : \tau$, and therefore
+%     the desired result.
+%   \item[\textmd{\boxed{\textsc{Bind}}}]
+%     Similarly to \textsc{Lift}, we need to show $\Gamma \vdash e \bind e' :
+%     \IO_\sigma \tau$, given $\Gamma \vdash e \bind e' : \IO_\sigma \tau'$ and $\tau' > \tau$.
+%     We have $\IO_\sigma \tau' > \IO_\sigma \tau$ as per the previous cases, and the
+%     premise $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau'$. Because there exists a
+%     substitution from $\IO_\sigma \tau'$ to $\IO_\sigma \tau$, there also exists a
+%     substitution from $\tau'' \rightarrow \IO_\sigma \tau'$ to $\tau'' \rightarrow \IO_\sigma \tau$, thus
+%     $\tau'' \rightarrow \IO_\sigma \tau' > \tau'' \rightarrow \IO_\sigma \tau$.
 
-    If $x = y$ then we can drop $x :
-    \sigma'$ from the context and sneak it back in as $\Gamma , x : \sigma, y :
-    \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$ with lemma~\ref{lem:drop} and
-    lemma~\ref{lem:sneak}. The induction hypothesis then gives us $\Gamma ,
-    x : \sigma \vdash e' : \tau'$ and we construct the proof back together with
-    \textsc{Let} to give $\Gamma , x : \sigma \vdash \letin{y = e'}{e} : \tau$.
+%     Applying the induction hypothesis to the premise $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau'$,
+%     we get $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau$, and can then use \textsc{Bind}
+%     again to get $\Gamma \vdash e \bind e' : \IO_\sigma \tau$ as needed.
+%   \item[\textmd{\boxed{\textsc{Conc}}}]
+%     Our conclusion for this rule is $\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \tau_1'
+%     \times \tau_2'$. As per always, if $\IO_{\sigma \cup \sigma'} \tau_1' \times \tau_2' = \tau' > \tau$,
+%     then the only substitutions possible would have to fit into
+%     $\IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2 = \tau$. And with this, $\tau_1' > \tau_1$ as well
+%     as $\tau_2' > \tau_2$. We then just need to apply the induction
+%     hypothesis to $\Gamma \vdash e_1 : \IO_\sigma \tau_1'$ and $\Gamma \vdash e_2 : \IO_\sigma \tau_2'$
+%     which will allow us to use \textsc{Conc} to arrive at $\Gamma \vdash e_1 \curlyvee
+%     e_2 : \IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2$ as needed.
+%   \item[\textmd{\boxed{\textsc{Unit}}}]
+%     We have $\Gamma \vdash \square : \square$. If $\square = \tau'$ and $\tau' > \tau$, all
+%     substitutions on $\square$ will result in $\square$. Thus $\tau = \square$, and we
+%     have already shown $\Gamma \vdash \square : \square$.
+%   \item[\textmd{\boxed{\textsc{ReadFile}, \textsc{ReadNet}}}]
+%     The same principle for \textsc{Unit} applies here to prove these
+%     cases.
+%   \item[\textmd{\boxed{\textsc{Sub}}}]
+%     For the conclusion $\Gamma \vdash e : \IO_{\sigma'} \tau'$, we again have that
+%     $\IO_{\sigma'} \tau' > \IO_{\sigma'} \tau$. Therefore there exists a substitution $S$
+%     from the former type to the latter, and by the definition of
+%     substitution on $\IO$, must be a substitution from $\tau'$ to $\tau$.
 
-    If $x \neq y$, then the proof is a bit more complicated. We take the
-    following steps:
-    \begin{align*}
-      \Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau \\
-      \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma' \vdash e : \tau &&  \text{by
-                                                            swapping,
-                                                            lemma~\ref{lem:swap}}
-      \\
-      \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma \vdash e : \tau && \text{by
-                                                           inductive
-                                                           hypothesis} \\
-      \Gamma , x : \sigma , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau && \text{by swapping again}
-    \end{align*}
-    And proceed to construct the proof for \textsc{Let} as previously.
-  \item[\rm\textsc{App}]
-    From the premises we have $\Gamma , x : \sigma' \vdash e : \tau' \rightarrow \tau$ and $\Gamma , x : \sigma' \vdash
-    e' : \tau'$. We wish to show $\Gamma , x : \sigma \vdash e \ e' : \tau$.
-    We apply the induction hypothesis to get $\Gamma , x : \sigma \vdash e : \tau' \rightarrow \tau$
-    and  $\Gamma , x : \sigma \vdash e' : \tau$. Then use \textsc{App} to build up a
-    proof of $\Gamma , x : \sigma \vdash e \ e' : \tau$.
-  \item[The remaining cases] The rest of the possible proofs for
-    $\Gamma , x : \sigma' \vdash e : \tau$ can all be proved by applying the
-    induction hypothesis on their structure, much like the case for
-    \textsc{App}, and so are omitted for brevity.
-  \end{description}
-\end{proof}
+%     Thus we can take the premise $\Gamma \vdash e : \IO_\sigma \tau'$, and knowing that
+%     $\tau' > \tau$ apply the induction hypothesis and \textsc{Sub}
+%     to arrive at $\Gamma \vdash e : \IO_{\sigma'} \tau$ as needed.
+%   \end{description}
+% \end{proof}
 
-\begin{lemma}
-  If $\Gamma \vdash e : \tau'$ and $\tau' > \tau$, then $\Gamma \vdash e : \tau$.
-\end{lemma}
-\begin{proof}
-  We prove this by induction on the proof for $\Gamma \vdash e : \tau'$.
-  \begin{description}
-  \item[\textmd{\boxed{\textsc{Var}}}]
-    From the premise we have some $\tau''$ where $x : \tau'' \in \Gamma$ and $\tau'' >
-    \tau'$. By transitivity we then have $\tau'' > \tau$. And thus we apply
-    \textsc{Var} again with $x : \tau'' \in \Gamma$ and $\tau'' > \tau$ to get $\Gamma
-    \vdash e : \tau$. 
-  \item[\textmd{\boxed{\textsc{App}}}]
-    With $\Gamma \vdash e e' : \tau'$, the premises for this rule are $\Gamma \vdash e : \tau'' \rightarrow \tau'$ and $\Gamma \vdash e' :
-    \tau''$.
-    The definition of $\tau' > \tau$ is that there exists a
-    substitution $S$ that replaces any bound type variables, such that
-    $S(\tau') = \tau$.
-    Therefore if $\tau' > \tau$, then $\tau'' \rightarrow \tau' > \tau'' \rightarrow \tau$ as we can use the
-    same substitution $S$. 
-    Now that we have $\tau'' \rightarrow \tau' > \tau'' \rightarrow \tau$ and $\Gamma \vdash e : \tau'' \rightarrow
-    \tau'$, we can use the induction hypothesis to obtain $\Gamma \vdash e : \tau'' \rightarrow
-    \tau$. From here we reapply \textsc{App} to get $\Gamma \vdash e e' : \tau$ as
-    needed.
-  \item[\textmd{\boxed{\textsc{Abs}}}]
-    Our proof tree will look like
-    \begin{mathpar}
-      \inferrule{\Gamma,x : \tau_1' \vdash e : \tau_2'}{\Gamma \vdash \lambda x . e : \tau_1' \rightarrow \tau_2'}
-    \end{mathpar}
-    and we will have $\tau' = \tau_1' \rightarrow \tau_2'$. When we think of $\tau' > \tau$, we
-    have $\tau_1' \rightarrow \tau_2' > \tau$. So there is some substitution that will
-    bring us to $\tau$.
+% \begin{lemma}
+%   If $\Gamma \vdash e' : \tau'$ and $\Gamma, x : \tau' \vdash e : \tau$ then $\Gamma \vdash e [e' / x] : \tau$
+%   \label{lemma:substitution}
+% \end{lemma}
+% \begin{proof}
+%   asdf
+% \end{proof}
 
-    But if you look at the structure of $\tau_1' \rightarrow \tau_2'$, the
-    substitution must bring us to another type of
-    $\tau_1 \rightarrow \tau_2$.  The substitution will either replace something in
-    $\tau_1'$, something in $\tau_2'$, or both, but since $>$ is reflexive
-    with an empty substitution, both $\tau_1' > \tau_1$ and
-    $\tau_2' > \tau_2$ hold. Therefore it is enough to prove $\Gamma \vdash \lambda x . e :
-    \tau_1 \rightarrow \tau_2$.
+% \begin{theorem}[Preservation]
+%   If $\Gamma \vdash e : \tau$ and $e \leadsto e'$, then $\Gamma \vdash e' : \tau$
+% \end{theorem}
 
-    We can proceed to use lemma~\ref{lem:generalInContext} with
-    $\tau_1' > \tau_1$ and $\Gamma,x : \tau_1' \vdash e : \tau_2'$, to get
-    $\Gamma, x : \tau_1 \vdash e : \tau_2'$.  And by applying the induction hypothesis
-    with $\tau_2' > \tau_2$, we get $\Gamma, x : \tau_1 \vdash e : \tau_2$. From here we
-    proceed by reapplying \textsc{Abs} to get $\Gamma \vdash \lambda x . e : \tau_1 \rightarrow
-    \tau_2$.
-  \item[\textmd{\boxed{\textsc{Let}}}]
-    For $\tau' > \tau$, we have
-    \begin{mathpar}
-      \inferrule{\Gamma \vdash e_1 : \tau'' \\ \Gamma, x : \overline{\Gamma}(\tau'') \vdash e_2 :
-        \tau'}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau'}
-    \end{mathpar}
-    We just need to apply the induction hypothesis on the second
-    premise, obtaining
-    $\Gamma, x : \overline{\Gamma}(\tau'') \vdash e_2 : \tau$, and thus
-    $\Gamma \vdash \letin{x = e_1}{e_2} : \tau$.
-  \item[\textmd{\boxed{\textsc{Product}}}]
-    Our expression will have some type $\Gamma \vdash e_1 \times e_2 : \tau_1' \times \tau_2'$, where $\tau_1' \times
-    \tau_2' < \tau$. Similar to the case for \textsc{Abs}, due to the
-    structure of $\tau_1' \times \tau_2'$, any substitution that will change it
-    to $\tau$ will result in a type of $\tau_1 \times \tau_2$, for some $\tau_1$ and
-    $\tau_2$ where $\tau_1' < \tau_1$ and $\tau_2' < \tau_2$. 
-    Therefore if we can prove $\Gamma \vdash e_1 \times e_2 : \tau_1 \times \tau_2$, we will
-    have proved $\Gamma \vdash e_1 \times e_2 : \tau$.
+% \begin{proof}
+%   We prove this via structural induction on the proof for $e \leadsto e'$:
+%   \begin{description}
+%   \item[\boxed{e_1 \ e_2 \leadsto e_1' \ e_2}] We know that
+%     $\Gamma \vdash e_1 \ e_2 : \tau$, now we need to prove
+%     $\Gamma \vdash e_1' \ e_2 : \tau$. For
+%     $e_1 \ e_2 \leadsto e_1' \ e_2$, we only have one small-step rule for it,
+%     , which has the premise $e_1 \leadsto e_1'$. Also since
+%     $\Gamma \vdash e_1 \ e_2 : \tau$, the typing rule \textsc{App} gives us
+%     $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$.
+
+%     Now that we have $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $e_1 \leadsto e_1'$, we can use
+%     the induction hypothesis to show $\Gamma \vdash e_1' : \tau' \rightarrow \tau$. And once
+%     again by applying \textsc{App}, we end up with $\Gamma \vdash e_1' \ e_2 :
+%     \tau$ as needed.
+
+%   \item[\boxed{e_1 \ e_2 \leadsto e_1 \ e_2'}] This can be proved with the
+%     same method above.
+
+%   \item[\boxed{(\lambda x . e_1) e_2 \leadsto e_1 [e_2 / x]}] Our type is
+%     $\Gamma \vdash (\lambda x . e_1) e_2 : \tau$, and we need to show that
+%     $\Gamma \vdash e_1 [e_2 / x] : \tau$.
+%     Unfortunately, the small-step rule for this proof does not contain any
+%     premises.
+%     However the only typing rule that can give us $\Gamma \vdash (\lambda x . e_1) e_2
+%     : \tau$ is \textsc{App}. The premises for it are
+%     are $\Gamma \vdash \lambda x . e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$. We can then apply
+%     \textsc{Abs} to get $\Gamma, x : \tau' \vdash e_1 : \tau$. The proof tree like this:
+
+%     $$\inferrule*[Right=App]{
+%       \inferrule*[Right=Abs]{\Gamma, x : \tau' \vdash e_1 : \tau}{\Gamma \vdash (\lambda x . e_1) : \tau' \rightarrow \tau} \\ \Gamma \vdash e_2 : \tau
+%     }
+%       {\Gamma \vdash (\lambda x . e_1) e_2 : \tau}
+%     $$
     
-    Taking the premises of \textsc{Product}, we get $\Gamma \vdash e_1 : \tau_1'$
-    and $\Gamma \vdash e_2 : \tau_2'$. Apply the induction hypothesis on both, giving
-    $\Gamma \vdash e_1 : \tau_1$ and $\Gamma \vdash e_2 : \tau_2$, and reapply \textsc{Product} to
-    arrive at $\Gamma \vdash e_1 \times e_2 : \tau_1 \times \tau_2$.
-  \item[\textmd{\boxed{\textsc{Lift}}}]
-    If we have $\Gamma \vdash \lift{e} : \IO_\sigma \tau'$ and $\tau' > \tau$, then we need to
-    show $\Gamma \vdash \lift{e} : \IO_\sigma \tau$. Take the premise $\Gamma \vdash e : \tau'$,
-    and use the induction hypothesis to get $\Gamma \vdash e : \tau$, and therefore
-    the desired result.
-  \item[\textmd{\boxed{\textsc{Bind}}}]
-    Similarly to \textsc{Lift}, we need to show $\Gamma \vdash e \bind e' :
-    \IO_\sigma \tau$, given $\Gamma \vdash e \bind e' : \IO_\sigma \tau'$ and $\tau' > \tau$.
-    We have $\IO_\sigma \tau' > \IO_\sigma \tau$ as per the previous cases, and the
-    premise $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau'$. Because there exists a
-    substitution from $\IO_\sigma \tau'$ to $\IO_\sigma \tau$, there also exists a
-    substitution from $\tau'' \rightarrow \IO_\sigma \tau'$ to $\tau'' \rightarrow \IO_\sigma \tau$, thus
-    $\tau'' \rightarrow \IO_\sigma \tau' > \tau'' \rightarrow \IO_\sigma \tau$.
+%     With $\Gamma, x : \tau' \vdash e_1 : \tau$ and $e_2 : \tau'$,
+%     lemma~\ref{lemma:substitution} then gives us
+%     $\Gamma \vdash e_1 [e_2 / x] : \tau$ as needed.
 
-    Applying the induction hypothesis to the premise $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau'$,
-    we get $\Gamma \vdash e' : \tau'' \rightarrow \IO_\sigma \tau$, and can then use \textsc{Bind}
-    again to get $\Gamma \vdash e \bind e' : \IO_\sigma \tau$ as needed.
-  \item[\textmd{\boxed{\textsc{Conc}}}]
-    Our conclusion for this rule is $\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \tau_1'
-    \times \tau_2'$. As per always, if $\IO_{\sigma \cup \sigma'} \tau_1' \times \tau_2' = \tau' > \tau$,
-    then the only substitutions possible would have to fit into
-    $\IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2 = \tau$. And with this, $\tau_1' > \tau_1$ as well
-    as $\tau_2' > \tau_2$. We then just need to apply the induction
-    hypothesis to $\Gamma \vdash e_1 : \IO_\sigma \tau_1'$ and $\Gamma \vdash e_2 : \IO_\sigma \tau_2'$
-    which will allow us to use \textsc{Conc} to arrive at $\Gamma \vdash e_1 \curlyvee
-    e_2 : \IO_{\sigma \cup \sigma'} \tau_1 \times \tau_2$ as needed.
-  \item[\textmd{\boxed{\textsc{Unit}}}]
-    We have $\Gamma \vdash \square : \square$. If $\square = \tau'$ and $\tau' > \tau$, all
-    substitutions on $\square$ will result in $\square$. Thus $\tau = \square$, and we
-    have already shown $\Gamma \vdash \square : \square$.
-  \item[\textmd{\boxed{\textsc{ReadFile}, \textsc{ReadNet}}}]
-    The same principle for \textsc{Unit} applies here to prove these
-    cases.
-  \item[\textmd{\boxed{\textsc{Sub}}}]
-    For the conclusion $\Gamma \vdash e : \IO_{\sigma'} \tau'$, we again have that
-    $\IO_{\sigma'} \tau' > \IO_{\sigma'} \tau$. Therefore there exists a substitution $S$
-    from the former type to the latter, and by the definition of
-    substitution on $\IO$, must be a substitution from $\tau'$ to $\tau$.
+%   \item[\boxed{\letin{x = e_1}{e_2} \leadsto e_2[e_1/x]}]
+%     $$
+%     \inferrule*[Right=Let]{\Gamma \vdash e_1 : \tau' \\ \Gamma, x : \overline{\Gamma}(\tau') \vdash e_2 : \tau}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau}
+%     $$
+%     As $\overline{\Gamma}(\tau') = \forall \alpha_1 \ldots \alpha_n \tau'$ where $\{\alpha_1,\ldots,\alpha_n\} =
+%     \textsf{FTV}(\tau') \backslash \textsf{FTV}(\Gamma)$, we know that $\{\alpha_1,\ldots,\alpha_n\} \cap
+%     \textsf{FTV}(\Gamma) = \emptyset$.
+%     So by lemma~\ref{lemma:substitution} we have $\Gamma \vdash e_2 [e_1/x] : \tau$.
 
-    Thus we can take the premise $\Gamma \vdash e : \IO_\sigma \tau'$, and knowing that
-    $\tau' > \tau$ apply the induction hypothesis and \textsc{Sub}
-    to arrive at $\Gamma \vdash e : \IO_{\sigma'} \tau$ as needed.
-  \end{description}
-\end{proof}
+%   \item[\boxed{\lift{e_1} \bind e_2 \leadsto e_1' \bind e_2}]
+%     The premise for this small-step rule is $e_1 \leadsto e_1'$. We have $\Gamma
+%     \vdash e_1 \bind e_2 : \tau$, but because we know the type more
+%     specifically because of the rule \textsc{Bind}, it must be of
+%     the form $\Gamma \vdash e_1 \bind e_2 : \IO_\sigma \tau$. Thus we need to show $\Gamma
+%     \vdash e_1' \bind e_2 : \IO_\sigma \tau$.
 
-\begin{lemma}
-  If $\Gamma \vdash e' : \tau'$ and $\Gamma, x : \tau' \vdash e : \tau$ then $\Gamma \vdash e [e' / x] : \tau$
-  \label{lemma:substitution}
-\end{lemma}
-\begin{proof}
-  asdf
-\end{proof}
+%     We have the typing premises $\Gamma \vdash e_1 : \IO_\sigma \tau'$. We can just
+%     apply the induction hypothesis on $e_1 \leadsto e_1'$ to get $\Gamma \vdash e_1'
+%     : \IO_\sigma \tau'$ and reapply \textsc{Bind} to obtain $\Gamma \vdash e_1' \bind
+%     e_2 : \IO_\sigma \tau$.
 
-\begin{theorem}[Preservation]
-  If $\Gamma \vdash e : \tau$ and $e \leadsto e'$, then $\Gamma \vdash e' : \tau$
-\end{theorem}
+%   \item[\boxed{\lift{v} \bind e \leadsto e \ v}]
+%     Using the same observation as the previous case, we can prove this
+%     by showing $\Gamma \vdash e \ v : \IO_\sigma \tau$.
+%     We can get $\Gamma \vdash v : \tau'$ via the following proof tree:
+%     $$\inferrule*[Right=Bind]{\inferrule*[Right=Lift]{\Gamma \vdash v : \tau'}
+%       {\Gamma \vdash \lift{v} : \IO_\sigma \tau'} \\ \Gamma \vdash e : \tau' \rightarrow \IO_\sigma \tau}
+%     {\Gamma \vdash \lift{v} \bind e : \IO_\sigma \tau}$$
+%     And then by applying \textsc{App}, we arrive at $\Gamma \vdash e \ v : \IO_\sigma
+%     \tau$.
 
-\begin{proof}
-  We prove this via structural induction on the proof for $e \leadsto e'$:
-  \begin{description}
-  \item[\boxed{e_1 \ e_2 \leadsto e_1' \ e_2}] We know that
-    $\Gamma \vdash e_1 \ e_2 : \tau$, now we need to prove
-    $\Gamma \vdash e_1' \ e_2 : \tau$. For
-    $e_1 \ e_2 \leadsto e_1' \ e_2$, we only have one small-step rule for it,
-    , which has the premise $e_1 \leadsto e_1'$. Also since
-    $\Gamma \vdash e_1 \ e_2 : \tau$, the typing rule \textsc{App} gives us
-    $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$.
-
-    Now that we have $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ and $e_1 \leadsto e_1'$, we can use
-    the induction hypothesis to show $\Gamma \vdash e_1' : \tau' \rightarrow \tau$. And once
-    again by applying \textsc{App}, we end up with $\Gamma \vdash e_1' \ e_2 :
-    \tau$ as needed.
-
-  \item[\boxed{e_1 \ e_2 \leadsto e_1 \ e_2'}] This can be proved with the
-    same method above.
-
-  \item[\boxed{(\lambda x . e_1) e_2 \leadsto e_1 [e_2 / x]}] Our type is
-    $\Gamma \vdash (\lambda x . e_1) e_2 : \tau$, and we need to show that
-    $\Gamma \vdash e_1 [e_2 / x] : \tau$.
-    Unfortunately, the small-step rule for this proof does not contain any
-    premises.
-    However the only typing rule that can give us $\Gamma \vdash (\lambda x . e_1) e_2
-    : \tau$ is \textsc{App}. The premises for it are
-    are $\Gamma \vdash \lambda x . e_1 : \tau' \rightarrow \tau$ and $\Gamma \vdash e_2 : \tau'$. We can then apply
-    \textsc{Abs} to get $\Gamma, x : \tau' \vdash e_1 : \tau$. The proof tree like this:
-
-    $$\inferrule*[Right=App]{
-      \inferrule*[Right=Abs]{\Gamma, x : \tau' \vdash e_1 : \tau}{\Gamma \vdash (\lambda x . e_1) : \tau' \rightarrow \tau} \\ \Gamma \vdash e_2 : \tau
-    }
-      {\Gamma \vdash (\lambda x . e_1) e_2 : \tau}
-    $$
+%   \item[\boxed{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2}]
+%     We need to show $\Gamma \vdash e_1' \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \tau \times
+%     \tau'$. \textsc{Conc} provides us with the premise $\Gamma \vdash e_1 : \IO_\sigma
+%     \tau$, which by applying the induction hypothesis with $e_1 \leadsto e_2$
+%     gives $\Gamma \vdash e_1' : \IO_\sigma \tau$. Reapply \textsc{Conc} to get the
+%     result needed.
+%   \item[\boxed{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'}]
+%     This proof is the same as the case above.
     
-    With $\Gamma, x : \tau' \vdash e_1 : \tau$ and $e_2 : \tau'$,
-    lemma~\ref{lemma:substitution} then gives us
-    $\Gamma \vdash e_1 [e_2 / x] : \tau$ as needed.
+%   \item[\boxed{\lift{v} \curlyvee \lift{w} \leadsto \lift{v \times w}}]
+%     The aim is to show $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$.
+%     We have this proof tree:
+%     $$\inferrule*[Right=Conc]{
+%       \inferrule*[Right=Lift]{\Gamma \vdash v : \tau}{\Gamma \vdash \lift{v} : \IO_\sigma \tau} \\
+%       \inferrule*[Right=Lift]{\Gamma \vdash w : \tau'}{\Gamma \vdash \lift{w} : \IO_\sigma \tau'}
+%       \\
+%       \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
+%     {\Gamma \vdash \lift{v} \curlyvee \lift{w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'}$$
+%     Use \textsc{Product} to get $\Gamma \vdash v \times w : \tau \times \tau'$, and then
+%     \textsc{Lift} to get $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$
+%     (Note that \textsc{Lift} can lift into $\IO_\sigma$ for any $\sigma$)
 
-  \item[\boxed{\letin{x = e_1}{e_2} \leadsto e_2[e_1/x]}]
-    $$
-    \inferrule*[Right=Let]{\Gamma \vdash e_1 : \tau' \\ \Gamma, x : \overline{\Gamma}(\tau') \vdash e_2 : \tau}{\Gamma \vdash \letin{x = e_1}{e_2} : \tau}
-    $$
-    As $\overline{\Gamma}(\tau') = \forall \alpha_1 \ldots \alpha_n \tau'$ where $\{\alpha_1,\ldots,\alpha_n\} =
-    \textsf{FTV}(\tau') \backslash \textsf{FTV}(\Gamma)$, we know that $\{\alpha_1,\ldots,\alpha_n\} \cap
-    \textsf{FTV}(\Gamma) = \emptyset$.
-    So by lemma~\ref{lemma:substitution} we have $\Gamma \vdash e_2 [e_1/x] : \tau$.
+%   \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{\square}}}]
+%     We know $\Gamma \vdash
+%     \textsf{readFile} : \IO_{\textsf{File}} \square$, and we can just use
+%     \textsc{Lift} to show that $\Gamma \vdash \lift{\square} : \IO_{\textsf{File}}
+%     \square$.
+%   \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{\square}}}]
+%     This is the same for above, except the heap is replaced with the
+%     singular resource $\textsf{Net}$.
+%   \end{description}
+% \end{proof}
 
-  \item[\boxed{\lift{e_1} \bind e_2 \leadsto e_1' \bind e_2}]
-    The premise for this small-step rule is $e_1 \leadsto e_1'$. We have $\Gamma
-    \vdash e_1 \bind e_2 : \tau$, but because we know the type more
-    specifically because of the rule \textsc{Bind}, it must be of
-    the form $\Gamma \vdash e_1 \bind e_2 : \IO_\sigma \tau$. Thus we need to show $\Gamma
-    \vdash e_1' \bind e_2 : \IO_\sigma \tau$.
+% \begin{theorem}[Progress]
+%   If $. \vdash e : \tau$ then either $e \ \textsf{val}$, or there exists an $e'$
+%   such that $e \leadsto e'$.
+% \end{theorem}
 
-    We have the typing premises $\Gamma \vdash e_1 : \IO_\sigma \tau'$. We can just
-    apply the induction hypothesis on $e_1 \leadsto e_1'$ to get $\Gamma \vdash e_1'
-    : \IO_\sigma \tau'$ and reapply \textsc{Bind} to obtain $\Gamma \vdash e_1' \bind
-    e_2 : \IO_\sigma \tau$.
-
-  \item[\boxed{\lift{v} \bind e \leadsto e \ v}]
-    Using the same observation as the previous case, we can prove this
-    by showing $\Gamma \vdash e \ v : \IO_\sigma \tau$.
-    We can get $\Gamma \vdash v : \tau'$ via the following proof tree:
-    $$\inferrule*[Right=Bind]{\inferrule*[Right=Lift]{\Gamma \vdash v : \tau'}
-      {\Gamma \vdash \lift{v} : \IO_\sigma \tau'} \\ \Gamma \vdash e : \tau' \rightarrow \IO_\sigma \tau}
-    {\Gamma \vdash \lift{v} \bind e : \IO_\sigma \tau}$$
-    And then by applying \textsc{App}, we arrive at $\Gamma \vdash e \ v : \IO_\sigma
-    \tau$.
-
-  \item[\boxed{e_1 \curlyvee e_2 \leadsto e_1' \curlyvee e_2}]
-    We need to show $\Gamma \vdash e_1' \curlyvee e_2 : \IO_{\sigma \cup \sigma'} \tau \times
-    \tau'$. \textsc{Conc} provides us with the premise $\Gamma \vdash e_1 : \IO_\sigma
-    \tau$, which by applying the induction hypothesis with $e_1 \leadsto e_2$
-    gives $\Gamma \vdash e_1' : \IO_\sigma \tau$. Reapply \textsc{Conc} to get the
-    result needed.
-  \item[\boxed{e_1 \curlyvee e_2 \leadsto e_1 \curlyvee e_2'}]
-    This proof is the same as the case above.
-    
-  \item[\boxed{\lift{v} \curlyvee \lift{w} \leadsto \lift{v \times w}}]
-    The aim is to show $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$.
-    We have this proof tree:
-    $$\inferrule*[Right=Conc]{
-      \inferrule*[Right=Lift]{\Gamma \vdash v : \tau}{\Gamma \vdash \lift{v} : \IO_\sigma \tau} \\
-      \inferrule*[Right=Lift]{\Gamma \vdash w : \tau'}{\Gamma \vdash \lift{w} : \IO_\sigma \tau'}
-      \\
-      \sigma \notsubtyp \sigma' \\ \sigma' \notsubtyp \sigma}
-    {\Gamma \vdash \lift{v} \curlyvee \lift{w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'}$$
-    Use \textsc{Product} to get $\Gamma \vdash v \times w : \tau \times \tau'$, and then
-    \textsc{Lift} to get $\Gamma \vdash \lift{v \times w} : \IO_{\sigma \cup \sigma'} \tau \times \tau'$
-    (Note that \textsc{Lift} can lift into $\IO_\sigma$ for any $\sigma$)
-
-  \item[\textmd{\boxed{\textsf{readFile} \leadsto \lift{\square}}}]
-    We know $\Gamma \vdash
-    \textsf{readFile} : \IO_{\textsf{File}} \square$, and we can just use
-    \textsc{Lift} to show that $\Gamma \vdash \lift{\square} : \IO_{\textsf{File}}
-    \square$.
-  \item[\textmd{\boxed{\textsf{readNet} \leadsto \lift{\square}}}]
-    This is the same for above, except the heap is replaced with the
-    singular resource $\textsf{Net}$.
-  \end{description}
-\end{proof}
-
-\begin{theorem}[Progress]
-  If $. \vdash e : \tau$ then either $e \ \textsf{val}$, or there exists an $e'$
-  such that $e \leadsto e'$.
-\end{theorem}
-
-\begin{proof}
-  We prove this via induction on the proof for $. \vdash e : \tau$
-\end{proof}
+% \begin{proof}
+%   We prove this via induction on the proof for $. \vdash e : \tau$
+% \end{proof}
 
 
-\begin{theorem}[Soundness]
-  If $e$ is inferred type $\tau$, $e$ evaluates to a value in $\tau$. \\
-  $\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau$
-\end{theorem}
+% \begin{theorem}[Soundness]
+%   If $e$ is inferred type $\tau$, $e$ evaluates to a value in $\tau$. \\
+%   $\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau$
+% \end{theorem}
 
 
-Theorem 2, completeness $\Gamma \Vdash e : \tau \rightarrow \Gamma \vdash e : \tau$
+% Theorem 2, completeness $\Gamma \Vdash e : \tau \rightarrow \Gamma \vdash e : \tau$
 
-Theorem 3, principal types
+% Theorem 3, principal types
 
-Theorem 4, most specific heap for monad?
+% Theorem 4, most specific heap for monad?
 %%% Local Variables:
 %%% TeX-master: "report"
 %%% TeX-engine: luatex
