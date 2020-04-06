@@ -192,11 +192,11 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
 
     If $y \ne x$, then we the proof is more involved. From the premises
     we have
-    $$\Gamma , x : \alpha_1,\ldots,\alpha_n . \tau , y : \tau_1 \vdash e' : \tau_2$$.
+    \[\Gamma , x : \alpha_1,\ldots,\alpha_n . \tau , y : \tau_1 \vdash e' : \tau_2\]
     We start by choosing a substitution $s$, which maps $\alpha_1 , \ldots, \alpha_n$
     to fresh type variables $\alpha'_1, \ldots,\alpha'_n$. Additionally, they are
     distinct as follows.
-    $$\ftv(\Gamma) \cap \alpha_1,\ldots,\alpha_n \cap \alpha'_1,\ldots,\alpha'_n = \emptyset$$
+    \[\ftv(\Gamma) \cap \alpha_1,\ldots,\alpha_n \cap \alpha'_1,\ldots,\alpha'_n = \emptyset\]
 
     Now we manipulate the premise in the following order.
     \begin{align*}
@@ -440,11 +440,11 @@ expression is either a terminal value, or can be reduced further.
       \infer{ }{\lift{e} \bind e_2 \leadsto e_2 \ e}&&
       \infer{ }{\use{r}{e} \bind e_2 \leadsto e_2 \ e}
     \end{align*}
-  \item[\rm{\textsc{Conc}}] We can immediately reduce any expression
+  \item[\rm\textsc{Conc}] We can immediately reduce any expression
     of the form $v \curlyvee w$.
     \[ \infer{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times
           w})} \]
-  \item[\rm{\textsc{Sub}] If we have a subsumption judgement resulting
+  \item[\rm\textsc{Sub}] If we have a subsumption judgement resulting
       in $\centerdot \vdash e : \IO_\rho' \tau$, then we also have the premise $\centerdot \vdash e :
       \IO_\rho \tau$ for some other $\rho$. But we can just call the induction
       hypothesis on this premise to show that either $e$ reduces or
