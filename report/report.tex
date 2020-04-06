@@ -20,6 +20,11 @@
 \newcommand{\lift}[1]{\ensuremath{\llbracket#1\rrbracket}}
 \newcommand{\use}[2]{\ensuremath{\llbracket#2\rrbracket_{#1}}}
 
+\author{Luke Lau}
+\title{A Resourceful Monad for IO}
+\begin{titlepage}
+  \maketitle
+\end{titlepage}
 
 \chapter{Introduction}
 The immutability and pureness of certain functional languages make them seem
@@ -152,7 +157,8 @@ Keep in mind we are painting in broad strokes when we use the word
 \texttt{foo.txt}. But the notion of a resource can be as broad or as specific as
 the author of a function needs it to be. It could represent a specific database
 instance, or a single network socket. For simplicity in our example we will
-consider the entire file system as a single resource.
+consider the entire file system as a single resource, the entire network as
+a single resource, and so on.
 
 Now that we know what resources each $\IO$ action is using, we would like to
 change the type of our concurrent function to take advantage of this new
@@ -177,16 +183,27 @@ But accepts and assigns types to programs such as
 $$
 \textsf{readFile} \curlyvee \textsf{readNet} : \IO_{\textsf{File} \cup \textsf{Net}} \ () \times ()
 $$
+In short, we aim to create a type system that keeps tracks of the resources
+being used, so that the programmer doesn't have to. It \textbf{does not} aim to
+solve concurrency -- there will still be programs that have concurrency errors
+that the type system will still allow. We just aim to narrow down the scope of
+valid programs, by ruling out those with blatant, concurrent resource access
+errors. 
+
+\section{Overview}
 
 In chapter~\ref{chapter:background} we will lay out the seminal works in type
 theory that we will build upon. We will also briefly touch other parallels to
 our problem such as separation logic, and how they will influence the upcoming
 design.
 
-Chapter~\ref{chapter:system} introduces the language and its type system, and
-presents some informal proofs of its soundness. These proofs are then
-formalised within the dependently typed language and proof assistant agda in
-chapter~\ref{chapter:agda}.
+Chapter~\ref{chapter:system} introduces the language, its type system and its
+semantics.  It gives a complete definition of all the parts needed to prove
+properties.  We prove these properties in chapter~\ref{chapter:properties}, in
+which we eventually build up and present a proof of its soundness. This proof,
+and the others that accompany it, are then formalised within the dependently
+typed language and proof assistant Agda. The technique and design used to do so
+are discussed in chapter~\ref{chapter:agda}.
 
 Chapter~\ref{chapter:evaluation} evaluates how such a type system works in
 practice in ``real-world'' code examples, and how it might be refined. Further
@@ -196,11 +213,13 @@ areas to explore in this design are listed in chapter~\ref{chapter:further-work}
 
 \include{system}
 
+\include{properties}
+
 \include{formalisation}
 
 \include{evaluation}
 
-\chapter{Further Work} \label{chapter:futher-work}
+\chapter{Further Work} \label{chapter:further-work}
 
 - Dependently typed resource tags
 
