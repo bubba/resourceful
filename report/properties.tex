@@ -6,19 +6,24 @@ various other proofs. The first states that if we have two variables
 in the context with the same names but different type schemes, then we
 can ignore the first one as it is overshadowed by the second -- any
 reference to $x$ will result in $x : \sigma'$.
-\begin{lemma} \label{lem:drop}
+\begin{lemma}[Drop] \label{lem:drop}
   If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
 \end{lemma}
 The second states that we can sneak in another variable before another
 variable of the same name, for the exact same reason.
-\begin{lemma} \label{lem:sneak}
+\begin{lemma}[Sneak] \label{lem:sneak}
   If $\Gamma , x : \sigma' \vdash e : \tau$, then for any $\sigma$, $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$
 \end{lemma}
 We can then also say that if two variables $x$ and $y$ are indeed
 different, we are free to permute them and swap them about.
-\begin{lemma} \label{lem:swap}
+\begin{lemma}[Swap] \label{lem:swap}
   If $x \neq y$ and $\Gamma , x : \sigma, y : \sigma' \vdash e : \tau$, then $\Gamma , y : \sigma' , x : \sigma \vdash e
   : \tau$
+\end{lemma}
+And if we have a typing judgement in an empty context, we can weaken
+the judgement to extend this to any other context.
+\begin{lemma}[Weaken] \label{lem:weaken}
+  If $\centerdot \vdash e : \tau$, then for $\Gamma$, $\Gamma \vdash e : \tau$.
 \end{lemma}
 
 We will also need to show this property about instantiation and the
@@ -246,7 +251,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
       \Gamma[s^{-1}] , y : \tau_1[s][s^{-1}] &\vdash e' [e/x] : \tau_2 \\
       \Gamma[s^{-1}], y : \tau_1 &\vdash e' [e/x] : \tau_2
     \end{align*}
-    But because $\alpha'_1 , \ldots, \alpha'_n \cap \ftv(\Gamma) = \emptyset$, we can get rid of that
+    And because $\alpha'_1 , \ldots, \alpha'_n \cap \ftv(\Gamma) = \emptyset$, we can get rid of that
     last substitution and arrive at ${\Gamma, y : \tau_1 \vdash e' [e/x] : \tau_2}$.
     From here, we build our way back up with \textsc{Abs}.
     \begin{align*}
@@ -335,26 +340,35 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
 \subsection{Type Soundness}
 
 Now that we have the prerequisite lemmas out of the way, we can move
-onto proving that the system is \textbf{sound}. Soundness is a logical
-property of a system, stating that every judgement that can be proved
-within the system is valid. In the type theory realm, a type system is
-considered to be sound if and only if, for every typing judgement we
-can produce for an expression in a context, it evaluates to something
-of the type from the typing judgement. That is -- \textit{``well-typed
-  programs can't go wrong''}~\cite{milner1978}[§3.7].
+onto proving that the system is \textbf{sound}. Soundness is a
+property of a logical system, stating that every judgement that can be
+proved within the system is valid. In the type theory realm, a type
+system is considered to be sound if and only if, for every typing
+judgement we can produce for an expression in a context, it evaluates
+to some member of the set of the type from the typing judgement -- or
+as Milner put it, \textit{``well-typed programs can't go
+  wrong''}~\cite{milner1978}[§3.7].
 \[\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau\]
 We saw how this was proved with denotational semantics in
 chapter~\ref{chapter:background}, but here we have modelled our
 dynamic semantics with operational semantics.  Instead, we prove the
 soundness of our type system \textit{syntactically}. This approach was
 first introduced by Wright and Felleisen and 1994~\ref{wright1994},
-and has since become one of the de facto methods of proving soundness
-in programming language theory.
+and has since become the de facto method for proving soundness
+with operational semantics.
 
 Syntactic type soundness involves proving two properties of a type
 system, \textit{type progress} and \textit{type preservation}.
 The former states that for any typing judgement we can prove, the
-expression is either a terminal value, or can be reduced further.
+expression is either a terminal value, or can be reduced further. The
+latter property ensures that when an expression has a type, reducing
+it to another expression does not change the type.
+
+Together these two properties can ensure that no expression can go
+wrong, which within operational semantics means it cannot get
+\textit{stuck}. A stuck expression is an expression which cannot be
+reduced any further (in its normal form) and is not a value.
+
 \begin{theorem}[Progress]
   If $\centerdot \vdash e : \tau$, then either $\textsf{value} \ e$ or there exists a $e'$ such that $e \leadsto e'$.
 \end{theorem}
@@ -450,4 +464,211 @@ expression is either a terminal value, or can be reduced further.
       hypothesis on this premise to show that either $e$ reduces or
       $e$ is a value. In any case, it is the same $e$ -- so we are done.
   \end{description}
-\end{proof} 
+\end{proof}
+
+\begin{theorem}[Preservation]
+  If $\centerdot \vdash e : \tau$ and $e \leadsto e'$, then $\centerdot \vdash e' : \tau$.
+\end{theorem}
+\begin{proof}
+  As usual, start with induction on the proof for $\centerdot \vdash e : \tau$.
+  \begin{description}
+  \item[\rm\textsc{Var}] Like with the proof for progress, it is not
+    possible to have a typing judgement for a variable in the empty
+    context.
+  \item[\rm\textsc{Abs}] Whilst it is possible to have a typing
+    judgement of $\centerdot \vdash \lambda x . e$, it is not possible to have a reduction
+    of the form $(\lambda x . e) \leadsto e'$. A lambda abstraction cannot reduce
+    any further, and so we do not need to consider this case.
+  \item[\rm\textsc{App}] We have $\centerdot \vdash e_1 \ e_2 : \tau$. Consider the
+    possible cases for $e_1 \ e_2 \leadsto e'$. When it is $e_1$ that has
+    reduced
+    \[ \infer{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \leadsto e_2} \] We can use the
+    induction hypothesis with this alongside the first premise
+    ${\centerdot \vdash e_1 : \tau' \rightarrow \tau}$ to get
+    \[ \centerdot \vdash e_1' : \tau' \rightarrow \tau \] And then using \textsc{App} and the second
+    premise, we build up a proof for
+    \[ \centerdot \vdash e_1' \ e_2 : \tau \]
+    When it is $e_2$ that is reduced to $e_2'$, the steps are the same: Use the
+    induction hypothesis to get $\centerdot \vdash e_2 : \tau'$, and then $\centerdot \vdash e_1 \
+    e_2' : \tau$.
+    However, there is one other scenario in which an application
+    reduce, and that is through beta reduction:
+    \[ \infer{\textsf{value} \ e_2}{ (\lambda x . e) \ e_2 \leadsto e [ e_2 / x ]
+      } \]
+    We need to
+    show that $\centerdot \vdash e [ e_2 / x ] : \tau$.
+    And in this case $e_1$ must be a lambda abstraction, so the
+    typing judgement for the first premise must be a \textsc{Abs}.
+    \[
+      \infer*[Left=App]{ \infer*[Left=Abs]{\centerdot , x : \tau' \vdash e : \tau}{\centerdot \vdash \lambda x . e : \tau' \rightarrow \tau} \\ \centerdot \vdash e_2 : \tau' }
+      {\centerdot \vdash (\lambda x . e) \ e_2  : \tau}
+    \]
+    Furthermore, we know that $\dom(\centerdot)$ and the bound type variables
+    in $\tau'$ are distinct -- the domain of $\centerdot$ is empty, and there are
+    no bound type variables in the type scheme $\tau'$.  This allows us
+    to use the substitution lemma, lemma~\ref{lem:substitution}, with $\centerdot \vdash e_2 : \tau'$ and
+    $\centerdot , x : \tau' \vdash e : \tau$, giving us
+    \[ \centerdot \vdash e [ e_2 / x ] : \tau \]
+  \item[\rm\textsc{Let}] There is only way a let expression can
+    reduce, and that is by ${\letin{x = e'}{e} \leadsto e [e' / x]}$. The
+    premises are
+    \begin{align*}
+      \centerdot \vdash e' : \tau' \\
+      \centerdot , x : \tau' \vdash e : \tau
+    \end{align*}
+    And we know that there are no bound type variables in the type
+    scheme $\tau'$, and so they are naturally distinct form
+    $\dom(\centerdot)$. Therefore we can just use the substitution lemma again
+    to show that
+    \[ \centerdot \vdash e [e' / x] : \tau \]
+  \item[\rm\textsc{Unit}] In this case, the judgement is
+    $\centerdot : \square \vdash \square$. But there is no way for a unit
+    $\square$ to reduce, i.e. $\square \not\leadsto e$, so we do not need to consider this case.
+  \item[\rm\textsc{Product}] An expression of the form
+    $\centerdot \vdash e_1 \times e_2: \tau_1 \times \tau_2$ can be reduced in either two
+    ways. Either $e_1 \leadsto e_1'$ and
+    $e_1 \times e_2 \leadsto e_1' \times e_2$, in which case
+    \begin{align*}
+      \centerdot \vdash e_1 : \tau_1 && \text{by the premises} \\
+      \centerdot \vdash e_1' : \tau_1 && \text{by induction hypothesis} \\
+      \centerdot \vdash e_1' \times e_2 : \tau_1 \times \tau_2 && \text{by \textsc{Product}}
+    \end{align*}
+    Or if $e_2 \leadsto e_2'$, then we repeat the same steps but acting on
+    the second premise.
+  \item[\rm\textsc{Proj1}] $\centerdot \vdash \pi_1 \ e : \tau$ can reduce in two ways as
+    well. If $e \leadsto e'$ and $\pi_1 \ e \leadsto \pi_1 \ e'$ then
+    \begin{align*}
+      \centerdot \vdash e : \tau \times \tau' && \text{by the premises} \\
+      \centerdot \vdash e' : \tau \times \tau' && \text{by induction hypothesis} \\
+      \centerdot \vdash \pi_1 \ e' : \tau && \text{by \textsc{Proj1}}
+    \end{align*}
+    However it can also be reduced if $e$ happens to be a product,
+    namely $\pi_1 (e_1 \times e_2) \leadsto e_1$. So we just need to show that
+    ${\centerdot \vdash e_1 : \tau}$, which can be done by climbing up the proof tree.
+    \[
+      \infer*[Left=Proj1]{ \infer*[Left=Product]{\centerdot \vdash e_1 : \tau  \\ \centerdot \vdash
+          e_2 : \tau}{\centerdot \vdash e_1
+          \times e_2 : \tau \times \tau'} }
+      {\centerdot \vdash \pi_1 \ (e_1 \times e_2) : \tau}
+    \]
+  \item[\rm\textsc{Proj2}] Again, the proof for \textsf{Proj2} is
+    pretty much identical to that of \textsf{Proj1} and so is omitted
+    for brevity.
+  \item[\rm\textsc{Lift}] For
+    $\centerdot \vdash \lift{e} : \IO_\rho \tau$, just like $\square$ there is no way
+    for $\lift{e}$ to reduce any further -- they are both
+    values. There is nothing needed to be done for this case.
+  \item[\rm\textsc{Use}] The same also applies for $\use{r}{e}$.
+  \item[\rm\textsc{Bind}] The proof we are handling looks like this
+    \[ \infer*[Left=Bind]{\centerdot \vdash e_1 : \IO_\rho \tau' \\ \centerdot \vdash e_2 : \tau' \rightarrow \IO_\rho \tau}{\centerdot \vdash e_1 \bind
+        e_2 : \IO_\rho \tau} \]
+    The first thing to note is that there are
+    multiple possible ways in which reduction could have occurred: We
+    will look at each of them one by one.
+    \begin{description}
+    \item[$e_1 \bind e_2 \leadsto e_1' \bind e_2$] The premise for this
+      reduction is $e_1 \leadsto e_1'$, so we take the following steps
+      \begin{align*}
+        \centerdot \vdash e_1 : \IO_\rho \tau' && \text{by the premises} \\
+        \centerdot \vdash e_1' : \IO_\rho \tau' && \text{by induction hypothesis} \\
+        \centerdot \vdash e_1' \bind e_2 : \IO_\rho \tau && \text{by \textsc{Bind}}
+      \end{align*}
+    \item[$\lift{e} \bind e_2 \leadsto e_2 \ e$] We know
+      $\centerdot \vdash \lift{e} : \IO_\rho \tau'$, but that does not necessarily mean
+      that the proof for it came from the \textsc{Lift} rule -- it
+      could have also been derived from subsumption, \textsc{Sub}. To
+      help when this scenario arises, we use a small helper lemma
+      listed in the appendix, lemma~\ref{lem:unwrapLift}, that says if
+      $\Gamma \vdash \lift{e} : \IO_\rho \tau'$, then
+      $\Gamma \vdash e : \tau'$. Now we can use \textsc{Abs} to construct
+      ${\centerdot \vdash e_2 \ e : \IO_\rho \tau}$ as needed.
+    \item[$\use{r}{e} \bind e_2 \leadsto e_2 \ e$] This is identical to the
+      case above, except we use lemma~\ref{lem:unwrapUse} instead.
+    \end{description}
+  \item[\rm\textsc{Conc}] We have the proof and premises
+    \[ \infer*[Left=Conc]{\centerdot \vdash v : \IO_{\rho_1} \tau_1 \\ \centerdot \vdash w : \IO_{\rho_2} \tau_2 \\
+      \textsf{ok} \ \rho_1 \cup \rho_2}
+      { \centerdot \vdash v \curlyvee w : \IO_{\rho_1 \cup \rho_2} \tau_1 \times \tau_2 } \]
+    There is also only one possible reduction that could have
+    occurred
+    \[ v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times w}) \]
+    So we need to show ${\centerdot \vdash v \bind \lambda v . (w \bind \lambda w . \lift{v
+        \times w}) : \IO_{\rho_1 \cup \rho_2} \tau_1 \times \tau_2}$ -- not exactly the
+    prettiest judgement -- which we can construct eventually from a \textsc{Bind}.
+
+    To begin, we will first show that both $v$ and $w$ can be subsumed
+    into the larger combined heap, $\rho_1 \cup \rho_2$.
+    \begin{align*}
+      \centerdot \vdash v : \IO_{\rho_1} \tau_1 && \text{from premises} \\
+      \rho_1 \subtyp \rho_1 \cup \rho_2 && \text{by \textsc{UnionL}} \\
+      \textsf{ok} \ \rho_1 \cup \rho_2 && \text{from premises} \\
+      \centerdot \vdash v : \IO_{\rho_1 \cup \rho_2} \tau_1 && \text{by \textsc{Sub}}
+    \end{align*}
+    \begin{align*}
+      \centerdot \vdash w : \IO_{\rho_2} \tau_2 && \text{from premises} \\
+      \centerdot , v : \tau_1 \vdash w : \IO_{\rho_2} \tau_2 && \text{by
+                                                   lemma~\ref{lem:weaken}} \\
+      \rho_2 \subtyp \rho_1 \cup \rho_2 && \text{by \textsc{UnionR}} \\
+      \textsf{ok} \ \rho_1 \cup \rho_2 && \text{from premises} \\
+      \centerdot , v : \tau_1 \vdash w : \IO_{\rho_1 \cup \rho_2} \tau_2 && \text{by \textsc{Sub}}
+    \end{align*}
+
+    Then we show that we can make a lambda, taking a \textit{pure} $\tau_2$, and making
+    a $\tau_1\times \tau_2$ inside that new $\IO$ monad.
+    \[
+      \infer{
+        \infer{
+          \infer{
+            \centerdot, v : \tau_1, w : \tau_2 \vdash v : \tau_1 \\
+            \centerdot, v : \tau_1, w : \tau_2 \vdash w : \tau_2}
+          {\centerdot, v : \tau_1, w : \tau_2 \vdash v \times w : \tau_1 \times \tau_2}
+        }
+        {\centerdot, v : \tau_1, w : \tau_2 \vdash \lift{v \times w} : \IO_{\rho_1 \cup \rho_2} \tau_1 \times
+          \tau_2}
+      }
+      {\centerdot, v : \tau_1 \vdash \lambda w . \lift{v \times w} : \tau_2 \rightarrow \IO_{\rho_1 \cup \rho_2} \tau_1 \times \tau_2}
+    \]
+    We then take this lambda and bind our \textit{monadic} $w$ to it
+    \[
+      \infer{
+        \centerdot , v : \IO_{\rho_1} \tau_1 \vdash w : \IO_{\rho_1 \cup \rho_2} \tau_2 \\
+        \centerdot, v : \tau_1 \vdash \lambda w . \lift{v \times w} : \tau_2 \rightarrow \IO_{\rho_1 \cup \rho_2} \tau_1 \times
+        \tau_2}
+      {\centerdot, v : \tau_1 \vdash w \bind (\lambda w . \lift{v \times w}) : \IO_{\rho_1 \cup
+          \rho_2} \tau_1 \times \tau_2}
+    \]
+    Now we can make another lambda, this time taking in the \textit{pure} $\tau_1$
+    \[
+      \infer{
+        \centerdot, v : \tau_1 \vdash w \bind (\lambda w . \lift{v \times w}) : \IO_{\rho_1 \cup
+          \rho_2} \tau_1 \times \tau_2}
+      {\centerdot \vdash \lambda v . w \bind (\lambda w . \lift{v \times w}) : \tau_1 \rightarrow \IO_{\rho_1 \cup
+          \rho_2} \tau_1 \times \tau_2}
+    \]
+    And then we finally bind it with our \textit{monadic} $v$
+    \[
+      \infer{
+        \centerdot \vdash v : \IO_{\rho_1 \cup \rho_2} \tau_1 \\
+        \centerdot \vdash \lambda v . w \bind \lambda w . \lift{v \times w} : \tau_1 \rightarrow \IO_{\rho_1 \cup
+          \rho_2} \tau_1 \times \tau_2}
+      {\centerdot \vdash v \bind (\lambda v . w \bind (\lambda w . \lift{v \times w})) : \IO_{\rho_1 \cup
+          \rho_2} \tau_1 \times \tau_2}
+    \]
+    The proof is quite long, but since our typing system is syntax
+    directed, it closely matches the expression it reduces to, making
+    it easier to construct.
+  \item[\rm\textsc{Sub}] Last but not least, we have a subsumption
+    typing judgement
+    \[
+      \infer*[Left=Sub]{\centerdot \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\ \textsf{ok} \ \rho'}
+      {\centerdot \vdash e : \IO_{\rho'} \tau}
+    \]
+    However because we know nothing of the syntax of $e$, $e$ could
+    reduce to anything and we are left with some $e'$, such that
+    $e \leadsto e'$.  Nevertheless, applying the induction hypothesis with
+    $\centerdot \vdash e : \IO_\rho \tau$ and $e \leadsto e'$ gives us
+    \[ \centerdot \vdash e' : \IO_\rho \tau \]
+    Which we can stick back into \textsc{Sub} to get
+    \[ \centerdot \vdash e' : \IO_\rho' \tau \]
+  \end{description}
+\end{proof}

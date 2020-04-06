@@ -5,18 +5,43 @@
 \begin{proof}
   We want to show $a \subtyp c$. Proceed with induction on $b \subtyp c$.
   \begin{description}
-  \item[\rm\boxed{\textsc{Top}}]
+  \item[\rm\textsc{Top}]
     $c$ must be \textsf{World}, so from \textsc{Top} we have $a
     \subtyp c$.
-  \item[\rm\boxed{\textsc{Refl}}] By definition of \textsc{Refl}, $b =
+  \item[\rm\textsc{Refl}] By definition of \textsc{Refl}, $b =
     c$, and so we get $a \subtyp c$ from $a \subtyp b$.
-  \item[\rm\boxed{\textsc{UnionL}}] $c$ is of the form $\rho' \cup \rho''$, and
+  \item[\rm\textsc{UnionL}] $c$ is of the form $\rho' \cup \rho''$, and
     from the premise we have $b \subtyp \rho'$. Use the induction
     hypothesis with $a \subtyp b$ and $b \subtyp \rho'$ to get $a \subtyp
     \rho'$, and then \textsc{UnionL} gives us $a \subtyp \rho' \cup \rho''$.
-  \item[\rm\boxed{\textsc{UnionR}}]  $c$ is of the form $\rho'' \cup \rho'$, and
+  \item[\rm\textsc{UnionR}]  $c$ is of the form $\rho'' \cup \rho'$, and
     from the premise we have $b \subtyp \rho'$. Use the induction
     hypothesis with $a \subtyp b$ and $b \subtyp \rho'$ to get $a \subtyp
     \rho'$, and then \textsc{UnionR} gives us $a \subtyp \rho'' \cup \rho'$.
   \end{description}
+\end{proof}
+
+\section{Helper lemmas}
+\begin{lemma} \label{lem:unwrapLift}
+  If $\Gamma \vdash \lift{e} : \IO_\rho \tau$, then $\Gamma \vdash e : \tau$.
+\end{lemma}
+
+\begin{proof}
+  This might seem obvious, but because of subsumption we need to
+  unwravel for the proof for it first. Begin with induction on $\Gamma \vdash
+  \lift{e} : \IO_\rho \tau$.
+  \begin{description}
+  \item[\rm\textsc{Lift}] Straight from the premises, $\Gamma \vdash e : \tau$.
+  \item[\rm\textsc{Sub}] We have the premise ${\Gamma \vdash \lift{e} : \IO_{\rho'}
+    \tau}$. Just put this back into the induction hypothesis to get ${\Gamma \vdash e
+    : \tau}$.
+  \end{description}
+\end{proof}
+
+\begin{lemma} \label{lem:unwrapUse}
+  If $\Gamma \vdash \use{r}{e} : \IO_\rho \tau$, then $\Gamma \vdash e : \tau$.
+\end{lemma}
+\begin{proof}
+  Identical to that of lemma~\ref{lem:unwrapLift}, except we handle
+  the case \textsc{Use} instead of \textsc{Lift}.
 \end{proof}

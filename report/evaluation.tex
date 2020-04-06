@@ -212,7 +212,7 @@ heap to allow for variable lookup:
 \begin{grammar}
   <heap $\rho$> ::= $r$ | $\sigma \cup \sigma'$ | \textsf{World} | $\textbf{h}$
 \end{grammar}
-And then redefining substitutions so that it is a pair of a map from
+And then redefining substitutions to be pairs of a map from
 type variables to types, and a map from heap variables to heaps.
 $$ S : ( \alpha \mapsto \tau \times h \mapsto \rho ) $$
 Then in the definition of substitution, whenever a mapping from a heap

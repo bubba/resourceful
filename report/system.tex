@@ -796,8 +796,8 @@ that can be given to $v \curlyvee v$
     % lambda calculus + HM
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
     \inferrule{e_2 \leadsto e_2'}{e_1 \ e_2 \leadsto e_1 \ e_2'} \and
-    \inferrule{\textsf{value} \ e'}{ (\lambda x . e) e' \leadsto e [ e' / x ] } \and
-    \inferrule{ }{\letin{x = e}{e'} \leadsto e' [e / x]} \\
+    \inferrule{\textsf{value} \ e'}{ (\lambda x . e) \ e' \leadsto e [ e' / x ] } \and
+    \inferrule{ }{\letin{x = e'}{e} \leadsto e [e' / x]} \\
 
     % product types
     \inferrule{e_1 \leadsto e_1'}{e_1 \times e_2 \leadsto e_1' \times e_2} \and
