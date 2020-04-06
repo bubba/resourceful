@@ -1,4 +1,4 @@
-\chapter{Background}
+\chapter{Background} \label{chapter:background}
 
 In this chapter, we are going to look at the Hindley-Damas-Milner type
 system. It is one of the de-facto formalisations of a polymorphic type
@@ -286,7 +286,7 @@ and defines how the syntax is evaluated.
 \end{align*}
 
 Note that these evaluation rules are not as strict as the semantics
-defined by Milner~\cite{milner78} -- namely, that the second argument
+defined by Milner~\cite{milner1978} -- namely, that the second argument
 of application and let binding is not checked if it is a \textsf{wrong}.
 
 We introduce the notion of an environment $\eta : \mathsf{Variable} \rightarrow
@@ -319,7 +319,7 @@ There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
 
 \subsection{Correctness}
 
-Both Milner~\cite{Milner1978} and Damas~\cite{Damas1982} proved semantic
+Both Milner~\cite{milner1978} and Damas~\cite{damas1982} proved semantic
 soundness for the system.
 
 TODO: Is this too trivial to be a lemma? The proof is pretty vacuous

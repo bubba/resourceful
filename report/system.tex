@@ -607,7 +607,7 @@ $$
 
     \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} :
       \IO_\rho \tau} \and
-    \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r e} \\
+    \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r \tau} \\
     \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
       \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau} \\
     \infer*[Right=Conc]{
@@ -640,11 +640,10 @@ inference rules, and from these build up proofs. Tofte~\cite{tofte1988}
 had the idea of using operational semantics for not for the
 typing rules, but also for the dynamic semantics. We choose this
 approach over denotational semantics as it unifies our approach to
-modelling and proving, and to quote Mads, ``it seems a bit
+modelling and proving, and to quote Mads: \textit{``it seems a bit
 unfortunate that we should have to understand domain theory to be able
 to investigate whether a type inference system admits faulty
-programs''.
-
+programs''}.
 
 \subsection{Values}
 Before we talk about how we evaluate a program, we need to
@@ -671,6 +670,7 @@ this computation, but by itself it will not evaluate to anything.
     \inferrule{ }{ \textsf{value} \ \square } \and
     \inferrule{\textsf{value} \ e_1 \\ \textsf{value} \ e_2}{ \textsf{value} \ e_1 \times e_2 } \and
     \inferrule{ }{ \textsf{value} \ \lift{e} } \and
+    \inferrule{ }{ \textsf{value} \ \use{r}{e} } \and
     \inferrule{ }{ \textsf{value} \ \lambda x. e }
   \end{mathpar}
   \caption{Terminal values} \label{fig:values}
@@ -962,7 +962,7 @@ $$ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square$$
 
 % Semantic domain + semantic function = semantic algebra
 
-\section{Type Safety}
+\section{Properties}
 
 \input{properties}
 

@@ -127,17 +127,22 @@ adaptation of a lemma from Damas and Milner.
   \end{description}
 \end{proof}
 
-
+If a context has all the same type schemes for each free variable in
+an expression as another context, then we can make the same typing
+judgements with that context. In other words, we are free to ignore
+extra variables not used by the expression.
 \begin{lemma} \label{lem:ignore}
-  TODO
+  If for all $x \in \fv(e)$ where $x : \sigma \in \Gamma$, $x : \sigma \in \Delta$, and if $\Gamma \vdash
+  e : \tau$ then $\Delta \vdash e : \tau$.
 \end{lemma}
 
+We can also show that we can apply a substitution to both the context
+and type given in a judgement.
 \begin{lemma} \label{lem:subContextTyping}
   If $\Gamma \vdash e : \tau$, then for any substitution $s$, $\Gamma[s] \vdash e : \tau[s]$.
 \end{lemma}
 
-
-Another important lemma that we need to show is the substitution
+An important lemma that we need to show is the substitution
 lemma, which relates to substituting a variable for an expression,
 whose type we can prove. The following proof is adapted from Wright
 and Felleisen~\cite{wright1994}.
@@ -326,3 +331,123 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     \tau'$ are proved by applying the induction hypothesis on their structure.
   \end{description}
 \end{proof}
+
+\subsection{Type Soundness}
+
+Now that we have the prerequisite lemmas out of the way, we can move
+onto proving that the system is \textbf{sound}. Soundness is a logical
+property of a system, stating that every judgement that can be proved
+within the system is valid. In the type theory realm, a type system is
+considered to be sound if and only if, for every typing judgement we
+can produce for an expression in a context, it evaluates to something
+of the type from the typing judgement. That is -- \textit{``well-typed
+  programs can't go wrong''}~\cite{milner1978}[§3.7].
+\[\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau\]
+We saw how this was proved with denotational semantics in
+chapter~\ref{chapter:background}, but here we have modelled our
+dynamic semantics with operational semantics.  Instead, we prove the
+soundness of our type system \textit{syntactically}. This approach was
+first introduced by Wright and Felleisen and 1994~\ref{wright1994},
+and has since become one of the de facto methods of proving soundness
+in programming language theory.
+
+Syntactic type soundness involves proving two properties of a type
+system, \textit{type progress} and \textit{type preservation}.
+The former states that for any typing judgement we can prove, the
+expression is either a terminal value, or can be reduced further.
+\begin{theorem}[Progress]
+  If $\centerdot \vdash e : \tau$, then either $\textsf{value} \ e$ or there exists a $e'$ such that $e \leadsto e'$.
+\end{theorem}
+\begin{proof}
+  Begin by induction on $\centerdot \vdash e : \tau$.
+  \begin{description}
+  \item[\rm\textsc{Var}] This case is not possible -- it is impossible
+    to construct a proof for $x \in \centerdot$, and thus impossible to arrive at
+    $\centerdot \vdash x : \tau$.
+  \item[\rm\textsc{Abs}] Any lambda abstraction is a value due to the
+    rule
+    $$\infer{ }{\textsf{Value} \ \lambda x . e}$$
+  \item[\rm\textsc{App}] We have $\centerdot \vdash e_1 \ e_2 : \tau$, so by the premises
+    of \textsc{App}, we have $\centerdot \vdash e_1 : \tau' \rightarrow \tau$ and $\centerdot \vdash e_2 :
+    \tau'$.
+
+    Consider the induction hypothesis on the first premise. Either
+    $\textsf{value} \ e_1$, or $e_1 \leadsto e_1'$. In the latter case where
+    $e_1$ reduces, we can then construct a proof that $e_1 \ e_2$
+    reduces, and we're done.
+    \[\infer{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2}\]
+    In the former case where $e_1$ is a value, we then apply the
+    induction hypothesis to $\centerdot \vdash e_2 : \tau'$. Again, if $e_2$ reduces
+    further then we can also construct a proof that $e_1 \ e_2$
+    reduces.
+    
+    But if $\textsf{value} \ e_2$, we cannot reduce in the same way
+    again. Instead, since we know $e_1$ is a value, and since we also
+    know that $\centerdot \vdash e_1 : \tau' \rightarrow \tau$, we can deduce that
+    $e_1$ must be an abstraction: it has the form $\lambda x
+    . e$. Furthermore, because $e_2$ is a value, we can then apply the
+    beta reduction rule.
+    \[\infer{\textsf{value} \ e_2}{(\lambda x . e) \ e_2 \leadsto e[e_2/x]}\]
+    We are ``calling a function'' in this sense, and now have proof
+    that it reduces.
+  \item[\rm\textsc{Let}] Our dynamic semantics for \textsc{Let} are
+    lazy: ${\letin{x = e'}{e}}$ can reduce without evaluating $e'$
+    first. And so for every let statement, we can immediately reduce.
+    \[\infer{ }{\letin{x = e'}{e} \leadsto e[e'/x]}\]
+  \item[\rm\textsc{Unit}] All unit expressions are values.
+    \[\infer{ }{\textsf{value} \ \square}\]
+  \item[\rm\textsc{Product}] For $\centerdot \vdash e_1 \times e_2 : \tau_1 \times \tau_2$, we have
+    the premises $\centerdot \vdash e_1 : \tau_1$ and $\centerdot \vdash e_2 : \tau_2$. Using the
+    induction hypothesis on either, if either of them reduce further,
+    then we can also reduce $e_1 \times e_2$.
+    \begin{align*}
+      \infer{e_1 \leadsto e_1'}{e_1 \times e_2 \leadsto e_1' \times e_2} &&
+      \infer{e_2 \leadsto e_2'}{e_1 \times e_2 \leadsto e_1 \times e_2'}
+    \end{align*}
+    If both of them are values, then the product itself is a value.
+    \[\infer{\textsf{value} \ e_1 \\ \textsf{value} \ e_2}{
+        \textsf{value} \ e_1 \times e_2}\]
+  \item[\rm\textsc{Proj1}] For $\centerdot \vdash \pi_1 \ e : \tau$, we have the premise
+    $\centerdot \vdash e : \tau \times \tau'$. Applying the induction hypothesis to the
+    premise, if it reduces further, then we can reduce the expression
+    as well.
+    \[\infer{e \leadsto e'}{\pi_1 \ e \leadsto \pi_1 \ e'}\]
+    However, if $e$ is a value then we know it must be of the form
+    $e_1 \times e_2$, as that is the only expression that can have a
+    product type and be a value. Thus we can use the reduction rule
+    \[\infer{ }{\pi_1 \ (e_1 \times e_2) \leadsto e_1}\]
+  \item[\rm\textsc{Proj2}] The proof for \textsc{Proj2} is pretty much
+    identical to that of \textsc{Proj1}, so we will omit it for
+    brevity.
+  \item[\rm\textsc{Lift}] All lifted expressions are also values by
+    definition.
+    \[\infer{ }{\textsf{value} \ \lift{e}}\]
+  \item[\rm\textsc{Use}] And likewise, all use expressions are values
+    by definition.
+    \[\infer{ }{\textsf{value} \ \use{r}{e}}\]
+  \item[\rm\textsc{Bind}] For $\centerdot \vdash e_1 \bind e_2 : \tau$, we have two
+    premises, $\centerdot \vdash e_1 : \IO_\rho \tau'$ and
+    $\centerdot \vdash e_2 : \tau' \rightarrow \IO_\rho \tau$. Applying the induction hypothesis to the
+    first premise, if $e_1$ reduces further then we can also say
+    $e_1 \bind e_2$ reduces further
+    \[\infer{e_1 \leadsto e_1'}{e_1 \bind e_2 \leadsto e_1' \bind e_2} \]
+    If $e_1$ turns out to be a value, then because it has the type
+    $\IO_\rho \tau'$, it must be either of the form $\lift{e}$ or
+    $\use{r}{e}$. These are the only expressions that can both be
+    values and have the type $\IO_\rho \tau'$.
+    In either case, there exist reduction rules for both of these.
+    \begin{align*}
+      \infer{ }{\lift{e} \bind e_2 \leadsto e_2 \ e}&&
+      \infer{ }{\use{r}{e} \bind e_2 \leadsto e_2 \ e}
+    \end{align*}
+  \item[\rm{\textsc{Conc}}] We can immediately reduce any expression
+    of the form $v \curlyvee w$.
+    \[ \infer{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times
+          w})} \]
+  \item[\rm{\textsc{Sub}] If we have a subsumption judgement resulting
+      in $\centerdot \vdash e : \IO_\rho' \tau$, then we also have the premise $\centerdot \vdash e :
+      \IO_\rho \tau$ for some other $\rho$. But we can just call the induction
+      hypothesis on this premise to show that either $e$ reduces or
+      $e$ is a value. In any case, it is the same $e$ -- so we are done.
+  \end{description}
+\end{proof} 
