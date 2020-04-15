@@ -494,7 +494,7 @@ data _⊢_⦂_ : Context → Term → Type → Set where
        -----------------------
      → Γ ⊢ e₁ ⋎ e₂ ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
 
-  ⊢IOsub : ∀ {Γ e τ ρ ρ'}
+  ⊢sub : ∀ {Γ e τ ρ ρ'}
          → Γ ⊢ e ⦂ IO ρ τ
          → ρ ≥: ρ'
          → Ok ρ'

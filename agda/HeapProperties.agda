@@ -81,7 +81,7 @@ asdf okc (⊢π₂ ⊢e) = {!!}
 asdf okc (⊢⟦⟧ ⊢e x) = {!!}
 asdf okc (⊢>>= ⊢e ⊢e₁) = {!!}
 asdf okc (⊢⋎ ⊢e ⊢e₁ x) = {!!}
-asdf okc (⊢IOsub ⊢e x x₁) = {!!}
+asdf okc (⊢sub ⊢e x x₁) = {!!}
 asdf okc (⊢use ⊢e) = {!!}
 
 -- absHelper okc (⊢` x x₁) = let z = mustBeOk okc {!⊢` x x₁!} in {!!}
@@ -107,5 +107,5 @@ mustBeOk okc (⊢π₂ ⊢e) = {!!}
 mustBeOk okc (⊢⟦⟧ ⊢e ok) = ok
 mustBeOk okc (⊢>>= ⊢e ⊢e₁) = mustBeOk okc ⊢e
 mustBeOk okc (⊢⋎ ⊢e₁ ⊢e₂ ok) = ok
-mustBeOk okc (⊢IOsub ⊢e x ok) = ok
+mustBeOk okc (⊢sub ⊢e x ok) = ok
 mustBeOk okc (⊢use ⊢e) = OkZ

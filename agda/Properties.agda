@@ -78,15 +78,15 @@ data Canonical_⦂_ : Term → Type → Set where
 
 unwrap⟦⟧ : ∀ {Γ v ρ τ} → Γ ⊢ ⟦ v ⟧ ⦂ IO ρ τ → Γ ⊢ v ⦂ τ
 unwrap⟦⟧ (⊢⟦⟧ ⊢v _) = ⊢v
-unwrap⟦⟧ (⊢IOsub ⊢v _ _) = unwrap⟦⟧ ⊢v
+unwrap⟦⟧ (⊢sub ⊢v _ _) = unwrap⟦⟧ ⊢v
 
 
 -- readFile≡□ : ∀ {Γ ρ τ} → Γ ⊢ readFile ⦂ IO ρ τ → τ ≡ □
--- readFile≡□ (⊢IOsub ⊢rf _ _) = readFile≡□ ⊢rf
+-- readFile≡□ (⊢sub ⊢rf _ _) = readFile≡□ ⊢rf
 -- readFile≡□ ⊢readFile = refl
 
 -- readNet≡□ : ∀ {Γ ρ τ} → Γ ⊢ readNet ⦂ IO ρ τ → τ ≡ □
--- readNet≡□ (⊢IOsub ⊢rf _ _) = readNet≡□ ⊢rf
+-- readNet≡□ (⊢sub ⊢rf _ _) = readNet≡□ ⊢rf
 -- readNet≡□ ⊢readNet = refl
 
 canonical : ∀ {v τ}
@@ -102,25 +102,25 @@ canonical (⊢× ⊢e₁ ⊢e₂) (V-× _ _) = C-× ⊢e₁ ⊢e₂
 -- canonical ⊢readNet V-readNet = C-readNet ≥:Refl
 canonical (⊢use ⊢e) V-use = C-use ≥:Refl ⊢e
 
-canonical (⊢IOsub ⊢e x _) V-ƛ = ⊥-elim (f ⊢e)
+canonical (⊢sub ⊢e x _) V-ƛ = ⊥-elim (f ⊢e)
   where
   f : ∀ {x e ρ τ} → ¬ (∅ ⊢ ƛ x ⇒ e ⦂ IO ρ τ)
-  f (⊢IOsub ⊢e x _) = f ⊢e
-canonical (⊢IOsub ⊢e x _) V-⟦⟧ = C-⟦⟧ (unwrap⟦⟧ ⊢e)
-canonical (⊢IOsub ⊢e x _) V-□ = ⊥-elim (f ⊢e)
+  f (⊢sub ⊢e x _) = f ⊢e
+canonical (⊢sub ⊢e x _) V-⟦⟧ = C-⟦⟧ (unwrap⟦⟧ ⊢e)
+canonical (⊢sub ⊢e x _) V-□ = ⊥-elim (f ⊢e)
   where
   f : ∀ {ρ τ} → ¬ (∅ ⊢ □ ⦂ IO ρ τ)
-  f (⊢IOsub ⊢e x _) = f ⊢e
-canonical (⊢IOsub ⊢e x _) (V-× y y₁) = ⊥-elim (f ⊢e)
+  f (⊢sub ⊢e x _) = f ⊢e
+canonical (⊢sub ⊢e x _) (V-× y y₁) = ⊥-elim (f ⊢e)
   where
   f : ∀ {e₁ e₂ ρ τ} → ¬ (∅ ⊢ e₁ × e₂ ⦂ IO ρ τ)
-  f (⊢IOsub ⊢e x _) = f ⊢e
+  f (⊢sub ⊢e x _) = f ⊢e
 
--- canonical (⊢IOsub ⊢e ρ≥:ρ' _) V-readFile with canonical ⊢e V-readFile
+-- canonical (⊢sub ⊢e ρ≥:ρ' _) V-readFile with canonical ⊢e V-readFile
 -- ... | C-readFile f≥:ρ = C-readFile (≥:-trans f≥:ρ ρ≥:ρ')
--- canonical (⊢IOsub ⊢e ρ≥:ρ' _) V-readNet with canonical ⊢e V-readNet
+-- canonical (⊢sub ⊢e ρ≥:ρ' _) V-readNet with canonical ⊢e V-readNet
 -- ... | C-readNet f≥:ρ = C-readNet (≥:-trans f≥:ρ ρ≥:ρ')
-canonical (⊢IOsub ⊢e ρ≥:ρ' _) V-use with canonical ⊢e V-use
+canonical (⊢sub ⊢e ρ≥:ρ' _) V-use with canonical ⊢e V-use
 ... | C-use r≥:ρ ⊢e' = C-use (≥:-trans r≥:ρ ρ≥:ρ') ⊢e'
 
 data Progress (e : Term) : Set where
@@ -163,7 +163,7 @@ progress (⊢π₂ ⊢e) with progress ⊢e
 ...   | C-× _ _ = step β-π₂
 progress (⊢use ⊢e) = done V-use
 progress (⊢⋎ ⊢e₁ ⊢e₂ dist) = step β-⋎
-progress (⊢IOsub ⊢e _ _) = progress ⊢e
+progress (⊢sub ⊢e _ _) = progress ⊢e
 
 contained  : ∀ { Γ x σ y σ' } → x ≢ y → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Γ , y ⦂ σ'
 contained x≢y Z = S Z x≢y
@@ -204,7 +204,7 @@ rename ρ (⊢π₁ ⊢e) = ⊢π₁ (rename ρ ⊢e)
 rename ρ (⊢π₂ ⊢e) = ⊢π₂ (rename ρ ⊢e)
 rename ρ (⊢use ⊢e) = ⊢use (rename ρ ⊢e)
 rename ρ (⊢⋎ ⊢e₁ ⊢e₂ dist) = ⊢⋎ (rename ρ ⊢e₁) (rename ρ ⊢e₂) dist
-rename ρ (⊢IOsub ⊢e ρ≥:ρ' ok) = ⊢IOsub (rename ρ ⊢e) ρ≥:ρ' ok
+rename ρ (⊢sub ⊢e ρ≥:ρ' ok) = ⊢sub (rename ρ ⊢e) ρ≥:ρ' ok
 
 extend∈ : ∀ {Γ Δ}
           → (∀ {x σ} → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
@@ -279,7 +279,7 @@ extend ⊢□ x∉ = ⊢□
 extend (⊢use ⊢e) x∉ = ⊢use (extend ⊢e x∉)
 extend (⊢⋎ ⊢e₁ ⊢e₂ dist) x∉ with ∉-++⁻ x∉
 ... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢⋎ (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂) dist
-extend (⊢IOsub ⊢e ρ≥:ρ' ok) x∉ = ⊢IOsub (extend ⊢e x∉) ρ≥:ρ' ok
+extend (⊢sub ⊢e ρ≥:ρ' ok) x∉ = ⊢sub (extend ⊢e x∉) ρ≥:ρ' ok
 
 
 
@@ -322,7 +322,7 @@ gen (⊢>>= x x₁) σ>σ' = ⊢>>= (gen x σ>σ') (gen x₁ σ>σ')
 gen ⊢□ σ>σ' = ⊢□
 gen (⊢use ⊢e) σ>σ' = ⊢use (gen ⊢e σ>σ')
 gen (⊢⋎ ⊢e₁ ⊢e₂ dist) σ>σ' = ⊢⋎ (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ') dist
-gen (⊢IOsub ⊢e ρ≥:ρ' ok) σ>σ' = ⊢IOsub (gen ⊢e σ>σ') ρ≥:ρ' ok
+gen (⊢sub ⊢e ρ≥:ρ' ok) σ>σ' = ⊢sub (gen ⊢e σ>σ') ρ≥:ρ' ok
 
 postulate fvsClosed : ∀ {Γ e τ x} → Γ ⊢ e ⦂ τ → x ∈ FV(e) → ∃[ σ ] (x ⦂ σ ∈ Γ)
 -- fvsClosed (⊢` {σ = σ} x∈ σ>τ) (here refl) = ⟨ σ , x∈ ⟩
@@ -337,7 +337,7 @@ postulate fvsClosed : ∀ {Γ e τ x} → Γ ⊢ e ⦂ τ → x ∈ FV(e) → �
 -- fvsClosed (⊢⟦⟧ ⊢e x) x∈ = {!!}
 -- fvsClosed (⊢>>= ⊢e ⊢e₁) x∈ = {!!}
 -- fvsClosed (⊢⋎ ⊢e ⊢e₁ x) x∈ = {!!}
--- fvsClosed (⊢IOsub ⊢e x x₁) x∈ = {!!}
+-- fvsClosed (⊢sub ⊢e x x₁) x∈ = {!!}
 -- fvsClosed (⊢use ⊢e) x∈ = {!!}
 
 ignore-++ˡ : ∀ {Γ Δ p q}
@@ -393,7 +393,7 @@ ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore (ignore-++ˡ ρ
 ignore ρ ⊢□ = ⊢□
 ignore ρ (⊢use ⊢e) = ⊢use (ignore ρ ⊢e)
 ignore ρ (⊢⋎ ⊢e₁ ⊢e₂ ok) = ⊢⋎ (ignore (ignore-++ˡ ρ) ⊢e₁) (ignore (ignore-++ʳ ρ) ⊢e₂) ok
-ignore ρ (⊢IOsub z ρ≥:ρ' ok) = ⊢IOsub (ignore ρ z) ρ≥:ρ' ok
+ignore ρ (⊢sub z ρ≥:ρ' ok) = ⊢sub (ignore ρ z) ρ≥:ρ' ok
 
 Γcong : ∀ {Γ x e τ σ σ'} → Γ , x ⦂ σ ⊢ e ⦂ τ → σ ≡ σ' → Γ , x ⦂ σ' ⊢ e ⦂ τ
 Γcong Γ refl = Γ
@@ -459,7 +459,7 @@ subContextTyping (⊢>>= ⊢e₁ ⊢e₂) s = ⊢>>= (subContextTyping ⊢e₁ s
 subContextTyping ⊢□ s = ⊢□
 subContextTyping (⊢use ⊢e) s = ⊢use (subContextTyping ⊢e s)
 subContextTyping (⊢⋎ ⊢e₁ ⊢e₂ dist) s = ⊢⋎ (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s) dist
-subContextTyping (⊢IOsub ⊢e ρ≥:ρ' ok) s = ⊢IOsub (subContextTyping ⊢e s) ρ≥:ρ' ok
+subContextTyping (⊢sub ⊢e ρ≥:ρ' ok) s = ⊢sub (subContextTyping ⊢e s) ρ≥:ρ' ok
 
 -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
 absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
@@ -577,7 +577,7 @@ subst {x = y} ⊢e (⊢use ⊢e') p = ⊢use (subst ⊢e ⊢e' p)
 subst {x = y} ⊢e (⊢⟦⟧ ⊢e' cl) p = ⊢⟦⟧ (subst ⊢e ⊢e' p) cl
 subst {x = y} ⊢e (⊢>>= ⊢m ⊢f) p = ⊢>>= (subst ⊢e ⊢m p) (subst ⊢e ⊢f p)
 subst {x = y} ⊢e (⊢⋎ ⊢e₁ ⊢e₂ dist) p = ⊢⋎ (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p) dist
-subst {x = y} ⊢e (⊢IOsub ⊢e' ρ≥:ρ' ok) p = ⊢IOsub (subst ⊢e ⊢e' p) ρ≥:ρ' ok
+subst {x = y} ⊢e (⊢sub ⊢e' ρ≥:ρ' ok) p = ⊢sub (subst ⊢e ⊢e' p) ρ≥:ρ' ok
 
 preservation : ∀ {e e' τ}
              → ∅ ⊢ e ⦂ τ
@@ -603,17 +603,27 @@ preservation (⊢>>= ⊢e ⊢f) β->>= = ⊢· ⊢f (unwrap⟦⟧ ⊢e)
 preservation (⊢>>= ⊢u ⊢e') β->>=-use = ⊢· ⊢e' (f ⊢u)
   where f : ∀ {Γ r e ρ τ} → Γ ⊢ use r e ⦂ IO ρ τ → Γ ⊢ e ⦂ τ
         f (⊢use ⊢e) = ⊢e
-        f (⊢IOsub ⊢e _ _) = f ⊢e
+        f (⊢sub ⊢e _ _) = f ⊢e
 
 preservation (⊢⋎ ⊢e₁ ⊢e₂ ok) β-⋎ =
   let ⊢`v = ⊢` (S Z (λ ())) >self 
       ⊢`w = ⊢` Z >self
-      ⊢>>=inner = ⊢>>= (⊢IOsub (weaken ⊢e₂) (≥:∪ʳ ≥:Refl) ok)
+      ⊢>>=inner = ⊢>>= (⊢sub (weaken ⊢e₂) (≥:∪ʳ ≥:Refl) ok)
                        (⊢ƛ (⊢⟦⟧ (⊢× ⊢`v ⊢`w) ok))
-  in ⊢>>= (⊢IOsub ⊢e₁ (≥:∪ˡ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
+  in ⊢>>= (⊢sub ⊢e₁ (≥:∪ˡ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
 
-preservation (⊢IOsub ⊢e ρ≥:ρ' ok) e↝e' = ⊢IOsub (preservation ⊢e e↝e') ρ≥:ρ' ok
+preservation (⊢sub ⊢e ρ≥:ρ' ok) e↝e' = ⊢sub (preservation ⊢e e↝e') ρ≥:ρ' ok
 
 noConcurrentAccess : ∀ {Γ e₁ e₂ ρ τ} → Γ ⊢ e₁ ⋎ e₂ ⦂ IO ρ τ → Ok ρ
 noConcurrentAccess (⊢⋎ ⊢e₁ ⊢e₂ ok) = ok
-noConcurrentAccess (⊢IOsub ⊢e x ok) = ok
+noConcurrentAccess (⊢sub ⊢e x ok) = ok
+
+-- It's impossible for two heaps, unioned together, to be distinct
+¬x∩x=∅ : ∀ {ρ} → ¬ (ρ ∩ ρ =∅)
+¬x∩x=∅ (DHZ x) = x refl
+¬x∩x=∅ (DHL dist dist₁ dist₂) = ¬x∩x=∅ (distinct-∪ˡ (distinct-sym dist))
+¬x∩x=∅ (DHR dist dist₁ dist₂) = ¬x∩x=∅ (distinct-∪ʳ (distinct-sym dist₁))
+
+-- It's impossible for two heaps, unioned together, to be well formed
+¬okρ∪ρ : ∀ {ρ} → ¬ Ok (ρ ∪ ρ)
+¬okρ∪ρ (OkS ok ok₁ dist) = ¬x∩x=∅ dist

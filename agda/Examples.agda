@@ -9,25 +9,19 @@ _ = ⊢⋎ (⊢use ⊢□) (⊢use ⊢□) (OkS OkZ OkZ (DHZ λ ()))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO (` File ∪ ` Net) □
 _ = let ok = OkS OkZ OkZ (DHZ λ ())
-        in ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:∪₂ ≥:Refl) ok)
-                (⊢ƛ (⊢IOsub (⊢use ⊢□) (≥:∪₁ ≥:Refl) ok))
+        in ⊢>>= (⊢sub (⊢use ⊢□) (≥:∪ˡ ≥:Refl) ok)
+                (⊢ƛ (⊢sub (⊢use ⊢□) (≥:∪ʳ ≥:Refl) ok))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO World □
-_ = ⊢>>= (⊢IOsub (⊢use ⊢□) (≥:World) OkWorld) (⊢ƛ (⊢IOsub (⊢use ⊢□) ≥:World OkWorld))
+_ = ⊢>>= (⊢sub (⊢use ⊢□) (≥:World) OkWorld) (⊢ƛ (⊢sub (⊢use ⊢□) ≥:World OkWorld))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use File □ ⦂ IO (` File) □
 _ = ⊢>>= (⊢use ⊢□) (⊢ƛ (⊢use ⊢□))
 
-¬x∩x=∅ : ∀ {ρ} → ¬ (ρ ∩ ρ =∅)
-¬x∩x=∅ (DHZ x) = x refl
-¬x∩x=∅ (DHL dist dist₁ dist₂) = ¬x∩x=∅ (distinct-∪ˡ (distinct-sym dist))
-¬x∩x=∅ (DHR dist dist₁ dist₂) = ¬x∩x=∅ (distinct-∪ʳ (distinct-sym dist₁))
-¬okρ∪ρ : ∀ {ρ} → ¬ Ok (ρ ∪ ρ)
-¬okρ∪ρ (OkS ok ok₁ dist) = ¬x∩x=∅ dist
 
 z : ∀ {Γ r} → ¬ (Γ ⊢ ⟦ □ ⟧ ⦂ IO (` r ∪ ` r) □)
 z (⊢⟦⟧ ⊢e ok) = ¬okρ∪ρ ok
-z (⊢IOsub _ _ ok) = ¬okρ∪ρ ok
+z (⊢sub _ _ ok) = ¬okρ∪ρ ok
 
 -- monadic binding and how lifting adapts to the resource
 _ : ∅ ⊢ lt "x" ⇐ (ƛ "y" ⇒ ⟦ □ ⟧) in' ((` "x" · □) >>= (ƛ "z" ⇒ use File (` "z"))) ⦂ IO (` File) □
@@ -58,9 +52,9 @@ _ : ∅ , "writeFile" ⦂ ` (□ ⇒ IO (` File) □)
     ⊢ (use File □) ⋎ (use Net □) >>= ƛ "x" ⇒ (` "writeFile") · (π₁ (` "x"))
       ⦂ IO (` File ∪ ` Net) (□)
 _ = ⊢>>= (⊢⋎ (⊢use ⊢□) (⊢use ⊢□) okFN)
-         (⊢ƛ (⊢IOsub (⊢· (⊢` (S Z (λ ())) (Inst SZ refl refl))
+         (⊢ƛ (⊢sub (⊢· (⊢` (S Z (λ ())) (Inst SZ refl refl))
                          (⊢π₁ (⊢` Z (Inst SZ refl refl))))
-                     (≥:∪₂ ≥:Refl)
+                     (≥:∪ˡ ≥:Refl)
                      okFN))
   where okFN : Ok (` File ∪ ` Net)
         okFN = OkS OkZ OkZ (DHZ (λ ()))
