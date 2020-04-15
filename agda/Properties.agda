@@ -146,9 +146,7 @@ progress (⊢>>= ⊢m ⊢f) with progress ⊢m
 ... | step m↝m' = step (ξ->>= m↝m')
 ... | done vm with canonical ⊢m vm
 ...   | C-⟦⟧ _ = step β->>=
--- ...   | C-readFile _ = step β-readFile
--- ...   | C-readNet _ = step β-readNet
-...   | C-use _ _ = step β-use
+...   | C-use _ _ = step β->>=-use
 progress ⊢□ = done V-□
 progress (⊢lt ⊢e ⊢e') = step β-lt
 progress (⊢× ⊢e₁ ⊢e₂) with progress ⊢e₁ | progress ⊢e₂
@@ -163,8 +161,6 @@ progress (⊢π₂ ⊢e) with progress ⊢e
 ... | step e↝e' = step (ξ-π₂ e↝e')
 ... | done ve with canonical ⊢e ve
 ...   | C-× _ _ = step β-π₂
--- progress ⊢readFile = done V-readFile
--- progress ⊢readNet = done V-readNet
 progress (⊢use ⊢e) = done V-use
 progress (⊢⋎ ⊢e₁ ⊢e₂ dist) = step β-⋎
 progress (⊢IOsub ⊢e _ _) = progress ⊢e
@@ -487,6 +483,7 @@ disjointSub {Γ} {SS α σ s} (DisThere x dj) rewrite sub∉FTVC {Γ} {α} {σ} 
 ∉∈≢ : ∀ {x y a} → x ∉ a → y ∈ a → x ≢ y
 ∉∈≢ x∉a y∈a refl = ⊥-elim (x∉a y∈a)
 
+-- TODO: FIX UP! CAN ONLY SUBSTITUTE VALUES
 -- wright & felleisen lemma 4.4
 subst : ∀ {Γ x e e' αs τ τ'}
       → Γ ⊢ e ⦂ τ
@@ -590,9 +587,6 @@ preservation : ∀ {e e' τ}
 preservation (⊢· ⊢e ⊢e') (ξ-·₁ e↝e') = ⊢· (preservation ⊢e e↝e') ⊢e'
 preservation (⊢· ⊢e ⊢e') (ξ-·₂ e↝e') = ⊢· ⊢e (preservation ⊢e' e↝e')
 preservation (⊢· (⊢ƛ ⊢e) ⊢e') (β-ƛ _) = subst ⊢e' ⊢e DisHere
-preservation (⊢>>= ⊢m ⊢f) (ξ->>= m↝m') = ⊢>>= (preservation ⊢m m↝m') ⊢f
-preservation (⊢>>= (⊢⟦⟧ ⊢e cl) ⊢f) β->>= = ⊢· ⊢f ⊢e
-preservation (⊢>>= (⊢IOsub ⊢e ρ≥:ρ' ok) ⊢e') β->>= = ⊢· ⊢e' (unwrap⟦⟧ ⊢e)
 
 preservation (⊢lt {τ' = τ'} ⊢e' ⊢e) β-lt rewrite toVVClose τ' = subst ⊢e' ⊢e disjoint-[]
 
@@ -604,18 +598,21 @@ preservation (⊢π₁ (⊢× ⊢e₁ ⊢e₂)) β-π₁ = ⊢e₁
 preservation (⊢π₂ ⊢e) (ξ-π₂ e↝e') = ⊢π₂ (preservation ⊢e e↝e')
 preservation (⊢π₂ (⊢× ⊢e₁ ⊢e₂)) β-π₂ = ⊢e₂
 
-preservation (⊢IOsub ⊢e ρ≥:ρ' ok) e↝e' = ⊢IOsub (preservation ⊢e e↝e') ρ≥:ρ' ok
-
-preservation (⊢⋎ ⊢e₁ ⊢e₂ ok) β-⋎ =
-  let ⊢`v = ⊢` (S Z (λ ())) >self
-      ⊢`w = ⊢` Z >self
-      ⊢>>=inner = ⊢>>= (⊢IOsub (weaken ⊢e₂) (≥:∪₁ ≥:Refl) ok) (⊢ƛ (⊢⟦⟧ (⊢× ⊢`v ⊢`w) ok))
-  in ⊢>>= (⊢IOsub ⊢e₁ (≥:∪₂ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
-
-preservation (⊢>>= ⊢u ⊢e') β-use = ⊢· ⊢e' (f ⊢u)
+preservation (⊢>>= ⊢m ⊢f) (ξ->>= m↝m') = ⊢>>= (preservation ⊢m m↝m') ⊢f
+preservation (⊢>>= ⊢e ⊢f) β->>= = ⊢· ⊢f (unwrap⟦⟧ ⊢e)
+preservation (⊢>>= ⊢u ⊢e') β->>=-use = ⊢· ⊢e' (f ⊢u)
   where f : ∀ {Γ r e ρ τ} → Γ ⊢ use r e ⦂ IO ρ τ → Γ ⊢ e ⦂ τ
         f (⊢use ⊢e) = ⊢e
         f (⊢IOsub ⊢e _ _) = f ⊢e
+
+preservation (⊢⋎ ⊢e₁ ⊢e₂ ok) β-⋎ =
+  let ⊢`v = ⊢` (S Z (λ ())) >self 
+      ⊢`w = ⊢` Z >self
+      ⊢>>=inner = ⊢>>= (⊢IOsub (weaken ⊢e₂) (≥:∪₁ ≥:Refl) ok)
+                       (⊢ƛ (⊢⟦⟧ (⊢× ⊢`v ⊢`w) ok))
+  in ⊢>>= (⊢IOsub ⊢e₁ (≥:∪₂ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
+
+preservation (⊢IOsub ⊢e ρ≥:ρ' ok) e↝e' = ⊢IOsub (preservation ⊢e e↝e') ρ≥:ρ' ok
 
 noConcurrentAccess : ∀ {Γ e₁ e₂ ρ τ} → Γ ⊢ e₁ ⋎ e₂ ⦂ IO ρ τ → Ok ρ
 noConcurrentAccess (⊢⋎ ⊢e₁ ⊢e₂ ok) = ok

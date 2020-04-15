@@ -1,12 +1,105 @@
-\chapter{Background} \label{chapter:background}
+\chapter{Background}\label{chapter:background}
 
-In this chapter, we are going to look at the Hindley-Damas-Milner type
-system. It is one of the de-facto formalisations of a polymorphic type
-system, based off of the ML programming language. It was heavily
-influential at the time and still continues to be so today, inspiring
-the design of Haskell, O-Caml and many programming languages.
+\section{Separation logic}
+
+\section{Monadic effect systems}
+As the language we will develop in Chapter~\ref{chapter:system} is
+based around monads, it is a good idea to take a brief look at what
+exactly they are, and dip our toes into the cool waters of category
+theory.\footnote{No dissertation is complete without a monad
+  tutorial.}
+
+A monad is often sardonically defined as
+\begin{quote}
+  a monoid in the category of endofunctors
+\end{quote}
+But that means nothing to me. Lets break this down:
+
+A \textit{category} is a collection of objects (like a set), and
+morphisms (like functions between sets). In the same way, Haskell has
+\textsf{Hask} --- the category of types. Its objects are types such as
+\mintinline{haskell}{Bool} and \mintinline{haskell}{Int}, and its
+morphisms are functions taking a type and returning another.
+\begin{minted}{haskell}
+Bool, Int :: * -- Bool and Int are types
+True :: Bool
+42 :: Int
+f : Bool -> Int -- a morphism between Bool and Int
+\end{minted}
+A \textit{functor} is a mapping between categories that
+preserves the structure. That is, a functor maps objects and morphisms
+from one category to objects and morphisms in another category.
+In the same way, a \mintinline{haskell}{Functor} in Haskell maps a
+type to another type, and its functions to other functions with
+\mintinline{haskell}{fmap}. 
+\begin{minted}{haskell}
+Maybe :: * -> *
+Maybe Bool :: * -- Maps Bool to Maybe Bool
+fmap :: (a -> b) -> (f a -> f b) -- Maps (a -> b) to (f a -> f b)
+\end{minted}
+
+An \textit{endofunctor} is a \textit{functor} from one category to the
+same category. That is, it maps objects and morphisms from one
+category, to objects and morphisms in the same category. But what does
+that mean in Haskell? Well, since \mintinline{haskell}{Functor} maps
+types to types, we are mapping from \textsf{Hask} to \textsf{Hask} ---
+all \mintinline{haskell}{Functor}s in Haskell are endofunctors!
+
+A \textit{monad} is defined as:
+\begin{enumerate}
+\item An endofunctor $T : X \rightarrow X$
+\item With a natural transformation to ``join'' $f : T(T(X)) \rightarrow T(X)$
+\item And another natural transformation: $g : I \rightarrow T(X)$
+\item That satisfy some properties (the monad laws)
+\end{enumerate}
+
+Or in Haskell,
+\begin{minted}{haskell}
+class Monad m a where
+  join :: m (m a) -> m a
+  return :: a -> m a
+\end{minted}
+However as you might be aware, the actual definition in Haskell uses
+bind \mintinline{haskell}{>>=}, not the mathematical definition of
+\mintinline{haskell}{join}. It can be implemented in terms of
+\mintinline{haskell}{>>=} instead, and vice-versa using the fact that
+a monad is also a functor.
+\begin{minted}{haskell}
+(>>=) :: m a -> (a -> m b) -> m b
+join m = m >>= \x -> x
+m >>= f = join (fmap f m)
+\end{minted}
+
+The parallel to a \textit{monoid} is drawn because a monoid is defined as:
+\begin{enumerate}
+\item A set
+\item With an associative binary operation $f : X \times X \rightarrow X$
+\item And an identity element: $g : \mathbf{1} \rightarrow X$
+\item That satisfy some properties
+\end{enumerate}
+
+A \textit{monoid} is a set with an associative binary operation and an
+identity element, that satisfies some laws.
+Therefore a \textit{monoid in the category of
+  endofunctors} is
+\begin{enumerate}
+\item An endofunctor $T : X \rightarrow X$
+\item With an associative binary operation $f : T \times T \rightarrow T$
+\item And an identity element $T$
+\end{enumerate}
+But an identity element can be considered a function like $g :
+\mathbf{1} \rightarrow T$
+And 
 
 \section{Hindley-Damas-Milner}
+
+In this section, we are going to look at the Hindley-Damas-Milner type
+system~\cite{damas1982}. It is one of the first formalisations of a
+polymorphic type system, originally made to formalise the type system
+of the ML language. It was heavily influential at the time and still
+continues to be so today, paving the way for the type systems System
+F, and programming languages such Haskell, O-Caml and more.
+
 \subsection{Syntax}
 
 \def\defaultHypSeparation{\hskip .05in}
@@ -27,8 +120,7 @@ the design of Haskell, O-Caml and many programming languages.
     <context $\Gamma$> ::= $\centerdot$ | $\Gamma, x : \centerdot$
 
   \end{grammar}
-  \caption{Grammar of the applicative language}
-  \label{grm:applang}
+  \caption{Grammar of the applicative language}\label{grm:applang}
 \end{figure}
 
 We define the grammar for a simple applicative language in
@@ -46,7 +138,7 @@ Free type variables are type variables which have not be bound.
 \end{align*}
 
 A \textit{type environment} is a mapping from variables to type schemes. 
-$$\Gamma : \mathsf{Variable} \ \rightarrow \sigma$$
+\[\Gamma : \mathsf{Variable} \ \rightarrow \sigma\]
 
 A substitution $S$ maps type variables to types. A substitution of the
 form $[\tau/\alpha]$ maps $\alpha$ to $\tau$.
@@ -70,7 +162,7 @@ replacing every $\alpha$ with $\tau$.''
 % \end{minipage}
 
 And on type schemes as
-$$(\forall \alpha . \sigma)[\tau/\alpha] = \forall \tau . \sigma[\tau/\alpha]$$
+\[(\forall \alpha . \sigma)[\tau/\alpha] = \forall \tau . \sigma[\tau/\alpha]\]
 
 We may write $S(\sigma)$ to apply an arbitrary substitution to a type
 scheme.
@@ -81,13 +173,13 @@ substitutions $S_1 = [\tau_1/\alpha_1], \ldots, S_n = [\tau_n/\alpha_n]$, $S_1(\
 We say a type $\tau$ is an \textit{instance} of a type $\tau'$,
 written as $t > \tau'$ if there exists a substitution $S$ such that
 
-$$ \tau > \tau' \rightarrow \exists S. S(\tau) = \tau' $$
+\[ \tau > \tau' \rightarrow \exists S. S(\tau) = \tau' \]
 
 Intuitively, this can be thought of as $\tau$ being more general than
 type $\tau'$. For example,
-$$ \alpha \rightarrow \beta > \alpha \rightarrow \alpha $$
+\[ \alpha \rightarrow \beta > \alpha \rightarrow \alpha \]
 with the subsitution $[\alpha/\beta]$, but there exists no substitution for
-$$ \alpha \rightarrow \alpha \ngtr \alpha \rightarrow \beta$$
+\[ \alpha \rightarrow \alpha \ngtr \alpha \rightarrow \beta \]
 
 \section{Static semantics}
 
@@ -106,7 +198,7 @@ to. It defined three typing rules:
 \end{mathpar}
 These rules consist of some \textit{judgements} above and below a line. There
 are some regular judgements you might have seen in regular set theory,
-such as $x : \tau \in \Gamma$ -- $x : \tau$ is in $\Gamma$. But there are also typing
+such as $x : \tau \in \Gamma$ --- $x : \tau$ is in $\Gamma$. But there are also typing
 judgements, which tell us what type a term has in what context. For
 example, $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ can be read as ``given the context
 $\Gamma$, the expression $e_1$ is of type $:\tau' \rightarrow \tau$''.
@@ -129,24 +221,24 @@ typed in the simply-typed lambda calculus.
 
 Consider the below expression with the context $\Gamma = \{ a :
 \textsf{Int} \rightarrow \textsf{Bool}, b : \textsf{Int} \}$
-$$ \lambda x . (x (a (x \ b)))$$
+\[ \lambda x . (x (a (x \ b)))\]
 
 What type should be inferred for $x$? It is used as both an
 $\textsf{Int} \rightarrow \textsf{Int}$ and a $\textsf{Bool} \rightarrow \alpha$, where $\alpha$ is
 the type of the entire expression. One possibility is $x : \alpha \rightarrow \alpha$.
 
-$$ \letin{x = \lambda y. y}{x (a (x \ b))} $$
+\[ \letin{x = \lambda y. y}{x (a (x \ b))} \]
 
 In the original definition by Milner there exited separate rules for
 instantiation and generalisation. In our system we have combined them
 into \textsc{Var} and \textsc{Let} respectively, so that they are
-\textit{syntax-directed} -- there is exactly one rule for each form of
+\textit{syntax-directed} --- there is exactly one rule for each form of
 expression. This will make it easier to prove soundness later on.
 
 As a part of this, we define $\bar{\Gamma}$ to generalize a type $\tau$,
 binding over any free type variables.
-$$ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
-\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \mathrm{fv}(\tau) \setminus \mathrm{fv}(\Gamma)$$
+\[ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
+\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \mathrm{fv}(\tau) \setminus \mathrm{fv}(\Gamma) \]
 
 \begin{figure}
   \centering
@@ -157,8 +249,7 @@ $$ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau
     \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e' : \tau}
     {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
   \end{mathpar}
-  \caption{Type inference rules}
-  \label{rules:hmtypeinference}
+  \caption{Type inference rules}\label{rules:hmtypeinference}
 \end{figure}
 
 
@@ -224,7 +315,7 @@ $I \rightarrow I' \equiv \{ v \in V | v \in \mathbb{F} \ \mathsf{and} \ \forall 
 With all the mechanisms in place, we can now define what it means for
 a value to semantically be a type:
 
-$$v \in \mathbb{V}^\tau \iff \vDash v : \tau$$
+\[v \in \mathbb{V}^\tau \iff \vDash v : \tau\]
 
 Note that $v : \tau$ is a relation, not a function -- a value can be a
 member of multiple types, and this should be read as ``$v$ is a $\tau$''.
@@ -233,7 +324,7 @@ member of multiple types, and this should be read as ``$v$ is a $\tau$''.
 $\bot$ ends up being very useful to represent values that don't exist.
 Take for example the following program which doesn't terminate. 
 
-$$\letin{x = \lambda y. y}{x x}$$
+\[\letin{x = \lambda y. y}{x x}\]
 
 What type does should this program have? It should assume the
 type of whatever is needed. For instance, we would expect this program
@@ -324,9 +415,8 @@ soundness for the system.
 
 TODO: Is this too trivial to be a lemma? The proof is pretty vacuous
 \newtheorem{lemma}{Lemma}
-\begin{lemma}[to be named]
+\begin{lemma}[to be named]\label{lem:1}
   If $v : \tau$ and $\eta : \Gamma$, then $\eta[v/x] : \Gamma,x : \tau$
-  \label{lem:1}
 \end{lemma}
 \begin{proof}
   If $\eta : \Gamma$, then $\forall x : \tau \in \Gamma \ \eta\llbracket x \rrbracket : \tau$.

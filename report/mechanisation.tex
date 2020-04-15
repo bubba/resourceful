@@ -1,0 +1,39 @@
+\chapter{Mechanisation}\label{cha:mechanisation}
+
+In the previous chapter, we defined and proved the soundness of our
+type system. In this chapter, we will look at how this was
+mechanically formalised --- proved within a proof assistant.
+
+For this type system, I decided to mechanise this within
+Agda~\cite{norell2009}. Agda is a dependently typed programming
+language with an ML syntax, similar to that of Haskell's. It can be
+used for general purpose programming, but because it is rooted in
+Martin-Löf intuitionistic type theory~\cite{martin-lof1984}, it can
+also be used as a proof assistant.
+
+Like many other proof assistants, the way we prove properties within
+Agda is by writing programs that satisfy types. It takes advantage of the
+Curry-Howard correspondence, which says that propositions are
+analogous to types, and proofs are analogous to programs that fulfil
+that type.
+we wish to prove as types for our programs. We can then prove our
+propositions by constructing a value for the program that satisfies the
+type, hence intuitionistic logic is also known as constructive logic.
+
+As an example, for the relation that a heap is well typed,
+$\textsf{ok} \rho$, we can define a new data type parameterised over the
+heap.
+
+\begin{minted}{agda}
+data Ok : Heap → Set where
+  OkZ : ∀ {r}
+        --------
+      → Ok (` r)
+  OkS : ∀ {a b}
+       → Ok a
+       → Ok b
+       → a ∩ b =∅
+         ----------
+       → Ok (a ∪ b)
+  OkWorld : Ok World
+\end{minted}

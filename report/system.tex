@@ -1,8 +1,10 @@
 \chapter{A Formal Definition} \label{chapter:system}
 
-To formalize the system of heaped monads, I introduce a toy language
-and type system implementing the basic principles. The semantics are
-mainly based off of the Hilney-Damas-Milner type system \cite{damasmilner}
+In this chapter we will formalize the idea of a language with
+``heaped'' IO monads. We will introduce a toy language
+and type system showcasing the basic properties, which is based off
+the Hindley-Damas-Milner type system that we saw in the previous
+chapter.
 
 \section{Syntax}
 
@@ -48,14 +50,13 @@ resources and sub-heaps. It can be thought of as the default
 \texttt{IO} monad in Haskell, where everything acting on the real
 world is treated sequentially.
 
-$\use{r}{e}$, pronounced \textit{e using r}, which similarly to
-$\lift{e}$ lifts a value in the $\IO$ monad, but it uses the resource
-$r$ in the process, starting a new heap with that resource. Unique to
-our language is the $e \curlyvee e'$ operator. It joins two monadic
-computations together into one that uses both resources, returning a
-new heap made by merging $e$ and $e'$s heaps -- provided that they do
-not overlap and are well formed (Well formedness will be defined later
-on).
+$\use{r}{e}$, pronounced \textit{e using r}, lifts a value into the
+$\IO$ monad similarly to $\lift{e}$, but it uses the resource $r$ in
+the process, starting a new heap with that resource. Unique to our
+language is the $e \curlyvee e'$ operator. It joins two monadic computations
+together into one that uses both resources, returning a new heap made
+by merging $e$ and $e'$s heaps -- provided that they do not overlap and
+are well formed (Well formedness will be defined later on).
 
 Note that for our type schemes, we may omit the bindings and write
 $\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as in the context.
@@ -194,7 +195,7 @@ rules of the Hindley-Damas-Milner system of the form $\Gamma \vdash e : \tau$.
   \end{mathpar}
 
 Note that in the syntax-directed rules, the typing judgement assigns
-types to terms, not type schemes~\ref{tofte}. Instantiation occurs
+types to terms, not type schemes~\cite[p.15]{tofte1988}. Instantiation occurs
 directly within the \textsc{Var} rule, and generalisation occurs
 implicitly in $\overline{\Gamma}$.
 
@@ -224,7 +225,7 @@ with free type variables!
                                     (\fv(e') \setminus \{ x \}) \\
   \fv(\lift{e}) = \fv(e) && \fv(e \bind e') = \fv(e) \cup \fv(e') \\
   \fv(\square) = \emptyset && \fv(\use{r}{e}) = \fv(e) \\
-  \fv(e_1 \times e_2) = \fv(e_1) \cup \fv(e_2) && \fv(\pi_i e) = \fv(e)_{i = 1,
+  \fv(e_1 \times e_2) = \fv(e_1) \cup \fv(e_2) && \fv(\pi_i e) = \fv{(e)}_{i = 1,
                                           2} \\
   \fv(e_1 \curlyvee e_2) = \fv(e_1) \cup \fv(e_2)
 \end{align*}
@@ -255,16 +256,16 @@ introduced into the language with $\lift{e}$, which lifts a pure term into
 We need to be careful what heaps we allow terms to be lifted into, as
 the entire point of this system is to avoid heaps containing duplicate
 resources. For example, it would be all to easy to just introduce an
-expression of $\IO_{File \cup File} \tau$ with \textsc{Lift}, if it was not
-for the premise $\textsf{ok} \ \rho$.
+expression of $\IO_{\textsf{File} \cup \textsf{File}} \tau$ with
+\textsc{Lift}, if it were not for the premise $\textsf{ok} \ \rho$.
 
 $\textsf{ok} \ \rho$ is a new relation we define in
 figure~\ref{fig:heapwellformedness} to establish what heaps we
 consider to be \textit{well formed}, in a similar vein to
-Krishnaswami~\ref{krishnaswami2006}. All heaps consisting of a single
+Krishnaswami~\cite{krishnaswami2006}. All heaps consisting of a single
 resource are well formed, and all heaps made by unioning two other well
-formed heaps \textit{that are distinct} -- i.e. do not share any of the
-same resources -- are well formed.
+formed heaps \textit{that are distinct} --- i.e.\ do not share any of the
+same resources --- are well formed.
 \begin{figure}
   \centering
   \begin{mathpar}
@@ -277,8 +278,7 @@ same resources -- are well formed.
       \rho \cap \rho' = \emptyset}
     {\textsf{ok} \ \rho \cup \rho'}    
   \end{mathpar}
-  \caption{Heap well formedness}
-  \label{fig:heapwellformedness}
+  \caption{Rules for heap well formedness.}\label{fig:heapwellformedness}
 \end{figure}
 
 Whilst \textsc{Lift} lets us construct monads in any heap, we will
@@ -308,12 +308,12 @@ computation.
 Once we have an $\IO$ value, we can sequence computation by binding
 it with a function that returns another $\IO$.
 \begin{mathpar}
-  \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau \\ \Gamma \vdash e' : \tau \rightarrow \IO_\rho
-    \tau'}{\Gamma \vdash e \bind e' : \IO_\rho \tau'}
+  \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
+    \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau}
 \end{mathpar}
 Note that the types of the two $\IO$s must use the same
 resources. However, we want expressions such as
-$$ \use{\textsf{File}}{\square} \bind \use{\textsf{Net}}{\square} $$
+\[ \use{\textsf{File}}{\square} \bind \lambda x . \use{\textsf{Net}}{\square} \]
 to be well typed. In particular, we want the above expression to be of
 type $\IO_{\textsf{File} \cup \textsf{Net}} \square$. But if \textsc{Bind}
 requires the resources to be the same, we must first somehow ``cast''
@@ -368,7 +368,7 @@ $\textsf{Net}$.
 \end{figure}
 
 If one views this relation as an ordering, then we have
-$\textsf{World}$ defined as the least upper bound -- this represents
+$\textsf{World}$ defined as the least upper bound --- this represents
 using all possible resources, and as mentioned earlier
 $\IO_{\textsf{World}}$ can be thought of as the $IO$ monad in Haskell,
 where sequencing interacts with the state of the entire world.
@@ -411,7 +411,7 @@ We do however, want to allow programs that run two expressions that do
 not share any resources, like
 $$\use{\textsf{File}}{\square} \curlyvee \use{\textsf{Net}}{\square}$$
 
-The result of running two separate $\IO$actions concurrently produces
+The result of running two separate $\IO$ actions concurrently produces
 an expression whose type is also an $\IO$ monad, but with the two
 separate heaps joined. In the above example, it would be infered the
 type $\IO_{\textsf{File} \cup \textsf{Net}}$.
@@ -421,10 +421,54 @@ displayed in full in figure~\ref{fig:typingrules}. Let's look at some
 examples at how they can be used to derive types for various
 programs.
 
-\subsection{Monadic binding}
+
+
+\begin{figure}
+  \begin{mathpar}
+    \boxed{\Gamma \vdash e : \tau} \\
+    
+    \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
+    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
+    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
+      \tau'} \and
+    \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
+    {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau} \and
+    % \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
+    % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
+    % e_3 : \tau} \and
+
+    \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \\
+    \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
+    {\Gamma \vdash e \times e' : \tau \times \tau'} \and
+
+    \inferrule*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 : \tau} \and     
+    \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \\
+
+    \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} :
+      \IO_\rho \tau} \and
+    \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r \tau} \\
+    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
+      \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau} \\
+    \infer*[Right=Conc]{
+      \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
+      \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
+      \textsf{ok} \ \rho_1 \cup \rho_2}
+    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2} \and
+    
+    \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
+      \textsf{ok} \ \rho}
+    {\Gamma \vdash e : \IO_{\rho'} \tau}
+
+  \end{mathpar}
+
+  \caption{The typing rules for our resourceful language.}\label{fig:typingrules}
+\end{figure}
+
+\subsection{Examples}
+\subsubsection{Monadic binding}
 Here we show a proof tree for the expression
-$$\letin{x = \lambda y . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z
-  \rrbracket_{\textsf{File}}}$$
+\[\letin{x = \lambda y . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z
+  \rrbracket_{\textsf{File}}}\]
 We have a use of the lift operator, from which we can then infer
 must be a heap of \textsf{File}, because of the use operator
 restricting it later down the line.
@@ -470,7 +514,7 @@ restricting it later down the line.
     \IO_{\textsf{File}} \square}
 \end{mathpar}
 
-\subsection{Let polymorphism}
+\subsubsection{Let polymorphism}
 This example doesn't contain any resourceful elements, but is just an
 example of how let polymorphism allows the same variable lookup to be
 inferred different types on each call site. Note how the premises in
@@ -504,7 +548,7 @@ $\mathbf{(1)}$ and $\mathbf{(2)}$ all infer $x$ to have different types.
   { \centerdot \vdash \letin{x = \lambda y . y}{(x \ x) \ (x \ \square)} : \square}
 \end{mathpar}
 
-\subsection{Concurrency}
+\subsubsection{Concurrency}
 Here is our first example of accessing two resources concurrently --
 with a bit of imagination one can think of this as reading a file
 from a disk whilst simultaneously fetching data over the network.
@@ -534,16 +578,16 @@ from a disk whilst simultaneously fetching data over the network.
   {\centerdot \vdash (\lambda x . \llbracket x \rrbracket_{\textsf{File}}) \ \square) \curlyvee \llbracket \square \rrbracket_{\textsf{Net}} : \IO_{\textsf{File} \cup \textsf{Net}} \square \times \square}
 \end{mathpar}
 
-\subsection{Subsumption}
+\subsubsection{Subsumption}
+\begin{minipage}{\textwidth}
 Assuming there is a function inside our context called
 \textsf{writeFile} with the type, $\square \rightarrow \IO_{\textsf{File}} \square$, we can
 subsume its heap to be part of a larger heap, namely
 $\textsf{File} \cup \textsf{Net}$. We will show this with the expression
-$$ \llbracket \square \rrbracket_{\textsf{File}} \curlyvee \llbracket \square \rrbracket_{\textsf{Net}}
+\[ \llbracket \square \rrbracket_{\textsf{File}} \curlyvee \llbracket \square \rrbracket_{\textsf{Net}}
 \bind
 \lambda x . \textsf{writeFile} \ (\pi_1 \ x)
-$$
-{
+\]
   \begin{mathpar}
     \Gamma = \centerdot, \textsf{writeFile} : \square \rightarrow \IO_{\textsf{File}} \square \\
     \infer{ %conc
@@ -582,48 +626,8 @@ $$
       \lambda x . \textsf{writeFile} \ (\pi_1 \ x)
       : \IO_{\textsf{File} \cup \textsf{Net}} \square}
   \end{mathpar}
-}
 
-\begin{figure}
-  \begin{mathpar}
-    \boxed{\Gamma \vdash e : \tau} \\
-    
-    \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
-    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
-    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
-      \tau'} \and
-    \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
-    {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau} \and
-    % \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
-    % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
-    % e_3 : \tau} \and
-
-    \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \\
-    \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
-    {\Gamma \vdash e \times e' : \tau \times \tau'} \and
-
-    \inferrule*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 : \tau} \and     
-    \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \\
-
-    \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} :
-      \IO_\rho \tau} \and
-    \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r \tau} \\
-    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
-      \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau} \\
-    \infer*[Right=Conc]{
-      \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
-      \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
-      \textsf{ok} \ \rho_1 \cup \rho_2}
-    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2} \and
-    
-    \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
-      \textsf{ok} \ \rho}
-    {\Gamma \vdash e : \IO_{\rho'} \tau}
-
-  \end{mathpar}
-
-  \caption{Typing rules} \label{fig:typingrules}
-\end{figure}
+\end{minipage}
 
 \section{Dynamic semantics}
 Dynamic semantics model how the program actually executes at

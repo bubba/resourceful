@@ -1,4 +1,4 @@
-\chapter{Properties}
+\chapter{Properties}\label{cha:properties}
 A type system is no good unless we can prove it is worth its salt. In
 this section we will prove a number of lemmas and theorems which will
 eventually show that the type system is sound. We will begin with a
@@ -60,7 +60,7 @@ are typed. This is an adaptation of a lemma from Wright and
 Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
 adaptation of a lemma from Damas and Milner.
 
-\begin{theorem}[Generalisation]
+\begin{theorem}[Generalisation] \label{lem:generalisation}
   If $\Gamma, x : \sigma' \vdash e : \tau$ and $\sigma > \sigma'$, then ${\Gamma, x : \sigma \vdash e : \tau}$.
   \label{lem:generalInContext}
 \end{theorem}
@@ -376,7 +376,7 @@ reduced any further (in its normal form) and is not a value.
 \begin{proof}
   Begin by induction on $\centerdot \vdash e : \tau$.
   \begin{description}
-  \item[\rm\textsc{Var}] This case is not possible -- it is impossible
+  \item[\rm\textsc{Var}] This case is not possible --- it is impossible
     to construct a proof for $x \in \centerdot$, and thus impossible to arrive at
     $\centerdot \vdash x : \tau$.
   \item[\rm\textsc{Abs}] Any lambda abstraction is a value due to the
@@ -507,7 +507,7 @@ reduced any further (in its normal form) and is not a value.
     Furthermore, we know that $\dom(\centerdot)$ and the bound type variables
     in $\tau'$ are distinct -- the domain of $\centerdot$ is empty, and there are
     no bound type variables in the type scheme $\tau'$.  This allows us
-    to use the substitution lemma, lemma~\ref{lem:substitution}, with $\centerdot \vdash e_2 : \tau'$ and
+    to use the substitution lemma,lemma~\ref{lem:substitution}, with $\centerdot \vdash e_2 : \tau'$ and
     $\centerdot , x : \tau' \vdash e : \tau$, giving us
     \[ \centerdot \vdash e [ e_2 / x ] : \tau \]
   \item[\rm\textsc{Let}] There is only way a let expression can

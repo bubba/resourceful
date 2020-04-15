@@ -24,16 +24,14 @@ year = {2000},
 abstract = {We verify within the Coq proof assistant that ML typing is sound with respect to the dynamic semantics. We prove this property in the framework of a big step semantics and also in the framework of a reduction semantics. For that purpose, we use a syntax-directed version of …}, 
 keywords = {}}
 
-@article{tofte1988,
+@phdthesis{tofte1988,
 author = {Tofte, Mads}, 
 title = {Operational semantics and polymorphic type inference}, 
-journal = {}, 
-volume = {}, 
-number = {}, 
+school = {The University of Edinburgh}, 
+address = {}, 
 pages = {}, 
 year = {1988}, 
 abstract = {Three languages with polymorphic type disciplines are discussed, namely the λ-calculus with Milner’s polymorphic type discipline; a language with imperative features (polymorphic references); and a skeletal module language with structures, signatures and functors. In each of the two first cases we show that the type inference system is consistent with an operational dynamic semantics. On the module level, polymorphic types correspond to signatures. There is a notion of principal signature. So-called signature checking is the …}, 
-location = {}, 
 keywords = {}}
 
 
@@ -116,17 +114,19 @@ journal = {Information and computation},
 volume = 115, 
 number = 1, 
 pages = {38–94}, 
-year = 1994, 
+year = 1994,
+publisher = {Elsevier},
 abstract = {We present a new approach to proving type soundness for Hindley/Milner-style polymorphic type systems. The keys to our approach are (1) an adaptation of subject reduction theorems from combinatory logic to programming languages, and (2) the use of rewriting techniques …}}
 
 
-@proceedings{damas1982,
+@inproceedings{damas1982,
 author = {Damas, Luis and Milner, Robin}, 
 title = {Principal Type-Schemes for Functional Programs.}, 
 booktitle = {Principal Type-Schemes for Functional Programs.}, 
 volume = {POPL 82}, 
 pages = {207-212}, 
-year = 1982, 
+year = 1982,
+organization = {ACM},
 abstract = {Permission to copy without fee all or part of this material is granted provided that the copies are not made or distributed for direct commercial advantage, the ACM copyright notice and the title of its publication and date appear, and notice is given that copying is by permission …}}
 
 @article{milner1978,
@@ -138,3 +138,46 @@ number = 3,
 pages = {348–375}, 
 year = 1978, 
 abstract = {The aim of this work is largely a practical one. A widely employed style of programming, particularly in structure-processing languages which impose no discipline of types, entails defining procedures which work well on objects of a wide variety. We present a formal type …}}
+
+@proceedings{peytonjones1993,
+author = {Peyton Jones, Simon L and Wadler, Philip},
+title = {Imperative functional programming},
+booktitle = {Imperative functional programming},
+volume = {Proceedings of the 20th ACM SIGPLAN-SIGACT symposium on
+                  Principles of programming languages},
+organisation={ACM},
+pages = {71-84},
+year = 1993,
+abstract = {We present a new model, based on monads, for performing
+                  input/output in a non-strict, purely functional
+                  language. It is composable, extensible, efficient,
+                  requires no extensions to the type system, and
+                  extends smoothly to incorporate mixed-language
+                  working and in-place …}}
+
+@proceedings{wadler1995,
+author = {Wadler, Philip}, 
+title = {Monads for functional programming}, 
+booktitle = {Monads for functional programming}, 
+volume = {International School on Advanced Functional Programming}, 
+publisher = {Springer}, 
+pages = {24-52}, 
+year = 1995, 
+abstract = {The use of monads to structure functional programs is described. Monads provide a convenient framework for simulating effects found in other languages, such as global state, exception handling, output, or non-determinism. Three case studies are looked at in detail …}}
+
+@incollection{norell2009,
+author = {Norell, Ulf}, 
+title = {Dependently Typed Programming in Agda}, 
+booktitle = {Advanced Functional Programming: Lecture Notes in Computer Science}, 
+publisher = {Springer Berlin Heidelberg}, 
+address = {Berlin, Heidelberg}, 
+pages = {230-266}, 
+year = 2009}
+
+@book{martin-lof1984,
+author = {Martin-Löf, Per and Sambin, Giovanni}, 
+title = {Intuitionistic type theory}, 
+volume = 9, 
+publisher = {Bibliopolis Naples}, 
+year = 1984, 
+abstract = {These lectures were given in Padova at the Laboratorio per Ricerche di Dinamica dei Sistemi e di Elettronica Biomedica of the Consiglio Nazionale delle Ricerche during the month of June 1980.%’I am indebted to Dr. Enrico Pagello of that laboratory for the op …}}

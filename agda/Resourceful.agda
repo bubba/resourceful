@@ -90,9 +90,9 @@ data _↝_ : Term → Term → Set where
           -------------------
         → ⟦ v ⟧ >>= e ↝ e · v
 
-  β-use : ∀ {r e e'}
-          -----------------------
-        → use r e >>= e' ↝ e' · e
+  β->>=-use : ∀ {r e e'}
+              -----------------------
+            → use r e >>= e' ↝ e' · e
 
   -- product types
   
@@ -188,12 +188,13 @@ _ = DHL (DHR (DHZ (λ ())) (DHZ (λ ())) (DHZ (λ ())))
 
 data Ok : Heap → Set where
   OkZ : ∀ {r}
+        --------
       → Ok (` r)
   OkS : ∀ {a b}
        → Ok a
        → Ok b
        → a ∩ b =∅
-        ---------------
+         ----------
        → Ok (a ∪ b)
   OkWorld : Ok World
 

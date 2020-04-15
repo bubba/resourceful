@@ -28,32 +28,43 @@
 
 \chapter{Introduction}
 The immutability and pureness of certain functional languages make them seem
-like a perfect fit for parallelism and concurrency.
-However, in real world applications code is very rarely completely pure -- State
-and IO interactions.
+like a perfect fit for parallelism and concurrency. The lack of side effects
+mean we are free to compute in any whatever order we please, without any shared
+mutable state, free from the fear of race conditions and deadlocks. However, in
+the real world, code is never completely pure. Useful programs need to interact
+with the real world at some point, whether that be by reading from standard
+input or connecting to a network. 
+
+Effectfullness and order
 
 The most popular solution today is to capture the entire state of the outside
 universe and write functions that operate on state. That way any particle that
 may have been perturbed by writing to \texttt{stdout} is appropriately reflected.
 
-Concurrent Clean models this by threading the World in and out of
+Concurrent Clean models this by threading the \texttt{World} in and out of
 functions. Uniqueness types guarantee that the same world is only used once, so
 that the programmer does create an alternative timeline by duplicating it.
 
-\begin{minted}{clean}
+\begin{minted}[breaklines]{clean}
 readFile :: !String !*World -> (!MaybeError FileError String,!*World)
 \end{minted}
 
-Haskell, Idris (ML?) treat the World as state. Any function that interacts with
-the World returns a function, which returns a new version of the World alongside
-the function result.
-\footnote{The actual definition in GHC is \\ \mintinline{haskell}{newtype IO a = IO (State# RealWorld -> (# State# RealWorld, a #))}}
+Haskell also treats the world as a state, but without the uniquness guarantee.
+Any function that interacts with the World returns a function, which returns a
+new version of the World alongside the function result.  \footnote{The actual
+  definition in GHC is \\ \mintinline{haskell}{newtype IO a = IO (State#
+    RealWorld -> (# State# RealWorld, a #))}}
 
 \mint{haskell}|type IO a = World -> (World, a)|
 
-This can then be easily fit into a monad, allowing for sequencing of multiple IO
-actions.
-
+How Haskell ensures that an old World isn't erroneously used instead of the
+fresh new one, is by hiding the implementation from the user, tucking it away
+into a \textit{monad}. This notion of using monads to sequence together stateful
+computations was first introduced by Peyton Jones and
+Wadler~\cite{peytonjones1993}\cite{wadler1995}. The programmer no longer needs
+to keep track of the world, and they can keep their imperative code imperative,
+and their pure code pure. This marriage of monads and IO is one of the crown
+jewels of functional language research to come out of Haskell.
 \begin{minted}{haskell}
 class Monad IO where
   return x = \w -> (w, x)
@@ -124,7 +135,7 @@ x| should probably not be allowed. But then why did the type system allow it?
 Has it failed us? The goal of the type system is to disallow as many incorrect
 programs as possible while allowing as many correct programs as possible. It is
 a fine line as to what programs are defined correct and what are defined as
-incorrect -- a type system too lenient and buggy programs will creep through. A
+incorrect --- a type system too lenient and buggy programs will creep through. A
 type system too strict and the programmer will end up wasting time fighting the
 type checker.
 
@@ -167,22 +178,22 @@ resource, i.e. it only accepts $\IO$ actions with distinct resources.
 
 \mint{haskell}|concurrently :: r /~ s => IO r a -> IO s b -> IO ? (a, b)|
 
-You can read $r /~ s$ as ``r is distinct from s'', or the opposite of a
-\texttt{r ~ s} equality constraint that one might see in a type signature. This
+You can read \verb$r \~ s$ as ``r is distinct from s'', or the opposite of a
+\verb$r \~ s$ equality constraint that one might see in a type signature. This
 of course however, does not exist in Haskell.  And what does it exactly mean for
 two resources to ``be distinct''? And what resources would the returned $\IO$
 use?
 
-These are questions that are answered in chapter~\ref{chapter:system} with a
+These are questions that are answered in Chapter~\ref{chapter:system} with a
 formal definition of a type system that tracks resource usage. We explore a
 specific point in the design space, where the type system rejects programs like
-$$
+\[
 \textsf{readFile} \curlyvee \textsf{readFile}
-$$
+\]
 But accepts and assigns types to programs such as
-$$
+\[
 \textsf{readFile} \curlyvee \textsf{readNet} : \IO_{\textsf{File} \cup \textsf{Net}} \ () \times ()
-$$
+\]
 In short, we aim to create a type system that keeps tracks of the resources
 being used, so that the programmer doesn't have to. It \textbf{does not} aim to
 solve concurrency -- there will still be programs that have concurrency errors
@@ -192,22 +203,22 @@ errors.
 
 \section{Overview}
 
-In chapter~\ref{chapter:background} we will lay out the seminal works in type
+In Chapter~\ref{chapter:background} we will lay out the seminal works in type
 theory that we will build upon. We will also briefly touch other parallels to
 our problem such as separation logic, and how they will influence the upcoming
 design.
 
 Chapter~\ref{chapter:system} introduces the language, its type system and its
 semantics.  It gives a complete definition of all the parts needed to prove
-properties.  We prove these properties in chapter~\ref{chapter:properties}, in
+properties.  We prove these properties in Chapter~\ref{cha:properties}, in
 which we eventually build up and present a proof of its soundness. This proof,
-and the others that accompany it, are then formalised within the dependently
+and the others that accompany it, are then mechanised within the dependently
 typed language and proof assistant Agda. The technique and design used to do so
-are discussed in chapter~\ref{chapter:agda}.
+are discussed in Chapter~\ref{cha:mechanisation}.
 
 Chapter~\ref{chapter:evaluation} evaluates how such a type system works in
 practice in ``real-world'' code examples, and how it might be refined. Further
-areas to explore in this design are listed in chapter~\ref{chapter:further-work}.
+areas to explore in this design are listed in Chapter~\ref{chapter:further-work}.
 
 \include{background}
 
@@ -215,11 +226,11 @@ areas to explore in this design are listed in chapter~\ref{chapter:further-work}
 
 \include{properties}
 
-\include{formalisation}
+\include{mechanisation}
 
 \include{evaluation}
 
-\chapter{Further Work} \label{chapter:further-work}
+\chapter{Further Work}\label{chapter:further-work}
 
 - Dependently typed resource tags
 
