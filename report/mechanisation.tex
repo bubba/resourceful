@@ -1,11 +1,8 @@
 \chapter{Mechanisation}\label{cha:mechanisation}
-
-In the previous chapter, we defined and proved the soundness of our
-type system. In this chapter, we will look at how this was
-mechanically formalised --- proved within a proof assistant.
-
-For this type system, I decided to mechanise this within
-Agda~\cite{norell2009}. Agda is a dependently typed programming
+In this chapter, we will look at how the proofs in
+Chapter~\ref{cha:properties} were mechanically formalised --- in other
+words, proved within a proof assistant.  I decided to mechanise the
+proofs within Agda~\cite{norell2009}, a dependently typed programming
 language with an ML syntax, similar to that of Haskell's. It can be
 used for general purpose programming, but because it is rooted in
 Martin-Löf intuitionistic type theory~\cite{martin-lof1984}, it can
@@ -21,10 +18,15 @@ a value for the program that satisfies the type, hence intuitionistic
 logic is also known as constructive logic.
 
 The framework within Agda for working with the type system is built
-upon the one used for the simply typed lambda calculus by Wadler et
-al.~\cite{wadler2018} The grammar maps directly onto
-data types:
-\begin{minted}{agda}
+upon the formalisation of the simply typed lambda calculus by Kokke et
+al.~\cite{kokke2020} It begins with the grammar, shown in
+Listing~\ref{lst:grammar}.
+
+\setminted{fontsize=\small,samepage}
+
+\begin{figure}
+\begin{multicols}{2}
+\begin{minted}[fontsize=\small,samepage]{agda}
 data Term : Set where
   `_        : Id → Term
   ƛ_⇒_      : Id → Term → Term
@@ -39,13 +41,13 @@ data Term : Set where
   π₂        : Term → Term
   _⋎_       : Term → Term → Term
 \end{minted}
-\begin{minted}{agda}
+\begin{minted}[fontsize=\small,samepage]{agda}
 data Heap : Set where
   World : Heap
   `_    : Resource → Heap
   _∪_   : Heap → Heap → Heap
 \end{minted}
-\begin{minted}{agda}
+\begin{minted}[fontsize=\small]{agda}
 data Type : Set where
   `_  : Id → Type
   _⇒_ : Type → Type → Type
@@ -53,15 +55,22 @@ data Type : Set where
   □   : Type
   _×_ : Type → Type → Type
 \end{minted}
-\begin{minted}{agda}
+\begin{minted}[fontsize=\small]{agda}
 data TypeScheme : Set where
   V_·_ : Id → TypeScheme → TypeScheme
   `_   : Type → TypeScheme
 \end{minted}
+\end{multicols}
+\caption{Grammar definitions in Agda. Note that some of the notation (e.g. $\forall$) had to be substituted due to
+being a reserved tokens.}\label{lst:grammar}
+\end{figure}
 
 For relations, such as the heap well-formed relation
-$\textsf{ok} \ \rho$, we can also define a new data type. The well-formed
-relation is parameterised over the heap:
+$\textsf{ok} \ \rho$, we define a new data type. The well-formed relation
+is a relation on a heap, and so the data type is parameterised over
+it. Furthermore, the rules directly correspond to data constructors ---
+constructing one of these means we have constructed a proof that the
+heap is well typed.
 \begin{minted}{agda}
 data Ok : Heap → Set where
   OkZ : ∀ {r}
@@ -76,5 +85,202 @@ data Ok : Heap → Set where
   OkWorld : --------
             Ok World
 \end{minted}
-The proposition is now the type \mintinline{agda}{Ok \rho}, and the rules
-of the relation are now the constructors.
+As another example, we also define a data type to represent proof that
+a heap is a subheap of another heap. This data type is parameterised
+over two heaps, which appear in the type.
+\begin{minted}[samepage]{agda}
+data _≥:_ : Heap → Heap → Set where
+  ≥:World : ∀ {ρ} → ρ ≥: World
+  ≥:Refl : ∀ {ρ} → ρ ≥: ρ
+  ≥:∪ˡ : ∀ {ρ ρ' ρ''}
+       → ρ ≥: ρ'
+         ------------
+       → ρ ≥: ρ' ∪ ρ''
+  ≥:∪ʳ : ∀ {ρ ρ' ρ''}
+       → ρ ≥: ρ'
+         ------------
+       → ρ ≥: ρ'' ∪ ρ'
+\end{minted}
+If we wanted to show that $\textsf{Net} \subtyp \textsf{Net} \cup
+\textsf{File}$, we follow the same steps we would carry out in a proof
+tree in order to construct a value that inhabits the type \mintinline{agda}{` Net ≥: ` Net ∪ ` File}.
+\begin{figure}[H]
+  \centering
+  \begin{minipage}{0.5\linewidth}
+    \begin{minted}{agda}
+_ : ` Net ≥: ` Net ∪ ` File
+_ = ≥:∪ʳ ≥:Refl
+    \end{minted}
+  \end{minipage}%
+  \begin{minipage}{0.5\linewidth}
+    \[
+      \infer*[Left=UnionL]{
+        \infer*[Left=Refl]{ }{\textsf{\textsf{Net} \subtyp \textsf{Net}}}
+      }
+      {\textsf{Net} \subtyp \textsf{Net} \cup \textsf{File}}
+    \]
+  \end{minipage}
+\end{figure}
+The most important relation however, is the typing relation. With
+Agda's Unicode support we are able to define the rules, shown in
+Listing~\ref{lst:typingrules}, with a notation similar to what we used
+in Chapter~\ref{chapter:system}. And similarly, we can construct our
+the same way. 
+\begin{figure}[H]
+  \centering
+  \begin{minipage}{0.6\linewidth}
+    \begin{minted}{agda}
+_ : ∅ ⊢ ƛ "x" ⇒ ` "x" ⦂ (` "α" ⇒ ` "α")
+_ = ⊢ƛ (⊢` Z (Inst SZ refl refl))
+    \end{minted}
+  \end{minipage}%
+  \begin{minipage}{0.4\linewidth}
+    \[
+      \infer*[Left=Abs]{
+        \infer*[Left=Var]{
+          x : \alpha \in \centerdot, x : \alpha \\
+          \alpha > \alpha
+        }{
+          \centerdot , x : \alpha \vdash x : \alpha
+        }
+      }
+      {\centerdot \vdash \lambda x . x : \alpha \rightarrow \alpha}
+    \]
+  \end{minipage}
+\end{figure}
+
+
+\begin{figure}
+  \begin{multicols}{2}
+\begin{minted}[breaklines,samepage]{agda}
+data _⊢_⦂_ : Context → Term → Type → Set where
+
+  ⊢` : ∀ {Γ x σ τ}
+     → x ⦂ σ ∈ Γ
+     → σ > τ
+       ---------
+     → Γ ⊢ ` x ⦂ τ
+
+  ⊢ƛ : ∀ {Γ x τ' τ e}
+     → Γ , x ⦂ ` τ' ⊢ e ⦂ τ
+       ------------------
+     → Γ ⊢ ƛ x ⇒ e ⦂ (τ' ⇒ τ)
+
+  ⊢· : ∀ {Γ e e' τ τ'}
+     → Γ ⊢ e ⦂ τ' ⇒ τ
+     → Γ ⊢ e' ⦂ τ'
+       --------------
+     → Γ ⊢ e · e' ⦂ τ
+
+  ⊢lt : ∀ {Γ e e' τ τ' x}
+      → Γ ⊢ e' ⦂ τ'
+      → Γ , x ⦂ close Γ τ' ⊢ e ⦂ τ
+        ---------------------
+      → Γ ⊢ lt x ⇐ e' in' e ⦂ τ
+
+  ⊢× : ∀ {Γ e e' τ τ'}
+     → Γ ⊢ e ⦂ τ
+     → Γ ⊢ e' ⦂ τ'
+       --------------------
+     → Γ ⊢ e × e' ⦂ τ × τ'
+
+  ⊢π₁ : ∀ {Γ e τ τ'}
+      → Γ ⊢ e ⦂ τ × τ'
+        --------------
+      → Γ ⊢ π₁ e ⦂ τ
+
+  ⊢π₂ : ∀ {Γ e τ τ'}
+      → Γ ⊢ e ⦂ τ × τ'
+        --------------
+      → Γ ⊢ π₂ e ⦂ τ'
+\end{minted}
+\begin{minted}[breaklines,samepage]{agda}
+  ⊢□ : ∀ {Γ}
+       
+       ---------
+     → Γ ⊢ □ ⦂ □
+
+  -- Monadic rules
+
+  ⊢⟦⟧ : ∀ {Γ e τ ρ}
+      → Γ ⊢ e ⦂ τ
+      → Ok ρ
+        ----------------
+      → Γ ⊢ ⟦ e ⟧ ⦂ IO ρ τ
+      
+  ⊢use : ∀ {Γ e τ r}
+       → Γ ⊢ e ⦂ τ
+         ---------------
+       → Γ ⊢ use r e ⦂ IO (` r) τ
+  
+  ⊢>>= : ∀ {Γ e e' τ τ' ρ}
+       → Γ ⊢ e ⦂ (IO ρ τ')
+       → Γ ⊢ e' ⦂ (τ' ⇒ IO ρ τ)
+         -------------------
+       → Γ ⊢ e >>= e' ⦂ IO ρ τ
+
+  ⊢⋎ : ∀ {Γ e₁ e₂ τ₁ τ₂ ρ₁ ρ₂}
+     → Γ ⊢ e₁ ⦂ IO ρ₁ τ₁
+     → Γ ⊢ e₂ ⦂ IO ρ₂ τ₂
+     → Ok (ρ₁ ∪ ρ₂)
+       -----------------------
+     → Γ ⊢ e₁ ⋎ e₂ ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
+
+  ⊢sub : ∀ {Γ e τ ρ ρ'}
+         → Γ ⊢ e ⦂ IO ρ τ
+         → ρ ≥: ρ'
+         → Ok ρ'
+           --------------
+         → Γ ⊢ e ⦂ IO ρ' τ
+\end{minted}
+\end{multicols}
+\caption{The typing rules as they are defined in Agda.}\label{lst:typingrules}
+\end{figure}
+
+\section{Type schemes and type variables}
+One of the main design decisions made early on was how to represent
+type schemes within Agda. Quantified type variables in type schemes are often
+represented as a sequence
+$\forall \alpha_1,\ldots,\alpha_n \cdot \tau$. This expands out to
+$\forall \alpha_1 \cdot \cdots \cdot \forall \alpha_n \cdot \tau$ in the end, and is how type schemes are
+ultimately defined in Agda, but we need to be able to reason about it
+in sequence format for some of the proofs. A helper function
+\texttt{VV} was created for this reason. It allows for type schemes
+to be created and manipulated in terms of lists.
+\begin{minted}{agda}
+VV : List Id → Type → TypeScheme
+VV (α ∷ αs) τ = V α · (VV αs τ)
+VV [] τ = ` τ
+\end{minted}
+Now we can rewrite propositions, such as the substitution lemma
+(Lemma~\ref{lem:substitution}), in a way that lets us bind the list
+of quantified type variables and use it elsewhere.
+(Lemma~)
+\begin{minted}{agda}
+subst : ∀ {Γ x e e' αs τ τ'}
+      → Γ ⊢ e ⦂ τ
+      → Γ , x ⦂ VV αs τ ⊢ e' ⦂ τ'
+      → Disjoint αs (FTVC Γ)
+        -------------------
+      → Γ ⊢ e' [ x := e ] ⦂ τ'
+\end{minted}
+There are also functions to extract the quantified type variables and
+type from a type scheme, and equivalence proofs to convince the
+type checker that they are equivalent to their \texttt{VV} form.
+\begin{minted}{agda}
+TStype : TypeScheme → Type
+TStype (V _ · σ) = TStype σ
+TStype (` τ) = τ
+
+TSvars : TypeScheme → List Id
+TSvars (V α · σ) = α ∷ TSvars σ
+TSvars (` τ) = []
+
+TStype≡ : ∀ {αs τ} → TStype (VV αs τ) ≡ τ
+TStype≡ {[]} {τ} = refl
+TStype≡ {α ∷ αs} {τ} = TStype≡ {αs}
+
+TSvars≡ : ∀ {αs τ} → TSvars (VV αs τ) ≡ αs
+TSvars≡ {[]} = refl
+TSvars≡ {α ∷ αs} = cong (_∷_ α) TSvars≡
+\end{minted}

@@ -483,8 +483,9 @@ disjointSub {Γ} {SS α σ s} (DisThere x dj) rewrite sub∉FTVC {Γ} {α} {σ} 
 ∉∈≢ : ∀ {x y a} → x ∉ a → y ∈ a → x ≢ y
 ∉∈≢ x∉a y∈a refl = ⊥-elim (x∉a y∈a)
 
--- TODO: FIX UP! CAN ONLY SUBSTITUTE VALUES
--- wright & felleisen lemma 4.4
+-- Wright & Felleisen lemma 4.4
+-- Note, in Wright & Felleisen's proposition, only values can be substitued in.
+-- Does this affect our approach here?
 subst : ∀ {Γ x e e' αs τ τ'}
       → Γ ⊢ e ⦂ τ
       → Γ , x ⦂ VV αs τ ⊢ e' ⦂ τ'
@@ -497,7 +498,7 @@ subst {Γ} {x = y} {e} {αs = αs} {τ = τ} {τ' = τ'} ⊢e (⊢` {x = x} Z (I
     where prt1 : subC s Γ ⊢ e ⦂ subT s τ
           prt1 = subContextTyping ⊢e s
           prt2 : subC s Γ ⊢ e ⦂ subT s τ → subC s Γ ⊢ e ⦂ τ'
-          prt2 ⊢e rewrite extractVV≡ {αs} {τ} = ⊢e
+          prt2 ⊢e rewrite TStype≡ {αs} {τ} = ⊢e
           SΓ≡Γ : subC s Γ ≡ Γ
           SΓ≡Γ = disjointSub ∉Γ
           prf : subC s Γ ⊢ e ⦂ τ' → Γ ⊢ e ⦂ τ'

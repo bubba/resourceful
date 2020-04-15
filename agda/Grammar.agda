@@ -107,10 +107,9 @@ TSvars : TypeScheme → List Id
 TSvars (V α · σ) = α ∷ TSvars σ
 TSvars (` τ) = []
 
-
-extractVV≡ : ∀ {αs τ} → TStype (VV αs τ) ≡ τ
-extractVV≡ {[]} {τ} = refl
-extractVV≡ {α ∷ αs} {τ} = extractVV≡ {αs}
+TStype≡ : ∀ {αs τ} → TStype (VV αs τ) ≡ τ
+TStype≡ {[]} {τ} = refl
+TStype≡ {α ∷ αs} {τ} = TStype≡ {αs}
 
 TSvars≡ : ∀ {αs τ} → TSvars (VV αs τ) ≡ αs
 TSvars≡ {[]} = refl
