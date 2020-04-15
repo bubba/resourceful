@@ -205,25 +205,25 @@ infix 5 _≥:_
 data _≥:_ : Heap → Heap → Set where
   ≥:World : ∀ {ρ} → ρ ≥: World
   ≥:Refl : ∀ {ρ} → ρ ≥: ρ
-  ≥:∪₂ : ∀ {ρ ρ' ρ''}
+  ≥:∪ˡ : ∀ {ρ ρ' ρ''}
        → ρ ≥: ρ'
          ------------
        → ρ ≥: ρ' ∪ ρ''
-  ≥:∪₁ : ∀ {ρ ρ' ρ''}
+  ≥:∪ʳ : ∀ {ρ ρ' ρ''}
        → ρ ≥: ρ'
          ------------
        → ρ ≥: ρ'' ∪ ρ'
 
 ≥:-trans : ∀ {a b c} → a ≥: b → b ≥: c → a ≥: c
-≥:-trans ab ≥:World = ≥:World
-≥:-trans ab ≥:Refl = ab
-≥:-trans ab (≥:∪₂ bc) = ≥:∪₂ (≥:-trans ab bc)
-≥:-trans ab (≥:∪₁ bc) = ≥:∪₁ (≥:-trans ab bc)
+≥:-trans a≥:b ≥:World = ≥:World
+≥:-trans a≥:b ≥:Refl = a≥:b
+≥:-trans a≥:b (≥:∪ˡ b≥:c) = ≥:∪ˡ (≥:-trans a≥:b b≥:c)
+≥:-trans a≥:b (≥:∪ʳ b≥:c) = ≥:∪ʳ (≥:-trans a≥:b b≥:c)
 
 _ : ` Net ≥: World
 _ = ≥:World
 _ : ` Net ≥: ` Net ∪ ` File
-_ = ≥:∪₂ ≥:Refl
+_ = ≥:∪ˡ ≥:Refl
 
 ∩-≥: : ∀ {ρ ρ' ρ''}
      → ρ ∩ ρ'' =∅    
@@ -231,9 +231,9 @@ _ = ≥:∪₂ ≥:Refl
      → ρ ∩ ρ' =∅
 ∩-≥: {ρ} a ≥:World = ⊥-elim (worldDistinct {ρ} (distinct-sym a))
 ∩-≥: a ≥:Refl = a
-∩-≥: a (≥:∪₁ b) = let z = distinct-∪ʳ a
+∩-≥: a (≥:∪ʳ b) = let z = distinct-∪ʳ a
                        in ∩-≥: z b
-∩-≥: a (≥:∪₂ b) = let z = distinct-∪ˡ a in ∩-≥: z b
+∩-≥: a (≥:∪ˡ b) = let z = distinct-∪ˡ a in ∩-≥: z b
 
 infix 5 _/_
 _/_ : List Id → List Id → List Id

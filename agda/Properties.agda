@@ -608,9 +608,9 @@ preservation (⊢>>= ⊢u ⊢e') β->>=-use = ⊢· ⊢e' (f ⊢u)
 preservation (⊢⋎ ⊢e₁ ⊢e₂ ok) β-⋎ =
   let ⊢`v = ⊢` (S Z (λ ())) >self 
       ⊢`w = ⊢` Z >self
-      ⊢>>=inner = ⊢>>= (⊢IOsub (weaken ⊢e₂) (≥:∪₁ ≥:Refl) ok)
+      ⊢>>=inner = ⊢>>= (⊢IOsub (weaken ⊢e₂) (≥:∪ʳ ≥:Refl) ok)
                        (⊢ƛ (⊢⟦⟧ (⊢× ⊢`v ⊢`w) ok))
-  in ⊢>>= (⊢IOsub ⊢e₁ (≥:∪₂ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
+  in ⊢>>= (⊢IOsub ⊢e₁ (≥:∪ˡ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
 
 preservation (⊢IOsub ⊢e ρ≥:ρ' ok) e↝e' = ⊢IOsub (preservation ⊢e e↝e') ρ≥:ρ' ok
 
