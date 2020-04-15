@@ -12,22 +12,57 @@ Martin-Löf intuitionistic type theory~\cite{martin-lof1984}, it can
 also be used as a proof assistant.
 
 Like many other proof assistants, the way we prove properties within
-Agda is by writing programs that satisfy types. It takes advantage of the
-Curry-Howard correspondence, which says that propositions are
+Agda is by writing programs that satisfy types. It takes advantage of
+the Curry-Howard correspondence, which says that propositions are
 analogous to types, and proofs are analogous to programs that fulfil
-that type.
-we wish to prove as types for our programs. We can then prove our
-propositions by constructing a value for the program that satisfies the
-type, hence intuitionistic logic is also known as constructive logic.
+that type. We first create types that represent our
+propositions. Then we can then prove our propositions by constructing
+a value for the program that satisfies the type, hence intuitionistic
+logic is also known as constructive logic.
 
-As an example, for the relation that a heap is well typed,
-$\textsf{ok} \ \rho$, we can define a new data type parameterised over the
-heap.
-
-\setmonofont{CMU Typewriter Text}
-
+The framework within Agda for working with the type system is built
+upon the one used for the simply typed lambda calculus by Wadler et
+al.~\cite{wadler2018} The grammar maps directly onto
+data types:
 \begin{minted}{agda}
-Découverte de Tkinter
+data Term : Set where
+  `_        : Id → Term
+  ƛ_⇒_      : Id → Term → Term
+  _·_       : Term → Term → Term
+  lt_⇐_in'_ : Id → Term → Term → Term
+  ⟦_⟧       : Term → Term
+  _>>=_     : Term → Term → Term
+  □         : Term
+  use       : Resource → Term → Term
+  _×_       : Term → Term → Term
+  π₁        : Term → Term
+  π₂        : Term → Term
+  _⋎_       : Term → Term → Term
+\end{minted}
+\begin{minted}{agda}
+data Heap : Set where
+  World : Heap
+  `_    : Resource → Heap
+  _∪_   : Heap → Heap → Heap
+\end{minted}
+\begin{minted}{agda}
+data Type : Set where
+  `_  : Id → Type
+  _⇒_ : Type → Type → Type
+  IO  : Heap → Type → Type
+  □   : Type
+  _×_ : Type → Type → Type
+\end{minted}
+\begin{minted}{agda}
+data TypeScheme : Set where
+  V_·_ : Id → TypeScheme → TypeScheme
+  `_   : Type → TypeScheme
+\end{minted}
+
+For relations, such as the heap well-formed relation
+$\textsf{ok} \ \rho$, we can also define a new data type. The well-formed
+relation is parameterised over the heap:
+\begin{minted}{agda}
 data Ok : Heap → Set where
   OkZ : ∀ {r}
         --------
@@ -38,5 +73,8 @@ data Ok : Heap → Set where
        → a ∩ b =∅
          ----------
        → Ok (a ∪ b)
-  OkWorld : Ok World
+  OkWorld : --------
+            Ok World
 \end{minted}
+The proposition is now the type \mintinline{agda}{Ok \rho}, and the rules
+of the relation are now the constructors.

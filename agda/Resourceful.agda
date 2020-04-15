@@ -196,7 +196,8 @@ data Ok : Heap → Set where
        → a ∩ b =∅
          ----------
        → Ok (a ∪ b)
-  OkWorld : Ok World
+  OkWorld : --------
+            Ok World
 
        
 -- heap subtyping

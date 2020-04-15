@@ -1,8 +1,5 @@
 % -*- fill-column: 80; TeX-command-extra-options: "-shell-escape" -*-
 \documentclass{report}
-\usepackage{fontspec}
-\setmonofont{CMU Typewriter Text} % for unicode to appear in agda
-
 \usepackage{minted}
 \usepackage{syntax}
 \usepackage{mathpartir}
@@ -12,6 +9,15 @@
 \usepackage{tikz}
 \usetikzlibrary{graphs,graphdrawing,decorations.pathreplacing,decorations.pathmorphing,arrows.meta}
 \usegdlibrary{layered,trees}
+
+\usepackage{fontspec}
+\setmonofont{Menlo}[Scale=0.8]
+
+\usepackage{newunicodechar}
+\newfontface\mathsymbolfont{Latin Modern Math}
+\newunicodechar{⟦}{{\mathsymbolfont\llbracket}}
+\newunicodechar{⟧}{{\mathsymbolfont\rrbracket}}
+
 \begin{document}
 
 \newcommand{\llbracket}{[\![}
