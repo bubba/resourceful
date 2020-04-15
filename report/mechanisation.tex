@@ -17,6 +17,16 @@ propositions. Then we can then prove our propositions by constructing
 a value for the program that satisfies the type, hence intuitionistic
 logic is also known as constructive logic.
 
+The vast majority of the work in mechanising was in writing the proofs
+related to polymorphism in the Hindley-Damas-Milner system, not the
+resourceful parts. The contemporary syntactic version of
+Hindley-Damas-Milner (what we are using here) has been successfully
+formalised in Coq~\cite{dubois2000}, and a formalisation for System F
+was recently created in Agda~\cite{chapman2019}. However as it stands,
+we are not aware of any formalizations of Hindley-Damas-Milner within
+Agda. Regardless, the techniques and approaches here are similar, and
+we base much of the proofs off of the proofs in~\cite{wright1994}.
+
 The framework within Agda for working with the type system is built
 upon the formalisation of the simply typed lambda calculus by Kokke et
 al.~\cite{kokke2020} It begins with the grammar, shown in
