@@ -1,5 +1,8 @@
 % -*- fill-column: 80; TeX-command-extra-options: "-shell-escape" -*-
 \documentclass{report}
+\usepackage{fontspec}
+\setmonofont{CMU Typewriter Text} % for unicode to appear in agda
+
 \usepackage{minted}
 \usepackage{syntax}
 \usepackage{mathpartir}
@@ -51,7 +54,7 @@ readFile :: !String !*World -> (!MaybeError FileError String,!*World)
 
 Haskell also treats the world as a state, but without the uniquness guarantee.
 Any function that interacts with the World returns a function, which returns a
-new version of the World alongside the function result.  \footnote{The actual
+new version of the World alongside the function result.\footnote{The actual
   definition in GHC is \\ \mintinline{haskell}{newtype IO a = IO (State#
     RealWorld -> (# State# RealWorld, a #))}}
 

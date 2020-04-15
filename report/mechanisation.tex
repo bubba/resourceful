@@ -21,10 +21,13 @@ propositions by constructing a value for the program that satisfies the
 type, hence intuitionistic logic is also known as constructive logic.
 
 As an example, for the relation that a heap is well typed,
-$\textsf{ok} \rho$, we can define a new data type parameterised over the
+$\textsf{ok} \ \rho$, we can define a new data type parameterised over the
 heap.
 
+\setmonofont{CMU Typewriter Text}
+
 \begin{minted}{agda}
+Découverte de Tkinter
 data Ok : Heap → Set where
   OkZ : ∀ {r}
         --------
