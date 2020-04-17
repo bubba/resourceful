@@ -34,7 +34,7 @@ Listing~\ref{lst:grammar}.
 
 \setminted{fontsize=\small,samepage}
 
-\begin{figure}
+\begin{listing}
 \begin{multicols}{2}
 \begin{minted}[fontsize=\small,samepage]{agda}
 data Term : Set where
@@ -71,9 +71,9 @@ data TypeScheme : Set where
   `_   : Type → TypeScheme
 \end{minted}
 \end{multicols}
-\caption{Grammar definitions in Agda. Note that some of the notation (e.g. $\forall$) had to be substituted due to
-being a reserved tokens.}\label{lst:grammar}
-\end{figure}
+\caption{Grammar definitions. Note that some of the notation (e.g. $\forall$) had to be substituted due to
+being reserved within Agda.}\label{lst:grammar}
+\end{listing}
 
 For relations, such as the heap well-formed relation
 $\textsf{ok} \ \rho$, we define a new data type. The well-formed relation
@@ -114,7 +114,7 @@ data _≥:_ : Heap → Heap → Set where
 If we wanted to show that $\textsf{Net} \subtyp \textsf{Net} \cup
 \textsf{File}$, we follow the same steps we would carry out in a proof
 tree in order to construct a value that inhabits the type \mintinline{agda}{` Net ≥: ` Net ∪ ` File}.
-\begin{figure}[H]
+\begin{listing}[H]
   \centering
   \begin{minipage}{0.5\linewidth}
     \begin{minted}{agda}
@@ -130,13 +130,13 @@ _ = ≥:∪ʳ ≥:Refl
       {\textsf{Net} \subtyp \textsf{Net} \cup \textsf{File}}
     \]
   \end{minipage}
-\end{figure}
+\end{listing}
 The most important relation however, is the typing relation. With
 Agda's Unicode support we are able to define the rules, shown in
 Listing~\ref{lst:typingrules}, with a notation similar to what we used
 in Chapter~\ref{chapter:system}. And similarly, we can construct our
 the same way. 
-\begin{figure}[H]
+\begin{listing}[H]
   \centering
   \begin{minipage}{0.6\linewidth}
     \begin{minted}{agda}
@@ -157,10 +157,9 @@ _ = ⊢ƛ (⊢` Z (Inst SZ refl refl))
       {\centerdot \vdash \lambda x . x : \alpha \rightarrow \alpha}
     \]
   \end{minipage}
-\end{figure}
+\end{listing}
 
-
-\begin{figure}
+\begin{listing}
   \begin{multicols}{2}
 \begin{minted}[breaklines,samepage]{agda}
 data _⊢_⦂_ : Context → Term → Type → Set where
@@ -245,8 +244,7 @@ data _⊢_⦂_ : Context → Term → Type → Set where
 \end{minted}
 \end{multicols}
 \caption{The typing rules as they are defined in Agda.}\label{lst:typingrules}
-\end{figure}
-
+\end{listing}
 \section{Type schemes and type variables}
 One of the main design decisions made early on was how to represent
 type schemes within Agda. Quantified type variables in type schemes are often

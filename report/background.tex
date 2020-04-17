@@ -91,6 +91,94 @@ But an identity element can be considered a function like $g :
 \mathbf{1} \rightarrow T$
 And 
 
+
+\section{Type-level programming within GHC}
+
+\setminted[haskell]{breaklines}
+
+Before creating the system in Chapter~\ref{chapter:system}, we
+originally attempted to embed a resourceful system within GHC's type
+system. Whilst the original Haskell 2010 language specification was
+based on System F, there has been much
+work~\cite{eisenberg2016}\cite{weirich2017} carried out to add
+dependent types to GHC via a plethora of language extensions. Namely,
+\texttt{TypeFamilies} and \texttt{GADT} provide a lot of the power
+needed to carry out type-level programming, and we leveraged this
+expressiveness to emulate a resource-tracking version of the
+\mintinline{haskell}{IO} monad, dubbed \mintinline{haskell}{SubIO}. It
+carried around a heap with a phantom type parameter:
+\begin{minted}{haskell}
+newtype SubIO (a :: [j]) b = SubIO (IO b)
+  deriving (Functor, Applicative, Monad)
+\end{minted}
+
+We then defined a subclass of \mintinline{haskell}{Monad} that
+extended it with a sequencing operator and concurrent operator, both
+which merged the heap phantom type parameters together.
+\begin{minted}{haskell}
+class Monad (m j) => HeapMonad (m :: [x] -> * -> *) j where
+  (>>>=) :: m j a -> (a -> m k b) -> m (j ** k) b
+  (|||) :: m j a -> m k b -> m (j ** k) b
+  (|||) x f = x >>>= const f
+\end{minted}
+The \texttt{**} operator was a type family that merged
+together two heaps, and threw a type error if they overlapped.
+\begin{minted}{haskell}
+type family Overlap a b :: Bool where
+  Overlap '[] b = 'False
+  Overlap (a ': as) b = If (MemberP a b) 'True (Overlap as b)
+
+type family a ** b :: [c] where
+  (a ** b) = If (Overlap a b)
+                (TypeError ('Text "Heaps overlap!"))
+                (a :++ b)
+\end{minted}
+An instance for \mintinline{haskell}{SubIO} was given, and with it
+some file operations from \mintinline{haskell}{System.IO}, transformed to accept
+the file argument as a type argument, so it could be tracked in the heap.
+\begin{minted}{haskell}
+instance HeapMonad SubIO j where
+  (SubIO x) >>>= f = SubIO (x >>= \z -> let (SubIO y) = f z in y)
+  (SubIO x) ||| (SubIO y) = SubIO (forkIO (x >> pure ()) >> y)
+
+readFile :: forall filePath. KnownSymbol filePath => SubIO '[filePath] String
+readFile = fileOp Prelude.readFile
+
+appendFile :: forall filePath. KnownSymbol filePath => String -> SubIO '[filePath] ()
+appendFile x = fileOp (`Prelude.appendFile` x)
+
+writeFile :: forall filePath. KnownSymbol filePath => String -> SubIO '[filePath] ()
+writeFile x = fileOp (`Prelude.writeFile` x)
+
+fileOp :: forall filePath a. KnownSymbol filePath => (FilePath -> IO a) -> SubIO '[filePath] a
+fileOp f = let fp = symbolVal (Proxy :: Proxy filePath)
+             in SubIO (f fp)
+\end{minted}
+All together, this meant that functions could be written with the
+familiar do syntax, and ran concurrently with
+\texttt{|||} --- but only if their heaps did not overlap.
+\begin{minted}{haskell}
+someIO = do
+  writeFile @"foo.txt" "hello"
+  s <- readFile
+  return s
+
+someMoreIO x = do
+  appendFile @"bar.txt" x
+  readFile >>= SubIO . putStrLn
+
+concExample = runSubIO $ someIO ||| someMoreIO "blah"
+--- this *should* type error
+-- badConcExample = runSubIO $ someIO ||| someIO
+\end{minted}
+However we soon found out that overlapping instances don't always
+throw a type error, as the phantom type parameter keeping track of the
+heap was evaluated \textbf{lazily}. There was a workaround that
+involved extracting the heap down to the term level and forcing
+evaluation via \mintinline{haskell}{Data.Proxy} and
+\mintinline{haskell}{seq}, but we think there are most likely better
+ways to embed this within GHC's type system.
+
 \section{Hindley-Damas-Milner}
 
 In this section, we are going to look at the Hindley-Damas-Milner type

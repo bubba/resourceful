@@ -1,12 +1,11 @@
-\chapter{Evaluation} \label{chapter:evaluation}
-
+\chapter{Evaluation}\label{cha:evaluation}
 \section{Heap well formedness}
 In the system defined in the previous chapter we have proved it is
 sound, and moreover we can show that every concurrent expression has a
-well typed heap -- that is a resource is not used more than once in the
+well typed heap --- that is a resource is not used more than once in the
 heap, and thus resources are not accessed concurrently.
 
-\begin{theorem}[Concurrenct heap is well formed]
+\begin{theorem}[Concurrent heap is well formed]
   If $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$, then $\textsf{ok} \ \rho$
   \label{theorem:conc}
 \end{theorem}
