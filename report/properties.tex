@@ -7,29 +7,29 @@ various other proofs. The first states that if we have two variables
 in the context with the same names but different type schemes, then we
 can ignore the first one as it is overshadowed by the second -- any
 reference to $x$ will result in $x : \sigma'$.
-\begin{lemma}[Drop] \label{lem:drop}
+\begin{lemma}[Drop]\label{lem:drop}
   If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
 \end{lemma}
 The second states that we can sneak in another variable before another
 variable of the same name, for the exact same reason.
-\begin{lemma}[Sneak] \label{lem:sneak}
+\begin{lemma}[Sneak]\label{lem:sneak}
   If $\Gamma , x : \sigma' \vdash e : \tau$, then for any $\sigma$, $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$
 \end{lemma}
 We can then also say that if two variables $x$ and $y$ are indeed
 different, we are free to permute them and swap them about.
-\begin{lemma}[Swap] \label{lem:swap}
+\begin{lemma}[Swap]\label{lem:swap}
   If $x \neq y$ and $\Gamma , x : \sigma, y : \sigma' \vdash e : \tau$, then $\Gamma , y : \sigma' , x : \sigma \vdash e
   : \tau$
 \end{lemma}
 And if we have a typing judgement in an empty context, we can weaken
 the judgement to extend this to any other context.
-\begin{lemma}[Weaken] \label{lem:weaken}
+\begin{lemma}[Weaken]\label{lem:weaken}
   If $\centerdot \vdash e : \tau$, then for $\Gamma$, $\Gamma \vdash e : \tau$.
 \end{lemma}
 
 We will also need to show this property about instantiation and the
 close function.
-\begin{lemma} \label{lem:close>}
+\begin{lemma}\label{lem:close>}
   If $\sigma > \sigma'$ then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma, x : \sigma'}(\tau)$.
 \end{lemma}
 \begin{proof}
@@ -47,7 +47,7 @@ close function.
   \item So if $\overline{\Gamma, x : \sigma'}(\tau)$ can be instantiated to some
     $\tau$, then $\overline{\Gamma, x : \sigma}(\tau)$ can also be instantiated to
     that $\tau$, as it has enough bound type variables to handle
-    everything the former can -- if it had less type variables than the
+    everything the former can --- if it had less type variables than the
     former, then it would not be able to instantiate these types, but
     for the converse excess type variables can be mapped to whatever.
   \end{enumerate}
@@ -60,9 +60,8 @@ are typed. This is an adaptation of a lemma from Wright and
 Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
 adaptation of a lemma from Damas and Milner.
 
-\begin{theorem}[Generalisation] \label{lem:generalisation}
-  If $\Gamma, x : \sigma' \vdash e : \tau$ and $\sigma > \sigma'$, then ${\Gamma, x : \sigma \vdash e : \tau}$.
-  \label{lem:generalInContext}
+\begin{theorem}[Generalisation]\label{lem:generalisation}
+  If $\Gamma, x : \sigma' \vdash e : \tau$ and $\sigma > \sigma'$, then \\ ${\Gamma, x : \sigma \vdash e : \tau}$.
 \end{theorem}
 \begin{proof}
   Begin with induction on the proof for $\Gamma , x : \sigma' \vdash e : \tau$.
@@ -177,7 +176,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     $s$ which replaces exactly $\alpha_1,\ldots,\alpha_n$, such that
     $\tau[s] = \tau'$.
 
-    We can use lemma~\ref{lem:subContextTyping} to get
+    We can use Lemma~\ref{lem:subContextTyping} to get
     $\Gamma[s] \vdash e : \tau[s]$, or $\Gamma[s] \vdash e : \tau'$. And furthermore, because
     ${\alpha_1 , \ldots, \alpha_n \cap \ftv(\Gamma) = \emptyset}$, applying $s$ to $\Gamma$ will do
     nothing since $\Gamma$'s free type variables are distinct, i.e. $\Gamma =
@@ -191,7 +190,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     If $y = x$, then the inner binding of $y$ will shadow $x$. That
     is, we have the premise $\Gamma , x : \sigma, x : \tau_1 \vdash e' : \tau_2$, and we can
     drop the previous $x$ from the context with
-    lemma~\ref{lem:drop} to get $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
+    Lemma~\ref{lem:drop} to get $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
     By definition, if $x = y$ then $(\lambda y . e')[e/x] = \lambda y . e'$, so we
     just need to show $\Gamma \vdash \lambda y . e' : \tau_1 \rightarrow \tau_2$, which can construct
     with \textsc{Abs} and $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
@@ -226,7 +225,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     \end{equation}
 
     % $\Gamma(z) = (\Gamma , y : \tau_1[s])(z)$ for all $z \in \fv(e)$
-    We can apply lemma~\ref{lem:ignore} to $\Gamma \vdash e : \tau$, giving us
+    We can apply Lemma~\ref{lem:ignore} to $\Gamma \vdash e : \tau$, giving us
     \begin{equation}
       \Gamma , y : \tau_1[s] \vdash e : \tau\label{eq:substAbs3}
     \end{equation}
@@ -260,10 +259,10 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
       \Gamma \vdash (\lambda y . e')[e/x] : \tau_1 \rightarrow \tau_2 && \text{because } x \ne y
     \end{align*}
     
-  \item{\rm\textsc{Let}} We have ${\Gamma , x : \sigma \vdash \letin{y = e_1}{e_2} :
+  \item{\rm\textsc{Let}} We have the proof ${\Gamma , x : \sigma \vdash \letin{y = e_1}{e_2} :
       \tau'}$
-    and want to show ${\Gamma \vdash (\letin{y = e_1}{e_2})[e/x] : \tau'}$.
-    
+    and want to show
+    \[\Gamma \vdash (\letin{y = e_1}{e_2})[e/x] : \tau'\]
     The first premise can be fed directly into the induction hypothesis
     \begin{align}
       \Gamma , x : \forall \alpha_1\ldots\alpha_n . \tau \vdash e_1 : \tau_1 \nonumber \\
@@ -354,7 +353,7 @@ We saw how this was proved with denotational semantics in
 Chapter~\ref{chapter:background}, but here we have modelled our
 dynamic semantics with operational semantics.  Instead, we prove the
 soundness of our type system \textit{syntactically}. This approach was
-first introduced by Wright and Felleisen and 1994~\ref{wright1994},
+first introduced by Wright and Felleisen and 1994~\cite{wright1994},
 and has since become the de facto method for proving soundness
 with operational semantics.
 
@@ -508,8 +507,9 @@ proof of the typing judgement:
     $\centerdot , x : \tau' \vdash e : \tau$, giving us
     \[ \centerdot \vdash e [ e_2 / x ] : \tau \]
   \item[\rm\textsc{Let}] There is only way a let expression can
-    reduce, and that is by ${\letin{x = e'}{e} \leadsto e [e' / x]}$. The
-    premises are
+    reduce, and that is by
+    \[\letin{x = e'}{e} \leadsto e [e' / x]\]
+    The premises are
     \begin{align*}
       \centerdot \vdash e' : \tau' \\
       \centerdot , x : \tau' \vdash e : \tau

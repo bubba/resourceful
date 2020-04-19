@@ -384,8 +384,8 @@ The subheaping relation is both reflexive (by definition), and transitive.
 \end{proof}
 
 By constraining subtyping to only resources and not actual types, we
-avoid the various issues associated with undecidability subtyping
-gives us~\ref{????}.
+avoid the extra overhead and complexity subtyping would normally give
+us~\cite{dolan2017}.
 
 The union of resources, for example,
 $\textsf{Net} \cup \textsf{File}$, allows us to reason about using more
@@ -635,7 +635,7 @@ runtime. It plays a crucial part in how we prove that the type system
 is sound, as we can only guarantee that our type system ensures
 error-free programs if we model how the program runs.
 
-As shown in chapter~\ref{chapter:background}, the original work
+As shown in Chapter~\ref{chapter:background}, the original work
 carried out in the Hindley-Damas-Milner systems were based on
 denotational semantics. In our type system, we will use operational
 semantics. Operational semantics are similar to what we have seen
@@ -650,8 +650,8 @@ to investigate whether a type inference system admits faulty
 programs''}.
 
 \subsection{Values}
-Before we talk about how we evaluate a program, we need to
-define what constitutes a finished evaluation -- that is, what
+Before we can talk about how we evaluate a program, we need to
+define what constitutes a finished evaluation. That is, what
 terms are a result of a completed computation.
 
 We define a value property, and give rules describing what terms can
@@ -661,7 +661,7 @@ are considered values. The same goes for product types, but only if
 both inner components are values themselves. $\square \times \square$ is a
 finished value, but $f \ e \times \square$ might still have evaluation left to
 do on the right hand side.
-A lambda on its own is a value too --
+A lambda on its own is a value too ---
 without being applied to an argument it cannot be evaluated any
 further. The computation inside of it is suspended.
 In a similar fashion a lifted computation cannot be computed any
@@ -677,7 +677,7 @@ this computation, but by itself it will not evaluate to anything.
     \inferrule{ }{ \textsf{value} \ \use{r}{e} } \and
     \inferrule{ }{ \textsf{value} \ \lambda x. e }
   \end{mathpar}
-  \caption{Terminal values} \label{fig:values}
+  \caption{Terminal values}\label{fig:values}
 \end{figure}
 
 \subsection{Small-step semantics}
@@ -742,7 +742,7 @@ And we could then also define the reduction for concurrency like so:
 \inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket}
 \end{mathpar}
 
-However the intermediate $\lift{e}$ can be confusing -- the purpose of
+However, the intermediate $\lift{e}$ can be confusing. The purpose of
 the lift operator is to lift a pure value into any possible resource
 bound monad. When we see a lift, we think of the typing judgement that
 allows it to fit any heap, when in fact a use should restrict what
@@ -760,8 +760,8 @@ returning the lifted product of the two results.
 \end{mathpar}
 
 This might seem like the opposite of concurrency --- executing the
-computation in sequence -- but because our monad does not have any
-state (see section~\ref{section:modellingstate},
+computation in sequence --- but because our monad does not have any
+state (see Section~\ref{section:modellingstate}),
 ${v \bind \lambda v . (w \bind (\lambda w . \lift{v \times w}))}$ is identical to
 $w \bind \lambda w . (v \bind (\lambda v . \lift{v \times w}))$. In fact the previous
 definition for concurrency as
@@ -772,30 +772,18 @@ actually concurrent.
 
 Although the $v \curlyvee w$ might evaluate to two separate $\bind$s, their
 static semantics are different. Namely, given
-$\Gamma \vdash \lift{v} : \IO_\rho \tau$,
+$\Gamma \vdash \lift{v} : \IO_\rho \tau$ then,
 \[
 \Gamma \vdash \lift{v} \bind \lambda v . (\lift{v} \bind (\lambda v . \lift{v \times v})) : \IO_\rho (\tau \times \tau)
 \]
 
-But for the concurrent operator, this is a type error, since the
+For the concurrent operator, this is a type error, since the
 premise $\textsf{ok} \ \rho \cup \rho$ does not hold: There is no type in any context
-that can be given to $v \curlyvee v$
+that can be given to $v \curlyvee v$.
 
 \begin{figure}
   \begin{mathpar}
     \boxed{e \leadsto e'} \\
-    % \inferrule*{x \in \eta}{\eta \vdash x \leadsto \Gamma(x)} \and
-    % \inferrule*{x \notin \eta}{\eta \vdash x \leadsto \textsf{wrong}} \and
-    % \inferrule*{ }{\eta \vdash \lambda x . e \leadsto [x,e,\eta]} \and
-    % \inferrule*{\eta \vdash e_1 \leadsto [x,e_0,\eta'] \\
-    %   \eta \vdash e_2 \leadsto v \\
-    %   \eta', x \mapsto v \vdash e_0 \leadsto r}
-    % {\eta \vdash e_1 e_2 \leadsto r } \and
-    % \inferrule*{\eta \vdash e_1 \leadsto \llbracket v \rrbracket \\
-    %   \eta \vdash e_2 \leadsto [x, e_0, \eta'] \\
-    %   \eta, x \mapsto v \vdash e_0 \leadsto }{
-    %   \eta \vdash e_1 \bind e_2 \leadsto \llbracket \rrbracket}
-
 
     % lambda calculus + HM
     \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2} \and
@@ -822,7 +810,7 @@ that can be given to $v \curlyvee v$
     \inferrule{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times
         w})} \
   \end{mathpar}
-  \caption{Dynamic Semantics}\label{fig:reduction}
+  \caption{Dynamic Semantics}\label{fig:dynamicsemantics}
 \end{figure}
 
 \subsection{Reduction relation}
@@ -837,12 +825,14 @@ $a$, $a \twoheadrightarrow a$.
 
 Intuitively speaking, if the small-step inference rule $a \leadsto b$ says
 that $a$ reduces to $b$ in exactly one step, then
-$a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps --- instead of
+$a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps. Instead of
 reducing one step at a time, it goes all the way. As an example, if we
 have the expression ${(\lambda x . x \ \square) \ (\lambda y . y)}$ then have the following relations:
 \[ (\lambda x . x \ \square) \ (\lambda y . y) \leadsto (\lambda y . y) \ \square \leadsto \square \]
 \[ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square\]
-
+We do not use this relation to prove any properties about our system,
+but it sheds light on how our expression language eventually reduces
+to a term in the end.
 
 \begin{figure}
   \begin{center}
