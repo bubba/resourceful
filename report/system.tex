@@ -759,7 +759,7 @@ returning the lifted product of the two results.
     v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})}
 \end{mathpar}
 
-This might seem like the opposite of concurrency -- executing the
+This might seem like the opposite of concurrency --- executing the
 computation in sequence -- but because our monad does not have any
 state (see section~\ref{section:modellingstate},
 ${v \bind \lambda v . (w \bind (\lambda w . \lift{v \times w}))}$ is identical to
@@ -773,9 +773,9 @@ actually concurrent.
 Although the $v \curlyvee w$ might evaluate to two separate $\bind$s, their
 static semantics are different. Namely, given
 $\Gamma \vdash \lift{v} : \IO_\rho \tau$,
-$$
+\[
 \Gamma \vdash \lift{v} \bind \lambda v . (\lift{v} \bind (\lambda v . \lift{v \times v})) : \IO_\rho (\tau \times \tau)
-$$
+\]
 
 But for the concurrent operator, this is a type error, since the
 premise $\textsf{ok} \ \rho \cup \rho$ does not hold: There is no type in any context
@@ -822,26 +822,26 @@ that can be given to $v \curlyvee v$
     \inferrule{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times
         w})} \
   \end{mathpar}
-  \caption{Dynamic Semantics} \label{fig:reduction}
+  \caption{Dynamic Semantics}\label{fig:reduction}
 \end{figure}
 
 \subsection{Reduction relation}
 
-We can define $\twoheadrightarrow$ as the reflexive, transitive closure of
-$\leadsto$. What does that mean? If
-$\leadsto$ is a relation on two terms, then the transitive closure
-$\twoheadrightarrow$ is a new relation that contains $\leadsto$ and is transitive, i.e. if
+We can go a \textit{step} further and define $\twoheadrightarrow$ as the reflexive,
+transitive closure of $\leadsto$. What does that mean? If $\leadsto$ is a relation
+on two terms, then the transitive closure $\twoheadrightarrow$ is a new relation that
+contains $\leadsto$ and is transitive, i.e.\ if
 $a \twoheadrightarrow b$ and $b \twoheadrightarrow c$, then
 $a \twoheadrightarrow c$.  A reflexive transitive closure extends this so that for any
 $a$, $a \twoheadrightarrow a$.
 
 Intuitively speaking, if the small-step inference rule $a \leadsto b$ says
 that $a$ reduces to $b$ in exactly one step, then
-$a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps -- instead of
+$a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps --- instead of
 reducing one step at a time, it goes all the way. As an example, if we
 have the expression ${(\lambda x . x \ \square) \ (\lambda y . y)}$ then have the following relations:
-$$ (\lambda x . x \ \square) \ (\lambda y . y) \leadsto (\lambda y . y) \ \square \leadsto \square $$
-$$ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square$$
+\[ (\lambda x . x \ \square) \ (\lambda y . y) \leadsto (\lambda y . y) \ \square \leadsto \square \]
+\[ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square\]
 
 
 \begin{figure}
@@ -868,103 +868,8 @@ $$ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square$$
     };
 \end{center}
 \caption{Left: the $\leadsto$ relation. Right: The reflexive, transitive
-  closure of $\leadsto$, the reduction relation $\twoheadrightarrow$.} \label{fig:reduction}
+  closure of $\leadsto$, the reduction relation $\twoheadrightarrow$.}\label{fig:reduction}
 \end{figure}
-
-
-% Note that the subsumption is limited to only the heap of the $\IO$
-% monad.
-
-% The motivating example for the subtyping rules is that the program
-
-% \begin{math}
-%   \mathsf{if} \ x \ \mathsf{then} \ \mathsf{readFile} \ \mathsf{else} \
-%   \mathsf{readNetwork}
-% \end{math}
-
-% Should have the type $\IO_{\mathsf{File} \cup \mathsf{Network}} \square$
-
-
-% \section{Semantics}
-
-% A denotational semantics is provided to prove certain properties of
-% the language and its type inference.
-
-% We want to be able to prove that the type system is sound -- that is
-% that if our system infers the type for an expression $e : \tau$, then the
-% expression does indeed semantically evaluate to a value in $\tau$.
-
-% All values are modelled with an element inside the set of
-% $\mathbb{V}$.
-% It consists of values from various other sets, such as
-% $\mathbb{B}_{\mathsf{Bool}}$, the set of values for a the
-% $\mathsf{Bool}$ type.
-
-% Semantic domain:
-
-% \begin{align*}
-%   \mathbb{V} &= \mathbb{B}_{\square} + \mathbb{B}_{\textsf{Bool}} + \mathbb{F} +
-%                \mathbb{W} \\
-%   \mathbb{B}_{\square} &= \{ \ \square \ \} \\
-%   \mathbb{B}_{\mathsf{Bool}} &=
-%                                \{ \textsf{True}, \textsf{False},
-%                                \bot_{\textsf{Bool}} \} \\
-%   \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
-%   \mathbb{W} &= \{ \ . \ \}
-% \end{align*}
-
-
-% We can use the syntax for semantic entailment, $\Vdash v : \tau$, which is
-% defined as
-
-% \begin{math}
-%   v \in \mathbb{V}^\tau \iff \Vdash v : \tau
-% \end{math}
-
-% Whilst on the syntactic side, $\Gamma$ is the type environment, we also
-% define a semantic environment $\rho$. It is is a map of variable
-% identifiers to values.
-
-% \begin{math}
-%   \rho : \textsf{Id} \rightarrow \mathbb{V}
-% \end{math}
-
-
-% We use $\llbracket e \rrbracket$ notation to represent passing a
-% syntactic argument $e$ to a semantic function.
-
-% We say an environment respects a type environment $\rho : \Gamma$ if:
-% \begin{math}
-%   \rho : \Gamma \iff \forall x : \tau \in \Gamma \rho \llbracket x \rrbracket : \tau
-% \end{math}
-
-
-% $\mathbb{B}_{Bool} = \{ \textsf{true} \textsf{false} \bot_{bool} \}$
-
-% Semantic function $\mathbb{E} : \mathsf{Expr} \rightarrow \mathsf{Env} \rightarrow \mathbb{V}$
-
-
-% There is a conditional operator $\hookrightarrow : \mathbb{B}_{\textsf{Bool}} \rightarrow \mathbb{V} \rightarrow \mathbb{V} \rightarrow \mathbb{V}$, defined as follows.
-
-% \begin{align*}
-%   t \hookrightarrow v, v' =
-%   \begin{cases}
-%     v & \textsf{if} \ t = \textsf{true} \\
-%     v' & \textsf{if} \ t = \textsf{false} \\
-%     \bot_v & \textsf{if} \ t = \bot_t
-%   \end{cases}
-% \end{align*}
-
-% \begin{align*}
-%   \mathbf{E} \llbracket x \rrbracket \rho &= \rho(x) \\
-%   \mathbf{E} \llbracket e \ e' \rrbracket \rho &= \textsf{isF} v_1 \hookrightarrow
-%                                               {v_1}_{|F} v_2 \\
-%   \mathbf{E} \llbracket \lambda x . \ e \rrbracket \rho &=
-%   (\lambda v . \ \mathbf{E} \llbracket e \rrbracket \rho \{ v / x \} ) \
-%                                                  \textsf{in} \ \mathbb{V}
-% \end{align*}
-
-% Semantic domain + semantic function = semantic algebra
 
 %%% Local Variables:
 %%% TeX-master: "report"

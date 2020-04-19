@@ -1,13 +1,71 @@
 \chapter{Background}\label{chapter:background}
 
-\section{Separation logic}
+\section{Separation logic}\label{sec:separationologic}
+Separation logic~\cite{ohearn2019,reynolds2002} is an extension
+to Hoare logic, a system for formalising properties about imperative
+programs. Specifications can be formalised as code, preceded by a
+precondition and succeeded by a postcondition.
+\[
+  {\color{gray} \{\textit{precondition}\}} \
+  \textit{code} \
+  {\color{gray} \{\textit{postcondition}\}}
+\]
+The preconditions and postconditions make assertions about what points
+to what inside the \textit{heap}. For example, in the example that
+O'Hearn gives a cyclic list is constructed from two pointers.
+\begin{gather*}
+  {\color{gray} \{ x \mapsto 0 * y \mapsto 0 \} }\\
+  [x] = y; \\
+  [y] = x; \\
+  {\color{gray} \{ x \mapsto y * y \mapsto x \} }
+\end{gather*}
+The code sets the value of $x$ is set to the location of $y$, and
+vice-versa. Separation logic extends Hoare logic with the notion of
+splitting the heap. In the example above, instead of asserting
+$x \mapsto y \wedge y \mapsto x$, the separation conjunction $*$ is used, which says
+``$x$ points to $y$ \textit{and separately} $y$ points to $x$''. The
+heap must be able to split into disjoint subheaps, such that
+$x \mapsto y$ holds in one and $y \mapsto x$ in the other. This means that
+$x$ and $y$ cannot point to the same location in the heap.
+These preconditions and postconditions can be derived from so-called
+small axioms, which for an imperative language might contain an axiom
+for storing to the heap:
+\[ {\color{gray} \{x \mapsto -\}} [x] = v {\color{gray} \{x \mapsto v\}} \]
+The \textit{frame rule} allows a specification to be extended by
+adding extra predicates that do not mention any variables used by the
+code.
+\[
+  \infer{\{p\} \ \emph{code} \ \{q\}}
+  {\{p * r\} \ \emph{code} \ \{ q * r \}} \
+  \text{\parbox{2in}{where no variable
+    occurring free in r is modified by \emph{code}}}
+\]
+This rule ends up being quite significant, as its the reason why
+separation logic allows for programs to be reasoned about locally ---
+the predicates involving the heap are shrunk so that they only contain
+variables that the code modifies.
+
+There is also the \emph{concurrency rule} for reasoning about
+concurrency, which gives the precondition and postcondition needed for
+two programs that are run in parallel.
+\[
+  \infer{ {\color{gray} \{p_1\}} \ \emph{code}_1 \ {\color{gray} \{q_1\}}
+    \\
+    {\color{gray} \{p_2\}} \ \emph{code}_2 \ {\color{gray} \{q_2\}}}
+  { {\color{gray} \{p_1 * p_2\}} \ \emph{code}_1 \ || \ \emph{code}_2 \
+    {\color{gray} \{q_1 * q_2\}}}
+\]
+
+Krishnaswami built upon separation logic with a higher-order ML like
+language\cite{krishnaswami2006} with types. It utilised monadic
+binding for sequencing, allowing imperative computation within an
+otherwise pure language.
 
 \section{Monadic effect systems}
 As the language we will develop in Chapter~\ref{chapter:system} is
 based around monads, it is a good idea to take a brief look at what
 exactly they are, and dip our toes into the cool waters of category
-theory.\footnote{No dissertation is complete without a monad
-  tutorial.}
+theory.
 
 A monad is often sardonically defined as
 \begin{quote}

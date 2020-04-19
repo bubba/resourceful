@@ -210,17 +210,17 @@ But accepts and assigns types to programs such as
 \]
 In short, we aim to create a type system that keeps tracks of the resources
 being used, so that the programmer doesn't have to. It \textbf{does not} aim to
-solve concurrency -- there will still be programs that have concurrency errors
+solve concurrency --- there will still be programs that have concurrency errors
 that the type system will still allow. We just aim to narrow down the scope of
 valid programs, by ruling out those with blatant, concurrent resource access
 errors. 
 
 \section{Overview}
 
-In Chapter~\ref{chapter:background} we will lay out the seminal works in type
-theory that we will build upon. We will also briefly touch other parallels to
-our problem such as separation logic, and how they will influence the upcoming
-design.
+In Chapter~\ref{chapter:background} we will talk about the inspirations of the
+type system, namely separation logic, and how it parallels with our monadic
+language. We will also briefly go over what we mean by a monad formally, and
+then look at the original design of Hindley-Damas-Milner which we will build upon.
 
 Chapter~\ref{chapter:system} introduces the language, its type system and its
 semantics.  It gives a complete definition of all the parts needed to prove
@@ -230,9 +230,8 @@ and the others that accompany it, are then mechanised within the dependently
 typed language and proof assistant Agda. The technique and design used to do so
 are discussed in Chapter~\ref{cha:mechanisation}.
 
-Chapter~\ref{cha:evaluation} evaluates how such a type system works in
-practice in ``real-world'' code examples, and how it might be refined. Further
-areas to explore in this design are listed in Chapter~\ref{chapter:further-work}.
+Finally, Chapter~\ref{cha:evaluation} evaluates our type system, how it might be
+refined, and areas of further work that would be interesting to explore.
 
 \include{background}
 
@@ -243,10 +242,6 @@ areas to explore in this design are listed in Chapter~\ref{chapter:further-work}
 \include{mechanisation}
 
 \include{evaluation}
-
-\chapter{Further Work}\label{chapter:further-work}
-
-- Dependently typed resource tags
 
 \include{appendix}
 

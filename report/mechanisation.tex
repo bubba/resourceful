@@ -17,6 +17,13 @@ propositions. Then we can then prove our propositions by constructing
 a value for the program that satisfies the type, hence intuitionistic
 logic is also known as constructive logic.
 
+As a brief example, a proposition of the form
+$\forall a. a \rightarrow b$, translates into a program of type \mintinline{agda}{∀ a → b}. If you read the proposition as ``\textit{if a, then b}'', then
+you can read the type as ``\textit{given any proof of a, then I can
+  construct a proof of b}''. And that is indeed what the program
+should do: it is a function that takes an argument of $a$, and returns
+something of type $b$.
+
 The vast majority of the work in mechanising was in writing the proofs
 related to polymorphism in the Hindley-Damas-Milner system, not the
 resourceful parts. The contemporary syntactic version of
@@ -27,6 +34,7 @@ we are not aware of any formalizations of Hindley-Damas-Milner within
 Agda. Regardless, the techniques and approaches here are similar, and
 we base much of the proofs off of the proofs in~\cite{wright1994}.
 
+\section{Definitions}
 The framework within Agda for working with the type system is built
 upon the formalisation of the simply typed lambda calculus by Kokke et
 al.~\cite{kokke2020} It begins with the grammar, shown in
@@ -134,8 +142,8 @@ _ = ≥:∪ʳ ≥:Refl
 The most important relation however, is the typing relation. With
 Agda's Unicode support we are able to define the rules, shown in
 Listing~\ref{lst:typingrules}, with a notation similar to what we used
-in Chapter~\ref{chapter:system}. And similarly, we can construct our
-the same way. 
+in Chapter~\ref{chapter:system}. Typing judgements can be can
+constructed as follows:
 \begin{listing}[H]
   \centering
   \begin{minipage}{0.6\linewidth}
@@ -158,6 +166,26 @@ _ = ⊢ƛ (⊢` Z (Inst SZ refl refl))
     \]
   \end{minipage}
 \end{listing}
+The small-step relation is defined in a similar way:
+\begin{minted}{agda}
+data _↝_ : Term → Term → Set where
+  ξ-·₁ : ∀ {e₁ e₂ e₁'}
+       → e₁ ↝ e₁'
+         ------------------
+       → e₁ · e₂ ↝ e₁' · e₂
+       
+  ξ-·₂ : ∀ {e₁ e₂ e₂'}
+       → e₂ ↝ e₂'
+         ------------------
+       → e₁ · e₂ ↝ e₁ · e₂'
+
+  β-ƛ : ∀ {x e e'}
+      → Value e'
+        ------------------
+      → (ƛ x ⇒ e) · e' ↝ e [ x := e' ]
+  -- and so on ...
+\end{minted}
+
 
 \begin{listing}
   \begin{multicols}{2}
@@ -263,18 +291,18 @@ VV [] τ = ` τ
 Now we can rewrite propositions, such as the substitution lemma
 (Lemma~\ref{lem:substitution}), in a way that lets us bind the list
 of quantified type variables and use it elsewhere.
-(Lemma~)
 \begin{minted}{agda}
 subst : ∀ {Γ x e e' αs τ τ'}
       → Γ ⊢ e ⦂ τ
       → Γ , x ⦂ VV αs τ ⊢ e' ⦂ τ'
       → Disjoint αs (FTVC Γ)
-        -------------------
+        ----------------------
       → Γ ⊢ e' [ x := e ] ⦂ τ'
 \end{minted}
 There are also functions to extract the quantified type variables and
-type from a type scheme, and equivalence proofs to convince the
-type checker that they are equivalent to their \texttt{VV} form.
+type from a type scheme, and equivalence proofs that can be used to
+convince the type checker that they are equivalent to their
+\texttt{VV} form.
 \begin{minted}{agda}
 TStype : TypeScheme → Type
 TStype (V _ · σ) = TStype σ
@@ -291,4 +319,36 @@ TStype≡ {α ∷ αs} {τ} = TStype≡ {αs}
 TSvars≡ : ∀ {αs τ} → TSvars (VV αs τ) ≡ αs
 TSvars≡ {[]} = refl
 TSvars≡ {α ∷ αs} = cong (_∷_ α) TSvars≡
+\end{minted}
+
+\section{Properties}
+The type preservation theorem (Theorem~\ref{thm:preservation}) is proven
+with the following function --- given proof that $e$ has type $\tau$ in the
+empty context, and proof that $e$ reduces to $e'$ in one step, then we
+can provide proof that $e'$ also has the type $\tau$ in the empty context.
+\begin{minted}{agda}
+preservation : ∀ {e e' τ}
+             → ∅ ⊢ e ⦂ τ
+             → e ↝ e'
+               ----------
+             → ∅ ⊢ e' ⦂ τ
+\end{minted}
+For progress (Theorem~\ref{thm:progress}), we need to be able to say
+either the expression is a value or it reduces to something else. We
+create a new data type to represent the two cases where this can
+happen.
+\begin{minted}{agda}
+data Progress (e : Term) : Set where
+  step : ∀ {e'}
+       → e ↝ e'
+         ------
+       → Progress e
+  done : Value e
+         ----------
+       → Progress e
+
+progress : ∀ {e τ}
+         → ∅ ⊢ e ⦂ τ
+           ----------
+         → Progress e
 \end{minted}

@@ -346,12 +346,12 @@ property of a logical system, stating that every judgement that can be
 proved within the system is valid. In the type theory realm, a type
 system is considered to be sound if and only if, for every typing
 judgement we can produce for an expression in a context, it evaluates
-to some member of the set of the type from the typing judgement -- or
+to some member of the set of the type from the typing judgement --- or
 as Milner put it, \textit{``well-typed programs can't go
   wrong''}~\cite{milner1978}[§3.7].
 \[\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau\]
 We saw how this was proved with denotational semantics in
-chapter~\ref{chapter:background}, but here we have modelled our
+Chapter~\ref{chapter:background}, but here we have modelled our
 dynamic semantics with operational semantics.  Instead, we prove the
 soundness of our type system \textit{syntactically}. This approach was
 first introduced by Wright and Felleisen and 1994~\ref{wright1994},
@@ -364,13 +364,10 @@ The former states that for any typing judgement we can prove, the
 expression is either a terminal value, or can be reduced further. The
 latter property ensures that when an expression has a type, reducing
 it to another expression does not change the type.
+The proofs of both of these properties come from induction on the
+proof of the typing judgement:
 
-Together these two properties can ensure that no expression can go
-wrong, which within operational semantics means it cannot get
-\textit{stuck}. A stuck expression is an expression which cannot be
-reduced any further (in its normal form) and is not a value.
-
-\begin{theorem}[Progress]
+\begin{theorem}[Progress]\label{thm:progress}
   If $\centerdot \vdash e : \tau$, then either $\textsf{value} \ e$ or there exists a $e'$ such that $e \leadsto e'$.
 \end{theorem}
 \begin{proof}
@@ -381,7 +378,7 @@ reduced any further (in its normal form) and is not a value.
     $\centerdot \vdash x : \tau$.
   \item[\rm\textsc{Abs}] Any lambda abstraction is a value due to the
     rule
-    $$\infer{ }{\textsf{Value} \ \lambda x . e}$$
+    \[\infer{ }{\textsf{Value} \ \lambda x . e}\]
   \item[\rm\textsc{App}] We have $\centerdot \vdash e_1 \ e_2 : \tau$, so by the premises
     of \textsc{App}, we have $\centerdot \vdash e_1 : \tau' \rightarrow \tau$ and $\centerdot \vdash e_2 :
     \tau'$.
@@ -463,11 +460,11 @@ reduced any further (in its normal form) and is not a value.
       in $\centerdot \vdash e : \IO_\rho' \tau$, then we also have the premise $\centerdot \vdash e :
       \IO_\rho \tau$ for some other $\rho$. But we can just call the induction
       hypothesis on this premise to show that either $e$ reduces or
-      $e$ is a value. In any case, it is the same $e$ -- so we are done.
+      $e$ is a value. In any case, it is the same $e$ --- so we are done.
   \end{description}
 \end{proof}
 
-\begin{theorem}[Preservation]
+\begin{theorem}[Preservation]\label{thm:preservation}
   If $\centerdot \vdash e : \tau$ and $e \leadsto e'$, then $\centerdot \vdash e' : \tau$.
 \end{theorem}
 \begin{proof}
@@ -505,9 +502,9 @@ reduced any further (in its normal form) and is not a value.
       {\centerdot \vdash (\lambda x . e) \ e_2  : \tau}
     \]
     Furthermore, we know that $\dom(\centerdot)$ and the bound type variables
-    in $\tau'$ are distinct -- the domain of $\centerdot$ is empty, and there are
+    in $\tau'$ are distinct --- the domain of $\centerdot$ is empty, and there are
     no bound type variables in the type scheme $\tau'$.  This allows us
-    to use the substitution lemma,lemma~\ref{lem:substitution}, with $\centerdot \vdash e_2 : \tau'$ and
+    to use the substitution lemma, Lemma~\ref{lem:substitution}, with $\centerdot \vdash e_2 : \tau'$ and
     $\centerdot , x : \tau' \vdash e : \tau$, giving us
     \[ \centerdot \vdash e [ e_2 / x ] : \tau \]
   \item[\rm\textsc{Let}] There is only way a let expression can
@@ -557,7 +554,7 @@ reduced any further (in its normal form) and is not a value.
     for brevity.
   \item[\rm\textsc{Lift}] For
     $\centerdot \vdash \lift{e} : \IO_\rho \tau$, just like $\square$ there is no way
-    for $\lift{e}$ to reduce any further -- they are both
+    for $\lift{e}$ to reduce any further --- they are both
     values. There is nothing needed to be done for this case.
   \item[\rm\textsc{Use}] The same also applies for $\use{r}{e}$.
   \item[\rm\textsc{Bind}] The proof we are handling looks like this
@@ -576,15 +573,15 @@ reduced any further (in its normal form) and is not a value.
       \end{align*}
     \item[$\lift{e} \bind e_2 \leadsto e_2 \ e$] We know
       $\centerdot \vdash \lift{e} : \IO_\rho \tau'$, but that does not necessarily mean
-      that the proof for it came from the \textsc{Lift} rule -- it
+      that the proof for it came from the \textsc{Lift} rule --- it
       could have also been derived from subsumption, \textsc{Sub}. To
       help when this scenario arises, we use a small helper lemma
-      listed in the appendix, lemma~\ref{lem:unwrapLift}, that says if
+      listed in the appendix, Lemma~\ref{lem:unwrapLift}, that says if
       $\Gamma \vdash \lift{e} : \IO_\rho \tau'$, then
       $\Gamma \vdash e : \tau'$. Now we can use \textsc{Abs} to construct
       ${\centerdot \vdash e_2 \ e : \IO_\rho \tau}$ as needed.
     \item[$\use{r}{e} \bind e_2 \leadsto e_2 \ e$] This is identical to the
-      case above, except we use lemma~\ref{lem:unwrapUse} instead.
+      case above, except we use Lemma~\ref{lem:unwrapUse} instead.
     \end{description}
   \item[\rm\textsc{Conc}] We have the proof and premises
     \[ \infer*[Left=Conc]{\centerdot \vdash v : \IO_{\rho_1} \tau_1 \\ \centerdot \vdash w : \IO_{\rho_2} \tau_2 \\
@@ -607,8 +604,7 @@ reduced any further (in its normal form) and is not a value.
     \end{align*}
     \begin{align*}
       \centerdot \vdash w : \IO_{\rho_2} \tau_2 && \text{from premises} \\
-      \centerdot , v : \tau_1 \vdash w : \IO_{\rho_2} \tau_2 && \text{by
-                                                   lemma~\ref{lem:weaken}} \\
+      \centerdot , v : \tau_1 \vdash w : \IO_{\rho_2} \tau_2 && \text{by Lemma~\ref{lem:weaken}} \\
       \rho_2 \subtyp \rho_1 \cup \rho_2 && \text{by \textsc{UnionR}} \\
       \textsf{ok} \ \rho_1 \cup \rho_2 && \text{from premises} \\
       \centerdot , v : \tau_1 \vdash w : \IO_{\rho_1 \cup \rho_2} \tau_2 && \text{by \textsc{Sub}}
@@ -673,3 +669,15 @@ reduced any further (in its normal form) and is not a value.
     \[ \centerdot \vdash e' : \IO_\rho' \tau \]
   \end{description}
 \end{proof}
+
+Together these two properties can ensure that no expression can go
+wrong, which within operational semantics means it cannot get
+\textit{stuck}. A stuck expression is an expression which cannot be
+reduced any further (in its normal form) and is not a
+value. The progress theorem has shown that evaluation of any
+well-typed expression cannot end up in this state, so it does indeed
+evaluate to something in the end. And the preservation theorem
+guarantees us that the type of the final value will remain the same.
+Therefore we have shown the operational equivalent of the denotational
+\[ \Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau \]
+

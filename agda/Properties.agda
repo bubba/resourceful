@@ -133,7 +133,10 @@ data Progress (e : Term) : Set where
        → Progress e
 
 
-progress : ∀ {e τ} → ∅ ⊢ e ⦂ τ → Progress e
+progress : ∀ {e τ}
+         → ∅ ⊢ e ⦂ τ
+           ----------
+         → Progress e
 progress (⊢ƛ ⊢e) = done V-ƛ
 progress (⊢· ⊢e₁ ⊢e₂) with progress ⊢e₁
 ... | step e₁↝e₁' = step (ξ-·₁ e₁↝e₁')

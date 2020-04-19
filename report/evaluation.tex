@@ -1,13 +1,12 @@
-\chapter{Evaluation}\label{cha:evaluation}
+\chapter{Evaluation and Further Work}\label{cha:evaluation}
 \section{Heap well formedness}
 In the system defined in the previous chapter we have proved it is
 sound, and moreover we can show that every concurrent expression has a
 well typed heap --- that is a resource is not used more than once in the
 heap, and thus resources are not accessed concurrently.
 
-\begin{theorem}[Concurrent heap is well formed]
+\begin{theorem}[Concurrent heap is well formed]\label{theorem:conc}
   If $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$, then $\textsf{ok} \ \rho$
-  \label{theorem:conc}
 \end{theorem}
 \begin{proof}
   By induction on the possible proofs for $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$.
@@ -22,24 +21,24 @@ As you can see, this is straightforward to prove. Perhaps it is too
 straightforward. What we would really like to prove is for all terms
 $e$:
 \newtheorem{conjecture}{Conjecture}
-\begin{conjecture}
+\begin{conjecture}\label{conjecture:strongconc}
   If $\centerdot \vdash e : \IO_\rho \tau$, then $\textsf{ok} \ \rho$
-  \label{conjecture:strongconc}
 \end{conjecture}
-This is a stronger version of theorem~\ref{theorem:conc}. However this
+This is a stronger version of Theorem~\ref{theorem:conc}. However this
 is not made easy in the system as it stands, for one simple yet
 annoying reason: Types are not necessarily well formed, and
 \textsc{Abs} allows any type to be introduced. This can be easily
 shown with the identity function.
 
-$$\inferrule*[Right=Abs]{
+\[
+  \inferrule*[Right=Abs]{
   \inferrule*[Right=Var]{x : \IO_{\textsf{File} \cup \textsf{File}} \tau  \in
     \centerdot , x : \IO_{\textsf{File} \cup \textsf{File}} \tau \\  \IO_{\textsf{File} \cup \textsf{File}} \tau >
     \IO_{\textsf{File} \cup \textsf{File}} \tau }{\centerdot , x : \IO_{\textsf{File} \cup
       \textsf{File}} \tau \vdash x : \IO_{\textsf{File} \cup \textsf{File}} \tau}
 }
 {\centerdot \vdash \lambda x . x : \IO_{\textsf{File} \cup \textsf{File}} \tau \rightarrow \IO_{\textsf{File} \cup \textsf{File}} \tau}
-$$
+\]
 
 It acts as a mechanism to generate types with malformed heaps, such as
 an $\IO$ monad that contains two \textsf{File}s in its heap.  In
@@ -88,11 +87,11 @@ some simple concurrency guarantees at the type level in a programming
 language. Thus the intention is that some of this may eventually make
 its way into a type system of an existing or novel language.
 
-Because of this, rather than just using the simply typed lambda
-calculus, the system was based off of the Hindley-Damas-Milner system
-with its polymorphic type discipline. It cannot be understated the
-amount of extra complexity and work this introduced into the proofs
-for soundness, but polymorphism is a near-essential feature in todays
+So instead of starting with the simply typed lambda calculus, the
+system was based off of the Hindley-Damas-Milner system with its
+polymorphic type discipline. It cannot be understated the amount of
+extra complexity and work this introduced into the proofs for
+soundness, but polymorphism is a near-essential feature in today's
 modern functional programming languages. The let polymorphism does not
 interact much with the monadic and resourceful parts of the type
 system, but it is desirable to show that the two are compatible with
@@ -105,7 +104,7 @@ four rules instead of the usual six, where instantiation and
 generalisation are rolled into \textsc{Var} and \textsc{Let}
 respectively. The main benefit of this was that it meant there was
 exactly one typing judgement for each form of syntax, so constructing
-proofs for a program was a breeze -- you just follow the corresponding rules
+proofs for a program was a breeze --- you just follow the corresponding rules
 for each term. For example, in the expression $\letin{z = \lambda x . x}{z \
   z}$, a let consisting of an abstraction and an application, the proof begins with a
 \textsc{Let}, then the premises \textsc{Abs} and \textsc{App} as shown
@@ -189,9 +188,61 @@ nice property of the system.
 \end{figure}
 
 
-\section{Modelling state within the monad} \label{section:modellingstate}
+\section{Modelling state within the
+  monad}\label{section:modellingstate}
+The modelling of the IO monad is extremely simplified, and does
+nothing more than sequence computation. In fact, it doesn't model the
+main purpose of the IO monad, which is to model effects by keeping
+track of the \textit{state} of the world. To illustrate this point,
+the reduction rule for concurrency is completely sequential.
+\[ \infer{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})} \]
+In a real world, this would be pointless. We want to be able to
+compute these expressions concurrently, so $\bind$ alone won't cut it.
+What we most likely want to ...
 
 \section{If statements}
+
+\section{Separation logic}
+In Section~\ref{sec:separationologic} we looked at separation logic,
+and now that we have defined our system we can look at some parallels
+between them. Take the frame rule again, which allows additional
+predicates to be inferred in a specification, under the condition that
+the code does not use any of the variables in the predicate.
+\[
+  \infer{\{p\} \ \emph{code} \ \{q\}}
+  {\{p * r\} \ \emph{code} \ \{ q * r \}} \
+  \text{\parbox{2in}{where no variable
+    occurring free in r is modified by \emph{code}}}
+\]
+Our well-formed heap judgement has a rule that allows heaps to be
+merged, under the condition that they do not overlap:
+\[
+  \infer{\textsf{ok} \ \rho \\ \textsf{ok} \ \rho' \\ \rho\cap\rho'=\emptyset}
+  {\textsf{ok} \ \rho\cup\rho'}
+\]
+This mirrors the idea of separation logic, that we only need to worry
+about the variables relevant to our code, or in our terminology, the
+resources relevant to our type. So our subsumption rule, \textsc{Sub}, that lets
+heaps get promoted to a larger heap, ends up being our version of the
+frame rule. And the concurrency rule from separation logic:
+\[
+  \infer{ {\color{gray} \{p_1\}} \ \emph{code}_1 \ {\color{gray} \{q_1\}}
+    \\
+    {\color{gray} \{p_2\}} \ \emph{code}_2 \ {\color{gray} \{q_2\}}}
+  { {\color{gray} \{p_1 * p_2\}} \ \emph{code}_1 \ || \ \emph{code}_2 \
+    {\color{gray} \{q_1 * q_2\}}}
+\]
+Ends up becoming our concurrency typing rule, \textsc{conc}. The
+preconditions and postconditions are the heaps in the $\IO$ type, and the
+separating conjunction $*$ is our union $\cup$.
+\[
+  \infer{
+    \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
+    \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
+    \textsf{ok} \ \rho_1 \cup \rho_2}
+  {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2}
+\]
+
 
 \section{Heap polymorphism}
 It would be convenient if we were able to have expressions like the
