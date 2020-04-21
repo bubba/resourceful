@@ -1,9 +1,51 @@
 \chapter{Evaluation and Further Work}\label{cha:evaluation}
+
+\section{Separation logic}
+In Section~\ref{sec:separationologic} we looked at separation logic,
+and now that we have defined our system we can look at some parallels
+between them. Take the frame rule again, which allows additional
+predicates to be inferred in a specification, under the condition that
+the code does not use any of the variables in the predicate.
+\[
+  \infer{{\color{gray} \{p\}} \ \emph{code} \ {\color{gray} \{q\}}}
+  {{\color{gray} \{p * r\}} \ \emph{code} \ {\color{gray} \{ q * r \}}} \
+  \text{\parbox{2in}{where no variable
+    occurring free in r is modified by \emph{code}}}
+\]
+Our well-formed heap judgement has a rule that allows heaps to be
+merged, under the condition that they do not overlap:
+\[
+  \infer{\textsf{ok} \ \rho \\ \textsf{ok} \ \rho' \\ \rho\cap\rho'=\emptyset}
+  {\textsf{ok} \ \rho\cup\rho'}
+\]
+This mirrors the idea of separation logic, that we only need to worry
+about the variables relevant to our code, or in our terminology, the
+resources relevant to our type. So our subsumption rule, \textsc{Sub}, that lets
+heaps get promoted to a larger heap, ends up being our version of the
+frame rule. And the concurrency rule from separation logic:
+\[
+  \infer{ {\color{gray} \{p_1\}} \ \emph{code}_1 \ {\color{gray} \{q_1\}}
+    \\
+    {\color{gray} \{p_2\}} \ \emph{code}_2 \ {\color{gray} \{q_2\}}}
+  { {\color{gray} \{p_1 * p_2\}} \ \emph{code}_1 \ || \ \emph{code}_2 \
+    {\color{gray} \{q_1 * q_2\}}}
+\]
+Ends up becoming our concurrency typing rule, \textsc{conc}. The
+preconditions and postconditions are the heaps in the $\IO$ type, and the
+separating conjunction $*$ is our union $\cup$.
+\[
+  \infer{
+    \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
+    \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
+    \textsf{ok} \ \rho_1 \cup \rho_2}
+  {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2}
+\]
+
 \section{Heap well formedness}
-In the system defined in the previous chapter we have proved it is
+We have proved the system defined in Chapter~\ref{chapter:system} is
 sound, and moreover we can show that every concurrent expression has a
 well typed heap --- that is a resource is not used more than once in the
-heap, and thus resources are not accessed concurrently.
+heap, and thus not accessed concurrently.
 
 \begin{theorem}[Concurrent heap is well formed]\label{theorem:conc}
   If $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$, then $\textsf{ok} \ \rho$
@@ -183,7 +225,7 @@ nice property of the system.
     sub/"\textsc{sub}" ->[loop above] sub;
   };
   \caption{How an infinite chain of \textsc{sub} can be produced,
-    leading nowhere.} \label{fig:infinitesub}
+    leading nowhere.}\label{fig:infinitesub}
 
 \end{figure}
 
@@ -191,58 +233,41 @@ nice property of the system.
 \section{Modelling state within the
   monad}\label{section:modellingstate}
 The modelling of the IO monad is extremely simplified, and does
-nothing more than sequence computation. In fact, it doesn't model the
-main purpose of the IO monad, which is to model effects by keeping
-track of the \textit{state} of the world. To illustrate this point,
+nothing more than sequence computation. To illustrate this point,
 the reduction rule for concurrency is completely sequential.
 \[ \infer{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})} \]
-In a real world, this would be pointless. We want to be able to
-compute these expressions concurrently, so $\bind$ alone won't cut it.
-What we most likely want to ...
+In the real world, this would be pointless. We want to be able to
+compute these expressions concurrently, so rewriting everything in
+terms of $\bind$ won't cut
+it. By modelling the state of the world, like
+what actually happens in the \mintinline{haskell}{IO} of Haskell, we
+can perform more advanced reasoning about things such as concurrency.
+One such possible method would be to create a new rule for reduction
+of monadic computations, that passes about state. Then the concurrency
+rule could be written something like this:
+\begin{mathpar}
+  \boxed{\langle e, s \rangle \leadsto \langle e', s' \rangle} \and
+  \infer{\langle e_1, s \rangle \leadsto \langle e_1', s_1' \rangle \\ \langle e_2, s \rangle \leadsto \langle e_2', s_2'
+    \rangle}
+  {\langle e_1 \curlyvee e_2, s \rangle \leadsto \langle e_1' \times e_2' , s_1' \cup s_2' \rangle}
+\end{mathpar}
+We could then reason further about how the two states $s_1' \cup s_2'$
+are merged --- something that separation logic could be used for. 
 
-\section{If statements}
-
-\section{Separation logic}
-In Section~\ref{sec:separationologic} we looked at separation logic,
-and now that we have defined our system we can look at some parallels
-between them. Take the frame rule again, which allows additional
-predicates to be inferred in a specification, under the condition that
-the code does not use any of the variables in the predicate.
-\[
-  \infer{\{p\} \ \emph{code} \ \{q\}}
-  {\{p * r\} \ \emph{code} \ \{ q * r \}} \
-  \text{\parbox{2in}{where no variable
-    occurring free in r is modified by \emph{code}}}
-\]
-Our well-formed heap judgement has a rule that allows heaps to be
-merged, under the condition that they do not overlap:
-\[
-  \infer{\textsf{ok} \ \rho \\ \textsf{ok} \ \rho' \\ \rho\cap\rho'=\emptyset}
-  {\textsf{ok} \ \rho\cup\rho'}
-\]
-This mirrors the idea of separation logic, that we only need to worry
-about the variables relevant to our code, or in our terminology, the
-resources relevant to our type. So our subsumption rule, \textsc{Sub}, that lets
-heaps get promoted to a larger heap, ends up being our version of the
-frame rule. And the concurrency rule from separation logic:
-\[
-  \infer{ {\color{gray} \{p_1\}} \ \emph{code}_1 \ {\color{gray} \{q_1\}}
-    \\
-    {\color{gray} \{p_2\}} \ \emph{code}_2 \ {\color{gray} \{q_2\}}}
-  { {\color{gray} \{p_1 * p_2\}} \ \emph{code}_1 \ || \ \emph{code}_2 \
-    {\color{gray} \{q_1 * q_2\}}}
-\]
-Ends up becoming our concurrency typing rule, \textsc{conc}. The
-preconditions and postconditions are the heaps in the $\IO$ type, and the
-separating conjunction $*$ is our union $\cup$.
-\[
-  \infer{
-    \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
-    \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
-    \textsf{ok} \ \rho_1 \cup \rho_2}
-  {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2}
-\]
-
+\section{Extending the inference algorithm}
+One of the main contributions of the Hindley-Damas-Milner system was
+the inclusion of a type inference algorithm, Algorithm
+W~\cite{milner1978}. A type system on its own only lets us ascertain
+that a program is well-typed, given that we supply it a program and a
+type. But the design of Hindley-Damas-milner made it possible for the
+type to be inferred algorithmically, from the program alone. More
+impressively, this algorithm also always inferred the most
+\emph{principal type}: the most general, polymorphic type a program
+could have.
+Algorithm W freed ML programmers from having to explicitly write type
+annotations, and is one of its most iconic features. Naturally, we
+should explore extending Algorithm W to handle our new resourceful
+types.
 
 \section{Heap polymorphism}
 It would be convenient if we were able to have expressions like the
@@ -264,7 +289,7 @@ heap to allow for variable lookup:
 \end{grammar}
 And then redefining substitutions to be pairs of a map from
 type variables to types, and a map from heap variables to heaps.
-$$ S : ( \alpha \mapsto \tau \times h \mapsto \rho ) $$
+\[ S : ( \alpha \mapsto \tau \times h \mapsto \rho ) \]
 Then in the definition of substitution, whenever a mapping from a heap
 variable to heap is encountered we would apply the substitution.
 \begin{align*}

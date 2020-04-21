@@ -37,8 +37,8 @@ The \textit{frame rule} allows a specification to be extended by
 adding extra predicates that do not mention any variables used by the
 code.
 \[
-  \infer{\{p\} \ \emph{code} \ \{q\}}
-  {\{p * r\} \ \emph{code} \ \{ q * r \}} \
+  \infer{{\color{gray} \{p\}} \ \emph{code} \ {\color{gray} \{q\}}}
+  {{\color{gray} \{p * r\}} \ \emph{code} \ {\color{gray} \{ q * r \}}} \
   \text{\parbox{2in}{where no variable
     occurring free in r is modified by \emph{code}}}
 \]
