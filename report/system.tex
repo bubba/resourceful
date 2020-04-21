@@ -813,7 +813,7 @@ that can be given to $v \curlyvee v$.
   \caption{Dynamic Semantics}\label{fig:dynamicsemantics}
 \end{figure}
 
-\subsection{Reduction relation}
+\subsection{The reflexive and transitive closure}
 
 We can go a \textit{step} further and define $\twoheadrightarrow$ as the reflexive,
 transitive closure of $\leadsto$. What does that mean? If $\leadsto$ is a relation
@@ -826,13 +826,14 @@ $a$, $a \twoheadrightarrow a$.
 Intuitively speaking, if the small-step inference rule $a \leadsto b$ says
 that $a$ reduces to $b$ in exactly one step, then
 $a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps. Instead of
-reducing one step at a time, it goes all the way. As an example, if we
-have the expression ${(\lambda x . x \ \square) \ (\lambda y . y)}$ then have the following relations:
+reducing one step at a time, it can go all the way. For example, if we
+have the expression ${(\lambda x . x \ \square) \ (\lambda y . y)}$ then have the
+following relations:
 \[ (\lambda x . x \ \square) \ (\lambda y . y) \leadsto (\lambda y . y) \ \square \leadsto \square \]
 \[ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square\]
 We do not use this relation to prove any properties about our system,
 but it sheds light on how our expression language eventually reduces
-to a term in the end.
+to a value in the end.
 
 \begin{figure}
   \begin{center}

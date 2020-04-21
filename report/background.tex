@@ -1,10 +1,12 @@
 \chapter{Background}\label{chapter:background}
 
 \section{Separation logic}\label{sec:separationologic}
-Separation logic~\cite{ohearn2019,reynolds2002} is an extension
-to Hoare logic, a system for formalising properties about imperative
-programs. Specifications can be formalised as code, preceded by a
-precondition and succeeded by a postcondition.
+Much of the original inspiration for this work came from separation
+logic, and how it can be used to formalise properties of concurrent
+programs. Separation logic~\cite{ohearn2019,reynolds2002} is an
+extension to Hoare logic, a system for formalising properties about
+imperative programs. Specifications can be formalised as code,
+preceded by a precondition and succeeded by a postcondition.
 \[
   {\color{gray} \{\textit{precondition}\}} \
   \textit{code} \
@@ -55,11 +57,14 @@ two programs that are run in parallel.
   { {\color{gray} \{p_1 * p_2\}} \ \emph{code}_1 \ || \ \emph{code}_2 \
     {\color{gray} \{q_1 * q_2\}}}
 \]
-
-Krishnaswami built upon separation logic with a higher-order ML like
+We will see later on in Chapter~\ref{cha:evaluation} how the system we
+end up developing parallels with this. Krishnaswami built upon
+separation logic with a higher-order ML like
 language\cite{krishnaswami2006} with types. It utilised monadic
 binding for sequencing, allowing imperative computation within an
-otherwise pure language.
+otherwise pure language. Unlike our system, this included separation
+logic predicates directly within the language. We will not work with
+predicates, and instead push all our guarantees into the type level.
 
 \section{Monadic effect systems}
 As the language we will develop in Chapter~\ref{chapter:system} is

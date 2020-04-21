@@ -14,7 +14,6 @@ data Value : Term → Set where
   V-use : ∀ {r e} → Value (use r e)
 
 infix 2 _↝_
-
 data _↝_ : Term → Term → Set where
 
   -- lambda calculus
@@ -91,3 +90,14 @@ data _↝_ : Term → Term → Set where
   β-⋎ : ∀ {v w}
         ---------------------------------------------------------
       → v ⋎ w ↝ v >>= ƛ "v" ⇒ (w >>= (ƛ "w" ⇒ ⟦ ` "v" × ` "w" ⟧)) 
+
+-- For fun: the reduction relation
+data _↠_ : Term → Term → Set where
+  ↠-refl : ∀ {e}
+           -----
+         → e ↠ e
+  ↠-trans : ∀ {e₁ e₂ e₃}
+          → e₁ ↝ e₂
+          → e₂ ↝ e₃
+            ------
+          → e₁ ↠ e₃

@@ -69,26 +69,10 @@ data Canonical_⦂_ : Term → Type → Set where
           ----------------
         → Canonical use r e ⦂ IO ρ τ
 
-  -- C-⋎ : ∀ {e₁ e₂ ρ₁ ρ₂ τ₁ τ₂}
-  --     → ∅ ⊢ e₁ ⦂ IO ρ₁ τ₁
-  --     → ∅ ⊢ e₂ ⦂ IO ρ₂ τ₂
-  --     → ρ₁ ∩ ρ₂ =∅
-  --       -------------------------------------------
-  --     → Canonical (e₁ ⋎ e₁) ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
-
 
 unwrap⟦⟧ : ∀ {Γ v ρ τ} → Γ ⊢ ⟦ v ⟧ ⦂ IO ρ τ → Γ ⊢ v ⦂ τ
 unwrap⟦⟧ (⊢⟦⟧ ⊢v _) = ⊢v
 unwrap⟦⟧ (⊢sub ⊢v _ _) = unwrap⟦⟧ ⊢v
-
-
--- readFile≡□ : ∀ {Γ ρ τ} → Γ ⊢ readFile ⦂ IO ρ τ → τ ≡ □
--- readFile≡□ (⊢sub ⊢rf _ _) = readFile≡□ ⊢rf
--- readFile≡□ ⊢readFile = refl
-
--- readNet≡□ : ∀ {Γ ρ τ} → Γ ⊢ readNet ⦂ IO ρ τ → τ ≡ □
--- readNet≡□ (⊢sub ⊢rf _ _) = readNet≡□ ⊢rf
--- readNet≡□ ⊢readNet = refl
 
 canonical : ∀ {v τ}
           → ∅ ⊢ v ⦂ τ
@@ -99,8 +83,6 @@ canonical (⊢ƛ ⊢e) V-ƛ = C-ƛ ⊢e
 canonical (⊢□) V-□ = C-□
 canonical (⊢⟦⟧ ⊢e _) V-⟦⟧ = C-⟦⟧ ⊢e
 canonical (⊢× ⊢e₁ ⊢e₂) (V-× _ _) = C-× ⊢e₁ ⊢e₂
--- canonical ⊢readFile V-readFile = C-readFile ≥:Refl
--- canonical ⊢readNet V-readNet = C-readNet ≥:Refl
 canonical (⊢use ⊢e) V-use = C-use ≥:Refl ⊢e
 
 canonical (⊢sub ⊢e x _) V-ƛ = ⊥-elim (f ⊢e)
@@ -179,20 +161,8 @@ ext : ∀ {Γ Δ}
 ext p Z = Z
 ext p (S x∈Γ x≢y) = S (p x∈Γ) x≢y
 
-freeVars⊆ : ∀ {Γ Δ} → (∀ {x σ} → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ) → FTVC Γ ⊆ FTVC Δ
-freeVars⊆ {Γ , x ⦂ σ} ρ x∈ = {!!}
-
--- Δ could contain more freeVars? so close could have less free vars?
-renameClose : ∀ {Γ Δ}
-            → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)            
-            → (∀ {τ τ' x e} → Γ , x ⦂ close Γ τ ⊢ e ⦂ τ' → Δ , x ⦂ close Δ τ ⊢ e ⦂ τ')
-renameClose {Γ} {Δ} ρ {τ} ⊢e with freeVars⊆ ρ
-... | Γ⊆Δ = {!!}
-
--- with VV (freeVars τ / freeVarsC Γ) τ | close Γ τ | freeVars≡ ρ
--- ... | zz | z | Γ⊆Δ = {!!}
---   where 
-
+-- If every type scheme in Γ is also in Δ,
+-- then you can also infer the same typing judgements
 rename : ∀ {Γ Δ}
        → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)
        → (∀ {e τ} → Γ ⊢ e ⦂ τ → Δ ⊢ e ⦂ τ)
@@ -203,6 +173,11 @@ rename p (⊢⟦⟧ ⊢e cl) = ⊢⟦⟧ (rename p ⊢e) cl
 rename p (⊢>>= ⊢m ⊢f) = ⊢>>= (rename p ⊢m) (rename p ⊢f)
 rename p ⊢□ = ⊢□
 rename {Γ} {Δ} ρ (⊢lt Γ⊢e'⦂τ' Γ⊢e'⦂τ) = ⊢lt (rename ρ Γ⊢e'⦂τ') (renameClose ρ Γ⊢e'⦂τ)
+  where 
+  postulate renameClose : ∀ {Γ Δ}
+                        → (∀ {x τ} → x ⦂ τ ∈ Γ → x ⦂ τ ∈ Δ)            
+                        → (∀ {τ τ' x e} → Γ , x ⦂ close Γ τ ⊢ e ⦂ τ'
+                                        → Δ , x ⦂ close Δ τ ⊢ e ⦂ τ')
 rename ρ (⊢× ⊢e₁ ⊢e₂) = ⊢× (rename ρ ⊢e₁) (rename ρ ⊢e₂)
 rename ρ (⊢π₁ ⊢e) = ⊢π₁ (rename ρ ⊢e)
 rename ρ (⊢π₂ ⊢e) = ⊢π₂ (rename ρ ⊢e)
@@ -284,10 +259,6 @@ extend (⊢use ⊢e) x∉ = ⊢use (extend ⊢e x∉)
 extend (⊢⋎ ⊢e₁ ⊢e₂ dist) x∉ with ∉-++⁻ x∉
 ... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢⋎ (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂) dist
 extend (⊢sub ⊢e ρ≥:ρ' ok) x∉ = ⊢sub (extend ⊢e x∉) ρ≥:ρ' ok
-
-
-
-
 
 
 -- closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
