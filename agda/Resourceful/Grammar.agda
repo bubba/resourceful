@@ -1,4 +1,4 @@
-module Grammar where
+module Resourceful.Grammar where
 
 open import Data.List using (List; _∷_; [])
 open import Data.String using (String; _≟_)

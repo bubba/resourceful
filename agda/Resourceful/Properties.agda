@@ -1,4 +1,4 @@
-module Properties where
+module Resourceful.Properties where
 
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; cong; cong₂; ≢-sym)
@@ -29,7 +29,8 @@ open import Data.Product
 
 import Data.Sum using (_⊎_; inj₁; inj₂)
 
-open import Resourceful
+open import Resourceful.Semantics.Dynamic
+open import Resourceful.Semantics.Static
 
 V¬-↝ : ∀ {e e'}
      → Value e

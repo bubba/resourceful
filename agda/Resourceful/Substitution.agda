@@ -1,6 +1,6 @@
-module Substitution where
+module Resourceful.Substitution where
 
-open import Grammar
+open import Resourceful.Grammar
 open import Data.List using (List; _∷_; [])
 open import Data.String using (_≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
