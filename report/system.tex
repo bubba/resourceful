@@ -1,4 +1,4 @@
-\chapter{A Formal Definition} \label{chapter:system}
+\chapter{A Formal Definition}\label{chapter:system}
 
 In this chapter we will formalize the idea of a language with
 ``heaped'' IO monads. We will introduce a toy language
@@ -81,7 +81,7 @@ $\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as
   <heap $\rho$> ::= $r$ | $\rho \cup \rho'$ | \textsf{World}
 
 \end{grammar}
-\caption{The grammar for our resourceful language.} \label{fig:grammar}
+\caption{The grammar for our resourceful language.}\label{fig:grammar}
 \end{figure}
 
 \section{Substitution}
@@ -290,7 +290,7 @@ placeholder expressions for fixed resources:
   \infer{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} \square}
 \end{mathpar}
 $\textsf{readFile}$ and $\textsf{readNet}$ are examples of typical
-operations that can consume a specific resource -- their heap consists
+operations that can consume a specific resource --- their heap consists
 of just a single resource. This was then generalised to
 $\use{r}{e}$, which lifts any pure term into an $\IO$ monad with a heap
 consisting of the resource $r$.

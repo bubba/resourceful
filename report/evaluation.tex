@@ -187,8 +187,8 @@ in figure~\ref{fig:syntaxdirected}.
     abs -> var0;
     app -> {var1, var2};
   };
-  \caption{How synatx directed typing rules mean that the proof tree
-    is isomorphic to the syntax tree.} \label{fig:syntaxdirected}
+  \caption{How syntax directed typing rules mean that the proof tree
+    is isomorphic to the syntax tree.}\label{fig:syntaxdirected}
 \end{figure}
 
 In our system however, the subsumption rule \textsc{sub} prevents
@@ -235,12 +235,11 @@ nice property of the system.
 The modelling of the IO monad is extremely simplified, and does
 nothing more than sequence computation. To illustrate this point,
 the reduction rule for concurrency is completely sequential.
-\[ \infer{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})} \]
-In the real world, this would be pointless. We want to be able to
-compute these expressions concurrently, so rewriting everything in
-terms of $\bind$ won't cut
-it. By modelling the state of the world, like
-what actually happens in the \mintinline{haskell}{IO} of Haskell, we
+\[ \infer{ }{v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})} \] In
+the real world, this would be pointless. We want to be able to compute
+these expressions concurrently, so rewriting everything in terms of
+$\bind$ won't cut it. By modelling the state of the world, like what
+actually happens in the \mintinline{haskell}{IO} monad of Haskell, we
 can perform more advanced reasoning about things such as concurrency.
 One such possible method would be to create a new rule for reduction
 of monadic computations, that passes about state. Then the concurrency
@@ -256,18 +255,17 @@ are merged --- something that separation logic could be used for.
 
 \section{Extending the inference algorithm}
 One of the main contributions of the Hindley-Damas-Milner system was
-the inclusion of a type inference algorithm, Algorithm
-W~\cite{milner1978}. A type system on its own only lets us ascertain
-that a program is well-typed, given that we supply it a program and a
-type. But the design of Hindley-Damas-milner made it possible for the
-type to be inferred algorithmically, from the program alone. More
-impressively, this algorithm also always inferred the most
+the inclusion of a type inference algorithm,
+Algorithm~W~\cite{milner1978}. A type system on its own only lets us
+ascertain that a program is well-typed, given that we supply it a
+program and a type. But the design of Hindley-Damas-milner made it
+possible for the type to be inferred algorithmically, from the program
+alone. More impressively, this algorithm also always inferred the most
 \emph{principal type}: the most general, polymorphic type a program
-could have.
-Algorithm W freed ML programmers from having to explicitly write type
-annotations, and is one of its most iconic features. Naturally, we
-should explore extending Algorithm W to handle our new resourceful
-types.
+could have.  Algorithm~W freed ML programmers from having to
+explicitly write type annotations, and is one of its most iconic
+features. Naturally, we should explore extending Algorithm~W to handle
+our new resourceful types.
 
 \section{Heap polymorphism}
 It would be convenient if we were able to have expressions like the
@@ -283,9 +281,9 @@ very much the same question that Hindley, Damas and Milner set out to
 solve, except instead of polymorphic \textit{types} we want to have
 polymorphic \textit{heaps}.
 The basic idea for this would involve extending the definition of a
-heap to allow for variable lookup:
+heap to allow for variable lookup, $\textbf{h}$:
 \begin{grammar}
-  <heap $\rho$> ::= $r$ | $\sigma \cup \sigma'$ | \textsf{World} | $\textbf{h}$
+  <heap $\rho$> ::= $r$ | $\sigma \cup \sigma'$ | \textsf{World} | $\mathbf{h}$
 \end{grammar}
 And then redefining substitutions to be pairs of a map from
 type variables to types, and a map from heap variables to heaps.
@@ -303,6 +301,68 @@ variable to heap is encountered we would apply the substitution.
               h' & \mathsf{otherwise}
             \end{cases}
 \end{align*}
+
+\section{Dependently typed resources}
+So far our resources have just been simple static placeholders that
+represented system resources, for example the filesystem and the
+network. This is just for the sake of argument: these resources can be
+as general or as specific as is needed for the programmer's use
+case.
+
+Suppose a programmer wanted to perform multiple concurrent
+operations on various files. A resource representing the entire
+filesystem will be too coarse-grained for this purpose. Instead they
+might want to have a separate resource for each file.
+\setlength{\grammarindent}{2em}
+\begin{grammar} \centering
+  <resource $r$> ::= \textsf{foo.txt} | \textsf{bar.txt} | \textsf{baz.txt} \ldots
+\end{grammar}
+But this is very static. If the programmer writes some code that
+operates on a new file, then these predefined resources need to have
+it appended. And what if they don't know what files they will be
+touching at typecheck time? Instead, it would be much more natural if
+the programmer could write programs like this
+\begin{align*}
+  \textsf{readFile} \ \textsf{``foo.txt''} &: \IO_{\textsf{foo.txt}} \textsf{String} \\
+  \textsf{writeFile} \ \textsf{``bar.txt''} &: \textsf{String} \rightarrow
+  \IO_{\textsf{bar.txt}} \square
+\end{align*}
+And have the file automatically \emph{lifted} from the expression and
+into the heap of the type. This is a job for \textbf{dependent
+  types}: having the type depend on the term. However in our system, our resources and types are not unified. In a
+dependently typed lambda calculus, the $\Pi$ rule substitutes values into
+types like so\footnote{$\Gamma \vdash \tau : \star$ is a judgement saying that $\tau$ is a
+  type in some universe.}
+\begin{mathpar}
+  \infer{\Gamma \vdash (\Pi x : \tau' . \tau) : \star \\ \Gamma , x : \tau' \vdash e : \tau}
+  {\Gamma \vdash \lambda x . e : (\Pi x : \tau' . \tau)} \\
+  \infer{\Gamma \vdash e : (\Pi x : \tau' . \tau) \\ e' : \tau'}
+  {\Gamma \vdash e \ e' : \tau[e'/\tau']}
+\end{mathpar}
+We would need to combine the syntaxes for resources and types together
+for this rule, or fleshing out types to include type constructors
+through which resources and heaps could be embedded in.
+Alternatively, we could be lazy and avoid this by make
+it dependent only in the heap. One such way would be to introduce a
+type of lambda for $\IO$ monads that tags it with a placeholder
+resource, which is then substituted when an argument is applied.
+\begin{mathpar}
+  \infer{\Gamma, x : \tau' \vdash e : \tau }
+  {\Gamma \vdash (\lambda_\IO x . e) : \tau' \rightarrow_\IO \tau} \\
+  \infer{\Gamma \vdash e : \tau' \rightarrow_\IO \tau \\ \textsf{Value} \ e' \\ \Gamma \vdash e' : \tau'}
+  {\Gamma \vdash e \ e' : \IO_{e'} \tau}
+\end{mathpar}
+It would be wise to restrict this to values, so we aren't going about
+tagging resources with half-evaluated computations. We would also need
+a notion of equality for values so that we can safely tell what values
+are disjoint within a heap. This will pose some interesting challenges
+in practice, like knowing statically what variable expressions might
+represent the same resource. Does the typechecker here know that $x=y$?
+\begin{flalign*}
+  &x \gets \textsf{readLine} \\
+  &\textsf{readFile} \ x \\
+  &\letin{y = x}{\textsf{writeFile} \ y \ \textsf{``hello''}}
+\end{flalign*}
 
 %%% Local Variables:
 %%% TeX-master: "report"

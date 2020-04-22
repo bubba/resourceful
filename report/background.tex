@@ -5,8 +5,10 @@ Much of the original inspiration for this work came from separation
 logic, and how it can be used to formalise properties of concurrent
 programs. Separation logic~\cite{ohearn2019,reynolds2002} is an
 extension to Hoare logic, a system for formalising properties about
-imperative programs. Specifications can be formalised as code,
-preceded by a precondition and succeeded by a postcondition.
+imperative programs, and has been used to prove properties about
+resource access in concurrent programs~\cite{ohearn2007}. It is
+formalised through \emph{specifications}, which consist of some code
+that alongside a \emph{precondition} a \emph{postcondition}.
 \[
   {\color{gray} \{\textit{precondition}\}} \
   \textit{code} \
@@ -14,7 +16,7 @@ preceded by a precondition and succeeded by a postcondition.
 \]
 The preconditions and postconditions make assertions about what points
 to what inside the \textit{heap}. For example, in the example that
-O'Hearn gives a cyclic list is constructed from two pointers.
+O'Hearn gives, a cyclic list is constructed from two pointers.
 \begin{gather*}
   {\color{gray} \{ x \mapsto 0 * y \mapsto 0 \} }\\
   [x] = y; \\
@@ -58,8 +60,9 @@ two programs that are run in parallel.
     {\color{gray} \{q_1 * q_2\}}}
 \]
 We will see later on in Chapter~\ref{cha:evaluation} how the system we
-end up developing parallels with this. Krishnaswami built upon
-separation logic with a higher-order ML like
+end up developing parallels with this. 
+
+Krishnaswami built upon separation logic with a higher-order ML like
 language\cite{krishnaswami2006} with types. It utilised monadic
 binding for sequencing, allowing imperative computation within an
 otherwise pure language. Unlike our system, this included separation
