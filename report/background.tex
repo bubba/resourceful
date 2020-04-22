@@ -73,9 +73,10 @@ predicates, and instead push all our guarantees into the type level.
 As the language we will develop in Chapter~\ref{chapter:system} is
 based around monads, it is a good idea to take a brief look at what
 exactly they are, and dip our toes into the cool waters of category
-theory. A monad is often sardonically defined as
+theory. There is an infamous definition\footnote{\textsc{James Iry} A Brief, Incomplete, and Mostly Wrong History of Programming Languages} of a monad that goes like:
 \begin{quote}
-  a monoid in the category of endofunctors
+  \textsl{A monad is just a monoid in the category of endofunctors,
+    what's the problem?}
 \end{quote}
 Lets break this down: A \textit{category} is a collection of objects
 (like a set), and morphisms (like functions between sets). In the same
@@ -102,7 +103,6 @@ fmap :: (a -> b) -> (f a -> f b) -- Maps (a -> b) to (f a -> f b)
 \end{minted}
 Functors can have mappings to other functors, and these are known as
 \emph{natural transformations}.
-
 An \textit{endofunctor} is a \textit{functor} from one category to the
 same category. That is, it maps objects and morphisms from one
 category, to objects and morphisms in the same category. But what does
@@ -141,19 +141,19 @@ m >>= f = join (fmap f m)
 The \textit{monoid in the category of endofunctors} bit then comes
 about because a monoid is defined as:
 \begin{enumerate}
-\item A set
-\item With an associative binary operation $\mu : X \times X \rightarrow X$
-\item And an identity element\footnote{An identity element $\eta : X$
-    might be more familiar, but it isomorphic to a mapping from the
-    unit type to $X$.} $g : \mathbf{1} \rightarrow X$
+\item A set $X$
+\item With an associative binary operation $\circ : X \times X \rightarrow X$
+\item And an identity element $e : X$
 \item That satisfy some properties (the monoid laws)
 \end{enumerate}
 
-So if monoids allow chaining together elements, then monads in
-programming allow sequencing together computation. In our system we
-will be using the more pragmatic Haskell definition of a monad that
-uses bind rather than join. But the idea of sequencing remains the
-same.
+A monoid is the same deal as a monad, except functor composition is
+replaced with the Cartesian product and the unit function is replaced
+with the identity element.  And if monoids allow chaining together
+elements, then monads in programming allow sequencing together
+computation. In our system we will be using the more pragmatic Haskell
+definition of a monad that uses bind rather than join. But the
+fundamental idea of sequencing remains the same.
 
 \section{Type-level programming within GHC}
 
