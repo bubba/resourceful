@@ -445,64 +445,72 @@ subst {x = y} ⊢e (⊢` {x = x} (S x∈ x≢y) τ''>τ) _ with x ≟ y
 subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' = τ₁} {τ = τ₂} {e = e₁} ⊢e') p with x' ≟ x
 ...  | yes refl = ⊢ƛ (drop ⊢e')
 ...  | no x'≢x = ⊢ƛ prf
-     where subContextSplit : ∀ {Γ s x σ y σ' e τ}
-                           → subC s Γ ≡ Γ
-                           → subC s (Γ , x ⦂ σ , y ⦂ σ') ⊢ e ⦂ τ
-                           → (Γ , x ⦂ (sub s σ), y ⦂ (sub s σ')) ⊢ e ⦂ τ
-           subContextSplit {Γ} {s = s} sΓ≡Γ ⊢e with subC s Γ |  sΓ≡Γ
-           ... | .Γ | refl = ⊢e
+  where
+    subContextSplit : ∀ {Γ s x σ y σ' e τ}
+                    → subC s Γ ≡ Γ
+                    → subC s (Γ , x ⦂ σ , y ⦂ σ') ⊢ e ⦂ τ
+                    → (Γ , x ⦂ (sub s σ), y ⦂ (sub s σ')) ⊢ e ⦂ τ
+    subContextSplit {Γ} {s = s} sΓ≡Γ ⊢e with subC s Γ |  sΓ≡Γ
+    ... | .Γ | refl = ⊢e
 
 
-           prt2help : ∀ {Γ s αs τ e τ'}
-                    → sub s (VV αs τ) ≡ VV αs τ
-                    → Γ , x ⦂ sub s (VV αs τ) ⊢ e ⦂ τ'
-                    → Γ , x ⦂ VV αs τ ⊢ e ⦂ τ'
-           prt2help {Γ} {s} {αs} {τ} eq ⊢e with sub s (VV αs τ) | eq
-           ... | .(VV αs τ) | refl = ⊢e
+    prt2help : ∀ {Γ s αs τ e τ'}
+             → sub s (VV αs τ) ≡ VV αs τ
+             → Γ , x ⦂ sub s (VV αs τ) ⊢ e ⦂ τ'
+             → Γ , x ⦂ VV αs τ ⊢ e ⦂ τ'
+    prt2help {Γ} {s} {αs} {τ} eq ⊢e with sub s (VV αs τ) | eq
+    ... | .(VV αs τ) | refl = ⊢e
 
-           -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
-           postulate absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
-                                  → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
-                                  → ∃[ s ] ⟨ Disjoint (FTVC Γ) αs ×
-                                             ⟨ (Disjoint (subRegion (BJS.to s)) αs) ×
-                                               (Disjoint (subRegion (BJS.to s)) (FTVC Γ)) ⟩ ⟩
+    -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
+    postulate absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
+                           → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
+                           → ∃[ s ] ⟨ Disjoint (FTVC Γ) αs ×
+                                      ⟨ (Disjoint (subRegion (BJS.to s)) αs) ×
+                                        (Disjoint (subRegion (BJS.to s)) (FTVC Γ)) ⟩ ⟩
 
-           prf : Γ , x' ⦂ ` τ₁ ⊢ e₁ [ x := v ] ⦂ τ₂
-           prf with absSubChoose (swap x'≢x ⊢e')
-           prf | ⟨ bjs , ⟨ djΓαs , ⟨ djsαs , djsΓ ⟩ ⟩ ⟩ =
-             let swp : Γ , x' ⦂ ` τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
-                 swp = swap x'≢x ⊢e'
-                 s = BJS.to bjs
-                 s⁻¹ = BJS.from bjs
-                 SΓ≡Γ : subC s Γ ≡ Γ
-                 SΓ≡Γ = disjointSubContext djsΓ  -- dom(s) ∩ ftv(Γ) = ∅             
+    postulate x∉FVv : x' ∉ FV v
 
-                 prt2' : subC s (Γ , x' ⦂ (` τ₁) , x ⦂ VV αs τ) ⊢ e₁ ⦂ subT s τ₂
-                 prt2' = subContextTyping {Γ , x' ⦂ ` τ₁ , x ⦂ VV αs τ} swp s
+    prf : Γ , x' ⦂ ` τ₁ ⊢ e₁ [ x := v ] ⦂ τ₂
+    prf with absSubChoose (swap x'≢x ⊢e')
+    ... | ⟨ bjs , ⟨ djΓαs , ⟨ djsαs , djsΓ ⟩ ⟩ ⟩ =
+      let swp : Γ , x' ⦂ ` τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
+          swp = swap x'≢x ⊢e'
+          s = BJS.to bjs
+          s⁻¹ = BJS.from bjs
+          SΓ≡Γ : subC s Γ ≡ Γ
+          SΓ≡Γ = disjointSubContext djsΓ  -- dom(s) ∩ ftv(Γ) = ∅             
 
-                 prt2'' : Γ , x' ⦂ sub s (` τ₁) , x ⦂ sub s (VV αs τ) ⊢ e₁ ⦂ subT s τ₂
-                 prt2'' = subContextSplit SΓ≡Γ prt2'
+          prt2' : subC s (Γ , x' ⦂ (` τ₁) , x ⦂ VV αs τ) ⊢ e₁ ⦂ subT s τ₂
+          prt2' = subContextTyping {Γ , x' ⦂ ` τ₁ , x ⦂ VV αs τ} swp s
 
-                 prt2 : Γ , x' ⦂ sub s (` τ₁) , x ⦂ VV αs τ ⊢ e₁ ⦂ subT s τ₂
-                 prt2 = prt2help {s = s} (disjointSubTypeScheme {s = s} djsαs) prt2''
+          prt2'' : Γ , x' ⦂ sub s (` τ₁) , x ⦂ sub s (VV αs τ) ⊢ e₁ ⦂ subT s τ₂
+          prt2'' = subContextSplit SΓ≡Γ prt2'
 
-                 prt3' : x' ∉ FV v
-                 prt3' = {!!}
-                 prt3 : Γ , x' ⦂ sub s (` τ₁) ⊢ v ⦂ τ
-                 prt3 = ignore (λ x∈FVv x∈Γ → S x∈Γ (≢-sym (∉∈≢ prt3' x∈FVv))) ⊢e
-                 
-                 prt4 : Disjoint αs (FTVC (Γ , x' ⦂ sub s (` τ₁)))
-                 prt4 = disjoint-sym {!!} -- need to show Disjoint (FTV (sub (BJS.to bjs) (` τ₁))) αs
-                 prt5 : Γ , x' ⦂ sub s (` τ₁) ⊢ e₁ [ x := v ] ⦂ subT s τ₂
-                 prt5 = subst {Γ , x' ⦂ sub s (` τ₁)} prt3 prt2 prt4
-                 prt6 : subC s⁻¹ (Γ , x' ⦂ sub s (` τ₁)) ⊢ e₁ [ x := v ] ⦂ subT s⁻¹ (subT s τ₂)
-                 prt6 = subContextTyping prt5 (BJS.from bjs)
-                 in roundtripSub bjs prt6
+          prt2 : Γ , x' ⦂ sub s (` τ₁) , x ⦂ VV αs τ ⊢ e₁ ⦂ subT s τ₂
+          prt2 = prt2help {s = s} (disjointSubTypeScheme {s = s} djsαs) prt2''
+
+
+          prt3 : Γ , x' ⦂ sub s (` τ₁) ⊢ v ⦂ τ
+          prt3 = ignore (λ x∈FVv x∈Γ → S x∈Γ (≢-sym (∉∈≢ x∉FVv x∈FVv))) ⊢e
+          
+          -- need to show Disjoint (FTV (sub (BJS.to bjs) (` τ₁))) αs
+          prt4 : Disjoint αs (FTVC (Γ , x' ⦂ sub s (` τ₁)))
+          prt4 = {!!}
+
+          prt5 : Γ , x' ⦂ sub s (` τ₁) ⊢ e₁ [ x := v ] ⦂ subT s τ₂
+          prt5 = subst {Γ , x' ⦂ sub s (` τ₁)} prt3 prt2 prt4
+          
+          prt6 : subC s⁻¹ (Γ , x' ⦂ sub s (` τ₁)) ⊢ e₁ [ x := v ] ⦂ subT s⁻¹ (subT s τ₂)
+          prt6 = subContextTyping prt5 (BJS.from bjs)
+            
+          in roundtripSub bjs prt6
              
 
 -- variables renamed to match wright & felleisen
-subst {x = y} ⊢v (⊢lt {x = x} ⊢e' ⊢e'') p with x ≟ y
-... | yes refl = ⊢lt (subst ⊢v ⊢e' p) {!!}
+subst {Γ} {x = y} {αs = σαs} {τ = στ}  ⊢v (⊢lt  {e = e} {τ = τ} {τ' = τ'} {x = x} ⊢e' ⊢e'') p with x ≟ y
+... | yes refl = ⊢lt (subst ⊢v ⊢e' p) (closeSmaller (drop ⊢e''))
+    where postulate closeSmaller : Γ , y ⦂ close (Γ , y ⦂ VV σαs στ) τ' ⊢ e ⦂ τ
+                                 → Γ , y ⦂ close Γ τ' ⊢ e ⦂ τ
 ... | no x≢y = ⊢lt (subst ⊢v ⊢e' p)
                    (let swp = (swap x≢y ⊢e'')                        
                         in {!!})

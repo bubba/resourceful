@@ -280,17 +280,17 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
       \Gamma \vdash \letin{x = e_1[e / x]}{e_2} : \tau' && \text{by \textsc{Let}}
     \end{align*}
     Since $x = y$, by the definition of substitution
-    $\letin{y=e_1[e/x]}{e_2}$ is equivalent to $\letin{y=e_1}{e_2})[e/x]$.
+    $\letin{y=e_1[e/x]}{e_2}$ is equivalent to $(\letin{y=e_1}{e_2})[e/x]$.
     And so we reach our goal
     \[\Gamma \vdash (\letin{y = e_1}{e_2})[e/x] : \tau'\]
 
-  If we are unfortuante enough that $y \ne x$, then from the second
+  If we are unfortunate enough that $y \ne x$, then from the second
   premise we use the swap lemma to get
   \begin{equation} \label{eq:substLet8}
     \Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1), x : \forall \alpha_1\ldots\alpha_n . \tau  \vdash
     e_2 : \tau
   \end{equation}
-  And since we have $\Gamma \vdash e : \tau$, from lemma~\ref{lem:subContextTyping}
+  And since we have $\Gamma \vdash e : \tau$, from Lemma~\ref{lem:subContextTyping}
   there is
   \begin{equation} \label{eq:substLet9}
   \Gamma , y : \overline{\Gamma , x :\forall\alpha_1\ldots\alpha_n . \tau}(\tau_1) \vdash e : \tau    
