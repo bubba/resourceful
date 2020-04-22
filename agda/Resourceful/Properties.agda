@@ -99,10 +99,6 @@ canonical (⊢sub ⊢e x _) (V-× y y₁) = ⊥-elim (f ⊢e)
   f : ∀ {e₁ e₂ ρ τ} → ¬ (∅ ⊢ e₁ × e₂ ⦂ IO ρ τ)
   f (⊢sub ⊢e x _) = f ⊢e
 
--- canonical (⊢sub ⊢e ρ≥:ρ' _) V-readFile with canonical ⊢e V-readFile
--- ... | C-readFile f≥:ρ = C-readFile (≥:-trans f≥:ρ ρ≥:ρ')
--- canonical (⊢sub ⊢e ρ≥:ρ' _) V-readNet with canonical ⊢e V-readNet
--- ... | C-readNet f≥:ρ = C-readNet (≥:-trans f≥:ρ ρ≥:ρ')
 canonical (⊢sub ⊢e ρ≥:ρ' _) V-use with canonical ⊢e V-use
 ... | C-use r≥:ρ ⊢e' = C-use (≥:-trans r≥:ρ ρ≥:ρ') ⊢e'
 
@@ -218,6 +214,12 @@ sneakIn {Γ} {x} {e} {σ} {σ'} {τ} ⊢e = rename ρ ⊢e
         ρ Z = Z
         ρ (S s z≢x) = S (S s z≢x) z≢x
 
+postulate sneakIn' : ∀ {Γ x y e σ σ' τ}
+                   → Γ , x ⦂ σ ⊢ e ⦂ τ
+                   → y ∉ FV e
+                     -------------------------
+                   → Γ , y ⦂ σ' , x ⦂ σ ⊢ e ⦂ τ
+
 swap : ∀ {Γ x y e a b c}
      → x ≢ y
      → Γ , y ⦂ b , x ⦂ a ⊢ e ⦂ c
@@ -231,6 +233,9 @@ swap {Γ} {x} {y} {e} {a} {b} x≢y ⊢e = rename ρ ⊢e
         ρ (S Z y≠x) = Z
         ρ (S (S x∈ z≢y) z≢x) = S (S x∈ z≢x) z≢y
 
+postulate extendedClose : ∀ {Γ x σ τ τ' e}
+                        → Γ , x ⦂ close Γ τ' ⊢ e ⦂ τ
+                        → Γ , x ⦂ close (Γ , x ⦂ σ) τ' ⊢ e ⦂ τ
 
 extend : ∀ {Γ x σ e τ}
        → Γ ⊢ e ⦂ τ
@@ -248,9 +253,9 @@ extend {x = x} {e = e} (⊢ƛ {x = y} ⊢e) x∉ with x ≟ y
 ... | no x≢y = ⊢ƛ (swap x≢y (extend ⊢e (∉-/≢ x∉ x≢y)))
 extend (⊢· ⊢e₁ ⊢e₂) x∉ with ∉-++⁻ x∉
 ... | ⟨ ∉e₁ , ∉e₂ ⟩ = ⊢· (extend ⊢e₁ ∉e₁) (extend ⊢e₂ ∉e₂)
-extend {Γ} {x} {σ = σ} (⊢lt {τ' = τ'} {x = y} ⊢e ⊢e') x∉ with x ≟ y | ∉-++⁻ x∉ | close (Γ , y ⦂ σ) τ'
-... | yes refl | ⟨ ∉e , ∉e' ⟩ | closeyσ = ⊢lt (extend ⊢e ∉e) (sneakIn {!let z = extend !})
-... | no x≢y | ⟨ ∉e , ∉e' ⟩ | foo = ⊢lt (extend ⊢e ∉e) {!!}
+extend {Γ} {x} {σ} {τ = τ} (⊢lt {e = e} {τ' = τ'} {x = y} ⊢e ⊢e') x∉ with x ≟ y | ∉-++⁻ x∉
+... | yes refl | ⟨ ∉e , ∉e' ⟩ = ⊢lt (extend ⊢e ∉e) (sneakIn (extendedClose {σ = σ} ⊢e'))
+... | no x≢y | ⟨ ∉e , ∉e' ⟩ = ⊢lt (extend ⊢e ∉e) (sneakIn' (extendedClose {σ = σ} ⊢e') (∉-/≢ ∉e' x≢y))
 extend (⊢⟦⟧ ⊢e cl) x∉ = ⊢⟦⟧ (extend ⊢e x∉) cl
 extend {x = x} (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') x∉ with ∉-++⁻ {x} {FV(e)} {FV(e')} x∉
 ... | ⟨ ∉e , ∉e' ⟩ = ⊢>>= (extend ⊢e ∉e) (extend ⊢e' ∉e')
@@ -261,7 +266,7 @@ extend (⊢⋎ ⊢e₁ ⊢e₂ dist) x∉ with ∉-++⁻ x∉
 extend (⊢sub ⊢e ρ≥:ρ' ok) x∉ = ⊢sub (extend ⊢e x∉) ρ≥:ρ' ok
 
 
--- closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ (τ' τ)
+-- closeσ : ∀ {Γ Γ' x y σ σ' e} → ∀ τ' → ∀ τ
 --        → Γ , x ⦂ close (Γ' , y ⦂ σ') τ' ⊢ e ⦂ τ
 --        → σ ≥ σ'
 --        → Γ , x ⦂ close (Γ' , y ⦂ σ) τ' ⊢ e ⦂ τ
@@ -299,22 +304,6 @@ gen (⊢use ⊢e) σ>σ' = ⊢use (gen ⊢e σ>σ')
 gen (⊢⋎ ⊢e₁ ⊢e₂ dist) σ>σ' = ⊢⋎ (gen ⊢e₁ σ>σ') (gen ⊢e₂ σ>σ') dist
 gen (⊢sub ⊢e ρ≥:ρ' ok) σ>σ' = ⊢sub (gen ⊢e σ>σ') ρ≥:ρ' ok
 
-postulate fvsClosed : ∀ {Γ e τ x} → Γ ⊢ e ⦂ τ → x ∈ FV(e) → ∃[ σ ] (x ⦂ σ ∈ Γ)
--- fvsClosed (⊢` {σ = σ} x∈ σ>τ) (here refl) = ⟨ σ , x∈ ⟩
--- fvsClosed {x = x} (⊢ƛ {x = y} ⊢e) x∈fv with x ≟ y
--- ... | yes refl = {!!}
--- ... | no x≢y = {!!}
--- fvsClosed (⊢· ⊢e ⊢e₁) x∈ = {!!}
--- fvsClosed (⊢lt ⊢e ⊢e₁) x∈ = {!!}
--- fvsClosed (⊢× ⊢e ⊢e₁) x∈ = {!!}
--- fvsClosed (⊢π₁ ⊢e) x∈ = {!!}
--- fvsClosed (⊢π₂ ⊢e) x∈ = {!!}
--- fvsClosed (⊢⟦⟧ ⊢e x) x∈ = {!!}
--- fvsClosed (⊢>>= ⊢e ⊢e₁) x∈ = {!!}
--- fvsClosed (⊢⋎ ⊢e ⊢e₁ x) x∈ = {!!}
--- fvsClosed (⊢sub ⊢e x x₁) x∈ = {!!}
--- fvsClosed (⊢use ⊢e) x∈ = {!!}
-
 ignore-++ˡ : ∀ {Γ Δ p q}
       → (∀ {x σ} → x ∈ p ++ q → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
       → (∀ {x σ} → x ∈ p → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
@@ -351,17 +340,15 @@ ignore {Γ} {Δ} {e} ρ (⊢lt {e = e'} {e' = e''} {τ = τ} {τ' = τ'} {x = y}
   ... | yes refl = ⊥-elim (x≢y refl)
   ... | no _ = let z = ignore-++ʳ {Γ} {Δ} {FV(e'')} {FV(e') / [ y ]} ρ
                    y = z (/-∈≢ x∈FV x≢y) x∈Γ in S y x≢y
- 
-  f : ∀ {Γ Δ τ} → close Δ τ > τ → Disjoint (FTV (close Δ τ)) (TSvars (close Γ τ)) → close Δ τ ≥ close Γ τ
-  f clΔ>τ dj = {!!}
 
-  i : ∀ {Γ τ} → close Γ τ > τ
-  i {Γ} = {!!}
+  -- If all the typeschemes in Γ are in Δ
+  -- any close Δ τ should be more general than close Γ τ
+  postulate sameContext≥ : ∀ {Γ Δ τ}
+                         → (∀ {x σ} → x ∈ FV(e) → x ⦂ σ ∈ Γ → x ⦂ σ ∈ Δ)
+                         → close Δ τ ≥ close Γ τ
 
   h : Γ , y ⦂ close Γ τ' ⊢ e' ⦂ τ → Δ , y ⦂ close Δ τ' ⊢ e' ⦂ τ
-  h ⊢e' = let z : Γ , y ⦂ close Δ τ' ⊢ e' ⦂ τ
-              z = gen ⊢e' (f {Γ} {Δ} i {!DisThere!})
-           in ignore g z
+  h ⊢e' = ignore g (gen ⊢e' (sameContext≥ ρ))
 
 ignore ρ (⊢⟦⟧ ⊢e cl) = ⊢⟦⟧ (ignore ρ ⊢e) cl
 ignore ρ (⊢>>= {e = e} {e' = e'} ⊢e ⊢e') = ⊢>>= (ignore (ignore-++ˡ ρ) ⊢e) (ignore (ignore-++ʳ ρ) ⊢e')
@@ -379,19 +366,11 @@ ignore ρ (⊢sub z ρ≥:ρ' ok) = ⊢sub (ignore ρ z) ρ≥:ρ' ok
        → Γ ⊢ e ⦂ τ'
 Γ⊢cong refl ⊢e = ⊢e
 
-
-sub> : ∀ {s σ τ} → σ > τ → sub s σ > subT s τ
-sub> {s} {σ} (Inst s' x y) = Inst (s' ∘ˢ s) {!!} {!!}
-
--- tofte lemma 2.6
--- lemma26 : ∀ {s σ σ' τ} → σ > τ → σ ⇒ s ⇒ σ' → σ' > subT s τ)
-
--- _ : (s : Substitution) → x ⦂ close Γ τ' → 
-
-postulate closesub : ∀ {Γ τ s} → ∃[ s' ] (sub s (close Γ τ) ≡ close (subC s' Γ) (subT s' τ))
+postulate sub> : ∀ {s σ τ} → σ > τ → sub s σ > subT s τ
 
 -- wright and felleisen lemma 4.5,
 -- tofte lemma 2.7
+-- you can apply substitution to "both sides"
 subContextTyping : ∀ {Γ e τ}
                    → Γ ⊢ e ⦂ τ
                    → (s : Substitution)
@@ -410,22 +389,11 @@ subContextTyping {Γ} {e} (⊢ƛ {x = x} {τ' = τ'} {τ = τ} {e = e'} ⊢e) s 
   
 subContextTyping (⊢· ⊢e₁ ⊢e₂) s = ⊢· (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
 
-subContextTyping {Γ} (⊢lt {τ = τ} ⊢e ⊢e') s with sub s (VV (FTVT τ / FTVC Γ) τ) |  closesub {Γ} {τ} {s}
-... | z | ⟨ s' , refl ⟩ = {!!}
-  -- ⊢lt (subContextTyping ⊢e s)
-  --     (let z = (subContextTyping ⊢e' s)
-  --          in {!!})
-  -- where
-  -- -- equation 2.26 in tofte
-  -- postulate g : ∀ {Γ τ} → sub s (close Γ τ) ≡ close (subC s Γ) (subT s τ)
-      
-  -- f : ∀ {Γ s x τ} → subC s (Γ , x ⦂ close Γ τ) ≡ subC s Γ , x ⦂ close (subC s Γ) (subT s τ)
-  -- f {Γ} {s} {x} {τ} rewrite g {Γ} {s} {τ} = refl
-  -- f' : ∀ {Γ s x τ' e τ}
-  --    → subC s (Γ , x ⦂ close Γ τ') ⊢ e ⦂ τ
-  --    → subC s Γ , x ⦂ close (subC s Γ) (subT s τ') ⊢ e ⦂ τ
-  -- f' {Γ} {s} {x} {τ'} {e} {τ} ⊢e rewrite (cong (λ z → z ⊢ e ⦂ τ) (f {Γ} {s} {x} {τ'})) = ⊢e
-
+subContextTyping {Γ} (⊢lt {τ = τ} {τ' = τ'} {x = x} ⊢e ⊢e') s = ⊢lt (subContextTyping ⊢e s) (subclose (subContextTyping ⊢e' s))
+  -- sub s (close Γ τ') ≡ close (subC s Γ) (subT s τ')
+  where postulate subclose : ∀ {s Γ x τ' e τ}
+                           → subC s (Γ , x ⦂ close Γ τ') ⊢ e ⦂ τ
+                           → subC s Γ , x ⦂ close (subC s Γ) (subT s τ') ⊢ e ⦂ τ
 subContextTyping (⊢× ⊢e₁ ⊢e₂) s = ⊢× (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s)
 subContextTyping (⊢π₁ ⊢e) s = ⊢π₁ (subContextTyping ⊢e s)
 subContextTyping (⊢π₂ ⊢e) s = ⊢π₂ (subContextTyping ⊢e s)
@@ -436,20 +404,9 @@ subContextTyping (⊢use ⊢e) s = ⊢use (subContextTyping ⊢e s)
 subContextTyping (⊢⋎ ⊢e₁ ⊢e₂ dist) s = ⊢⋎ (subContextTyping ⊢e₁ s) (subContextTyping ⊢e₂ s) dist
 subContextTyping (⊢sub ⊢e ρ≥:ρ' ok) s = ⊢sub (subContextTyping ⊢e s) ρ≥:ρ' ok
 
--- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
-absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
-             → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
-             → ∃[ s ] ⟨ Disjoint (FTVC Γ) αs × ⟨ (Disjoint (subRegion (BJS.to s)) αs) × (Disjoint (subRegion (BJS.to s)) (FTVC Γ)) ⟩ ⟩
-absSubChoose {αs = αs} ⊢e with freshTypeVars αs
-... | ⟨ βs , djαβ ⟩ = {!!}
-
-subC∅ : (s : Substitution) → subC s ∅ ≡ ∅
-subC∅ _ = refl
 
 -- i know this is true!
 postulate sub∉FTVC : ∀ {Γ α τ s} → α ∉ FTVC Γ → subC (SS α τ s) Γ ≡ subC s Γ
--- sub∉FTVC {∅} x∉ = refl
--- sub∉FTVC {Γ , x ⦂ σ} {α} {τ} {s} x∉ = {!!}
   
 disjointSub : ∀ {Γ s} → Disjoint (subDomain s) (FTVC Γ) → subC s Γ ≡ Γ
 disjointSub {Γ} {SZ} DisHere = subCSZ
@@ -503,6 +460,12 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
            prt2help {Γ} {s} {αs} {τ} eq ⊢e with sub s (VV αs τ) | eq
            ... | .(VV αs τ) | refl = ⊢e
 
+           -- chooses a substitution such that FTV Γ ∩ subRegion s ∩ αs ≡ ∅
+           postulate absSubChoose : ∀ {Γ x' x αs τ₁ τ e₁ τ₂}
+                                  → Γ , x' ⦂ τ₁ , x ⦂ VV αs τ ⊢ e₁ ⦂ τ₂
+                                  → ∃[ s ] ⟨ Disjoint (FTVC Γ) αs ×
+                                             ⟨ (Disjoint (subRegion (BJS.to s)) αs) ×
+                                               (Disjoint (subRegion (BJS.to s)) (FTVC Γ)) ⟩ ⟩
 
            prf : Γ , x' ⦂ ` τ₁ ⊢ e₁ [ x := v ] ⦂ τ₂
            prf with absSubChoose (swap x'≢x ⊢e')

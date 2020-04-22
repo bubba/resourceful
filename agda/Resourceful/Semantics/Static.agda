@@ -424,6 +424,8 @@ _ = ⊢· (⊢` Z (Inst (SS "x" □ SZ) refl refl)) ⊢□
 _ : ∅ ⊢ ƛ "x" ⇒ (` "x") ⦂ ( ` "α" ⇒ ` "α" )
 _ = ⊢ƛ (⊢` Z (Inst SZ refl refl))
 
+-- if a substitution is bijective then applying the backwards
+-- substitution to the forwards substitution cancels out
 postulate roundtripSub : ∀ {Γ x σ e τ}
                → (s : BJS)
                → subC (BJS.from s) (Γ , x ⦂ sub (BJS.to s) σ) ⊢ 
