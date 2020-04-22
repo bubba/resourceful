@@ -69,23 +69,20 @@ otherwise pure language. Unlike our system, this included separation
 logic predicates directly within the language. We will not work with
 predicates, and instead push all our guarantees into the type level.
 
-\section{Monadic effect systems}
+\section{Monads categorically}
 As the language we will develop in Chapter~\ref{chapter:system} is
 based around monads, it is a good idea to take a brief look at what
 exactly they are, and dip our toes into the cool waters of category
-theory.
-
-A monad is often sardonically defined as
+theory. A monad is often sardonically defined as
 \begin{quote}
   a monoid in the category of endofunctors
 \end{quote}
-But that means nothing to me. Lets break this down:
-
-A \textit{category} is a collection of objects (like a set), and
-morphisms (like functions between sets). In the same way, Haskell has
-\textsf{Hask} --- the category of types. Its objects are types such as
-\mintinline{haskell}{Bool} and \mintinline{haskell}{Int}, and its
-morphisms are functions taking a type and returning another.
+Lets break this down: A \textit{category} is a collection of objects
+(like a set), and morphisms (like functions between sets). In the same
+way, Haskell has \textsf{Hask} --- the category of types. Its objects
+are types such as \mintinline{haskell}{Bool} and
+\mintinline{haskell}{Int}, and its morphisms are functions taking a
+type and returning another.
 \begin{minted}{haskell}
 Bool, Int :: * -- Bool and Int are types
 True :: Bool
@@ -103,25 +100,30 @@ Maybe :: * -> *
 Maybe Bool :: * -- Maps Bool to Maybe Bool
 fmap :: (a -> b) -> (f a -> f b) -- Maps (a -> b) to (f a -> f b)
 \end{minted}
+Functors can have mappings to other functors, and these are known as
+\emph{natural transformations}.
 
 An \textit{endofunctor} is a \textit{functor} from one category to the
 same category. That is, it maps objects and morphisms from one
 category, to objects and morphisms in the same category. But what does
 that mean in Haskell? Well, since \mintinline{haskell}{Functor} maps
 types to types, we are mapping from \textsf{Hask} to \textsf{Hask} ---
-all \mintinline{haskell}{Functor}s in Haskell are endofunctors!
+all \mintinline{haskell}{Functor}s in Haskell are endofunctors! They
+exist as type constructors with kind \mintinline{haskell}{* -> *}.
 
-A \textit{monad} is defined as:
+A \textit{monad} is then defined as:
 \begin{enumerate}
 \item An endofunctor $T : X \rightarrow X$
-\item With a natural transformation to ``join'' $f : T(T(X)) \rightarrow T(X)$
-\item And another natural transformation: $g : I \rightarrow T(X)$
+\item With a natural transformation to flatten two monads together
+
+${\mu : T(T(X)) \rightarrow T(X)}$
+\item And another natural transformation $\eta : X \rightarrow T(X)$
 \item That satisfy some properties (the monad laws)
 \end{enumerate}
 
 Or in Haskell,
 \begin{minted}{haskell}
-class Monad m a where
+class Functor m => Monad m a where
   join :: m (m a) -> m a
   return :: a -> m a
 \end{minted}
@@ -136,27 +138,22 @@ join m = m >>= \x -> x
 m >>= f = join (fmap f m)
 \end{minted}
 
-The parallel to a \textit{monoid} is drawn because a monoid is defined as:
+The \textit{monoid in the category of endofunctors} bit then comes
+about because a monoid is defined as:
 \begin{enumerate}
 \item A set
-\item With an associative binary operation $f : X \times X \rightarrow X$
-\item And an identity element: $g : \mathbf{1} \rightarrow X$
-\item That satisfy some properties
+\item With an associative binary operation $\mu : X \times X \rightarrow X$
+\item And an identity element\footnote{An identity element $\eta : X$
+    might be more familiar, but it isomorphic to a mapping from the
+    unit type to $X$.} $g : \mathbf{1} \rightarrow X$
+\item That satisfy some properties (the monoid laws)
 \end{enumerate}
 
-A \textit{monoid} is a set with an associative binary operation and an
-identity element, that satisfies some laws.
-Therefore a \textit{monoid in the category of
-  endofunctors} is
-\begin{enumerate}
-\item An endofunctor $T : X \rightarrow X$
-\item With an associative binary operation $f : T \times T \rightarrow T$
-\item And an identity element $T$
-\end{enumerate}
-But an identity element can be considered a function like $g :
-\mathbf{1} \rightarrow T$
-And 
-
+So if monoids allow chaining together elements, then monads in
+programming allow sequencing together computation. In our system we
+will be using the more pragmatic Haskell definition of a monad that
+uses bind rather than join. But the idea of sequencing remains the
+same.
 
 \section{Type-level programming within GHC}
 
