@@ -5,7 +5,7 @@ eventually show that the type system is sound. We will begin with a
 couple of properties about contexts that we will later use on in
 various other proofs. The first states that if we have two variables
 in the context with the same names but different type schemes, then we
-can ignore the first one as it is overshadowed by the second -- any
+can ignore the first one as it is overshadowed by the second --- any
 reference to $x$ will result in $x : \sigma'$.
 \begin{lemma}[Drop]\label{lem:drop}
   If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
@@ -78,12 +78,12 @@ adaptation of a lemma from Damas and Milner.
   \item[\rm\textsc{Abs}]
     We have $\Gamma , x : \sigma' \vdash \lambda y . e : \tau$. If $x = y$, then we can safely
     say the premise $\Gamma , x : \sigma' , y : \sigma'' \vdash e : \tau$ becomes $\Gamma , y :
-    \sigma'' \vdash e : \tau$  due to lemma~\ref{lem:drop}. And from this we can
-    then use lemma~\ref{lem:sneak} to get $\Gamma, x : \sigma, y : \sigma'' \vdash e : \tau$,
+    \sigma'' \vdash e : \tau$  due to Lemma~\ref{lem:drop}. And from this we can
+    then use Lemma~\ref{lem:sneak} to get $\Gamma, x : \sigma, y : \sigma'' \vdash e : \tau$,
     and ultimately $\Gamma , x : \sigma \vdash \lambda y . e : \tau$.
 
     If $x \neq y$, then we can get $\Gamma , y : \sigma'' , x : \sigma' \vdash e : \tau$ via
-    lemma~\ref{lem:swap}. The induction hypothesis then results in $\Gamma
+    Lemma~\ref{lem:swap}. The induction hypothesis then results in $\Gamma
     , y : \sigma'' , x : \sigma \vdash e : \tau$, which we can then swap back again to
     get $\Gamma , x : \sigma , y : \sigma'' \vdash e : \tau$ and so $\Gamma , x : \sigma \vdash \lambda y . e :
     \tau$.
@@ -95,13 +95,13 @@ adaptation of a lemma from Damas and Milner.
     First off, we need to convert the $y : \overline{\Gamma , x : \sigma'}(\tau')$ to a
     $y : \overline{\Gamma, x : \sigma}(\tau')$ somehow. But it can be shown that if $\sigma >
     \sigma'$, then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma , x : \sigma'}(\tau)$ due
-    to lemma~\ref{lem:close>}. So by the inductive hypothesis,
+    to Lemma~\ref{lem:close>}. So by the inductive hypothesis,
     we are able to get $\Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$.
 
     If $x = y$ then we can drop $x :
     \sigma'$ from the context and sneak it back in as $\Gamma , x : \sigma, y :
-    \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$ with lemma~\ref{lem:drop} and
-    lemma~\ref{lem:sneak}. The induction hypothesis then gives us $\Gamma ,
+    \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau$ with Lemma~\ref{lem:drop} and
+    Lemma~\ref{lem:sneak}. The induction hypothesis then gives us $\Gamma ,
     x : \sigma \vdash e' : \tau'$ and we construct the proof back together with
     \textsc{Let} to give $\Gamma , x : \sigma \vdash \letin{y = e'}{e} : \tau$.
 
@@ -111,7 +111,7 @@ adaptation of a lemma from Damas and Milner.
       \Gamma , x : \sigma' , y : \overline{\Gamma, x : \sigma}(\tau') \vdash e : \tau \\
       \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma' \vdash e : \tau &&  \text{by
                                                             swapping,
-                                                            lemma~\ref{lem:swap}}
+                                                            Lemma~\ref{lem:swap}}
       \\
       \Gamma , y : \overline{\Gamma, x : \sigma}(\tau') , x : \sigma \vdash e : \tau && \text{by
                                                            inductive
@@ -136,14 +136,14 @@ If a context has all the same type schemes for each free variable in
 an expression as another context, then we can make the same typing
 judgements with that context. In other words, we are free to ignore
 extra variables not used by the expression.
-\begin{lemma} \label{lem:ignore}
+\begin{lemma}\label{lem:ignore}
   If for all $x \in \fv(e)$ where $x : \sigma \in \Gamma$, $x : \sigma \in \Delta$, and if $\Gamma \vdash
   e : \tau$ then $\Delta \vdash e : \tau$.
 \end{lemma}
 
 We can also show that we can apply a substitution to both the context
 and type given in a judgement.
-\begin{lemma} \label{lem:subContextTyping}
+\begin{lemma}\label{lem:subContextTyping}
   If $\Gamma \vdash e : \tau$, then for any substitution $s$, $\Gamma[s] \vdash e : \tau[s]$.
 \end{lemma}
 
@@ -152,7 +152,7 @@ lemma, which relates to substituting a variable for an expression,
 whose type we can prove. The following proof is adapted from Wright
 and Felleisen~\cite{wright1994}.
 
-\begin{lemma}[Substitution] \label{lem:substitution}
+\begin{lemma}[Substitution]\label{lem:substitution}
   If $\Gamma \vdash e : \tau$ and ${\Gamma , x : \forall \alpha_1, \ldots, \alpha_n . \tau \vdash e' : \tau'}$, and ${x \notin \dom(\Gamma)}$ and
   ${\alpha_1 , \ldots, \alpha_n \cap \ftv(\Gamma) = \emptyset}$, then ${\Gamma \vdash e' [e/x] : \tau'}$.
 \end{lemma}
@@ -206,17 +206,17 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     Now we manipulate the premise in the following order.
     \begin{align*}
       \Gamma , y : \tau_1 , x : \forall\alpha_1\ldots\alpha_n . \tau &\vdash e' : \tau_2 && \text{by swapping,
-                                                   lemma~\ref{lem:swap}}
+                                                   Lemma~\ref{lem:swap}}
       \\
       (\Gamma , y : \tau_1 , x : \forall\alpha_1\ldots\alpha_n . \tau)[s] &\vdash e' : \tau_2 && \text{by
-                                                     lemma~\ref{lem:subContextTyping}}
+                                                     Lemma~\ref{lem:subContextTyping}}
       \\
       \Gamma , y : \tau_1[s] , x : (\forall\alpha_1\ldots\alpha_n . \tau)[s] &\vdash e' : \tau_2 &&
                                                             \text{since
                                                             } \Gamma[s] = \Gamma
     \end{align*}
     And since the range of $s$ is exactly $\alpha_1,\ldots,\alpha_n$, we have
-    $(\forall \alpha_1\ldots\alpha_n . \tau)[s] = \forall \alpha_1\ldots\alpha_n . \tau$ -- substitution only
+    $(\forall \alpha_1\ldots\alpha_n . \tau)[s] = \forall \alpha_1\ldots\alpha_n . \tau$ --- substitution only
     substitutes free type variables, not bound type variables, and
     here any possible free type variables are being shadowed.
     \begin{equation}
@@ -244,7 +244,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     \[ \Gamma , y : \tau_1[s] \vdash e' [e/x] : \tau_2[s] \]
     But $s$ is a bijection due to how we chose it: That means an
     inverse, $s^{-1}$ exists. We ``apply it to both sides'' with
-    lemma~\ref{lem:subContextTyping}
+    Lemma~\ref{lem:subContextTyping}
     \begin{align*}
       (\Gamma , y : \tau_1[s])[s^{-1}] &\vdash e' [e/x] : (\tau_2[s])[s^{-1}] \\
       (\Gamma , y : \tau_1[s])[s^{-1}] &\vdash e' [e/x] : \tau_2 \\
@@ -275,7 +275,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
       \vdash e_2 : \tau' \\
       \Gamma , x : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1) \vdash e_2 : \tau' &&
                                                                 \text{by
-                                                                lemma~\ref{lem:drop}}
+                                                                Lemma~\ref{lem:drop}}
       \\
       \Gamma \vdash \letin{x = e_1[e / x]}{e_2} : \tau' && \text{by \textsc{Let}}
     \end{align*}
@@ -304,7 +304,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     & \{ \alpha_1,\ldots,\alpha_n\} \cap \ftv(\Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1)) \\
     &\subseteq \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\Gamma) \cup \ftv(\overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n
       . \tau}(\tau_1))) \\
-    &= \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1))
+    &= \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1)))
     \\
     &= \{ \alpha_1,\ldots,\alpha_n\} \cap (\ftv(\tau_1) \setminus (\ftv(\tau_1) \setminus \ftv(\Gamma,x:\forall
       \alpha_1\ldots\alpha_n.\tau))) \\
@@ -320,9 +320,9 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
   The next part involves an observation, that for any $x$ and $\sigma$ in
   any $\Gamma$, ${\overline{\Gamma}(y) > \overline{\Gamma, x : \sigma}(y)}$, as closing
   over a context with a \textit{smaller} domain will result in the
-  type scheme having \textit{more} bound type variables -- i.e. it is
+  type scheme having \textit{more} bound type variables --- i.e.\ it is
   more general. Therefore we can use the generalisation lemma,
-  lemma~\ref{lem:generalisation}, to get
+  Lemma~\ref{lem:generalisation}, to get
   \begin{align*}
     \Gamma , y : \overline{\Gamma}(\tau) \vdash e_2[e/x] : \tau' \\
     \Gamma \vdash \letin{y = e_1[e/x]}{e_2[e/x]} : \tau' && \text{with \textsc{Let}
@@ -591,8 +591,8 @@ proof of the typing judgement:
     occurred
     \[ v \curlyvee w \leadsto v \bind \lambda v . (w \bind \lambda w . \lift{v \times w}) \]
     So we need to show ${\centerdot \vdash v \bind \lambda v . (w \bind \lambda w . \lift{v
-        \times w}) : \IO_{\rho_1 \cup \rho_2} \tau_1 \times \tau_2}$ -- not exactly the
-    prettiest judgement -- which we can construct eventually from a \textsc{Bind}.
+        \times w}) : \IO_{\rho_1 \cup \rho_2} \tau_1 \times \tau_2}$ --- not exactly the
+    prettiest judgement --- which we can construct eventually from a \textsc{Bind}.
 
     To begin, we will first show that both $v$ and $w$ can be subsumed
     into the larger combined heap, $\rho_1 \cup \rho_2$.
