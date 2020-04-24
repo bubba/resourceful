@@ -159,15 +159,15 @@ and Felleisen~\cite{wright1994}.
 Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x_n :
 \sigma_n)$ is defined as $\{ x_1 , \ldots , x_n \}$.
 \begin{proof}
-  Begin with induction on the proof of $\Gamma , x : \forall \alpha_1, \ldots, \alpha_n . \tau \vdash e'
+  Begin with induction on the proof of $\Gamma , x : \forall \alpha_1 \ldots \alpha_n . \tau \vdash e'
   : \tau'$. For brevity we will sometimes refer to $\forall \alpha_1,\ldots,\alpha_n . \tau$ as $\sigma$.
   \begin{description}
   \item[\rm\textsc{Var}] We have
-    $\Gamma , x : \sigma \vdash y : \tau'$ and want to show $\Gamma \vdash y[e/x] : \tau'$.
+    $\Gamma , x : \forall\alpha_1\ldots\alpha_n \vdash y : \tau'$ and want to show $\Gamma \vdash y[e/x] : \tau'$.
 
     If $y \neq x$, then by definition $y [e/x] = y$, so we just need to
     show $\Gamma \vdash y : \tau'$. From the premises we also have
-    $y : \tau' \in \Gamma , x : \sigma$, but since $y \ne x$ we have $y : \tau' \in \Gamma$. And
+    $y : \tau' \in \Gamma , x : \forall\alpha_1\ldots\alpha_n$, but since $y \ne x$ we have $y : \tau' \in \Gamma$. And
     from here we can use \textsc{Var} to get $\Gamma \vdash y : \tau'$.
 
     If $y = x$, then we need to show $\Gamma \vdash x : \tau'$. From the premise of
@@ -183,11 +183,10 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     \Gamma[s]$. Leaving us with $\Gamma \vdash e : \tau'$ as required.
 
   \item[\rm\textsc{Abs}]
-    We have $\Gamma , x : \sigma \vdash \lambda y . e' : \tau_1 \rightarrow \tau_2$ and want to show $\Gamma \vdash (\lambda y
-    . e')[e/x] : \tau_1 \rightarrow \tau_2$. Similarly to the case for $\textsc{var}$, we
-    first check to see if $x = y$.
-
-    If $y = x$, then the inner binding of $y$ will shadow $x$. That
+    We have $\Gamma , x : \forall\alpha_1\ldots\alpha_n \vdash \lambda y . e' : \tau_1 \rightarrow \tau_2$ and want to show
+    \[\Gamma \vdash (\lambda y . e')[e/x] : \tau_1 \rightarrow \tau_2\]
+    Similarly to the case for $\textsc{var}$, we first check to see if
+    $x = y$. If $y = x$, then the inner binding of $y$ will shadow $x$. That
     is, we have the premise $\Gamma , x : \sigma, x : \tau_1 \vdash e' : \tau_2$, and we can
     drop the previous $x$ from the context with
     Lemma~\ref{lem:drop} to get $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
@@ -195,9 +194,9 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     just need to show $\Gamma \vdash \lambda y . e' : \tau_1 \rightarrow \tau_2$, which can construct
     with \textsc{Abs} and $\Gamma , x : \tau_1 \vdash e' : \tau_2$.
 
-    If $y \ne x$, then we the proof is more involved. From the premises
+    If $y \ne x$, then the proof is more involved. From the premises
     we have
-    \[\Gamma , x : \alpha_1,\ldots,\alpha_n . \tau , y : \tau_1 \vdash e' : \tau_2\]
+    \[\Gamma , x : \forall \alpha_1\ldots\alpha_n . \tau , y : \tau_1 \vdash e' : \tau_2\]
     We start by choosing a substitution $s$, which maps $\alpha_1 , \ldots, \alpha_n$
     to fresh type variables $\alpha'_1, \ldots,\alpha'_n$. Additionally, they are
     distinct as follows.
@@ -286,13 +285,13 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
 
   If we are unfortunate enough that $y \ne x$, then from the second
   premise we use the swap lemma to get
-  \begin{equation} \label{eq:substLet8}
+  \begin{equation}\label{eq:substLet8}
     \Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n . \tau}(\tau_1), x : \forall \alpha_1\ldots\alpha_n . \tau  \vdash
-    e_2 : \tau
+    e_2 : \tau'
   \end{equation}
-  And since we have $\Gamma \vdash e : \tau$, from Lemma~\ref{lem:subContextTyping}
+  And since we have $\Gamma \vdash e : \tau$, from Lemma~\ref{lem:ignore}
   there is
-  \begin{equation} \label{eq:substLet9}
+  \begin{equation}\label{eq:substLet9}
   \Gamma , y : \overline{\Gamma , x :\forall\alpha_1\ldots\alpha_n . \tau}(\tau_1) \vdash e : \tau    
   \end{equation}
   Now we want to call the inductive hypothesis on (\ref{eq:substLet8})
@@ -316,15 +315,15 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
     &= \emptyset
   \end{align*}
   And then we can use it to arrive at
-  \[ \Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n.\tau}(\tau) \vdash e_2 [e/x] : \tau' \]
-  The next part involves an observation, that for any $x$ and $\sigma$ in
-  any $\Gamma$, ${\overline{\Gamma}(y) > \overline{\Gamma, x : \sigma}(y)}$, as closing
+  \[ \Gamma , y : \overline{\Gamma, x : \forall\alpha_1\ldots\alpha_n.\tau}(\tau_1) \vdash e_2 [e/x] : \tau' \]
+  The next part involves an observation, that for any $x$, $\tau$ and $\sigma$ in
+  any $\Gamma$, ${\overline{\Gamma}(\tau) > \overline{\Gamma, x : \sigma}(\tau)}$, as closing
   over a context with a \textit{smaller} domain will result in the
   type scheme having \textit{more} bound type variables --- i.e.\ it is
   more general. Therefore we can use the generalisation lemma,
   Lemma~\ref{lem:generalisation}, to get
   \begin{align*}
-    \Gamma , y : \overline{\Gamma}(\tau) \vdash e_2[e/x] : \tau' \\
+    \Gamma , y : \overline{\Gamma}(\tau_1) \vdash e_2[e/x] : \tau' \\
     \Gamma \vdash \letin{y = e_1[e/x]}{e_2[e/x]} : \tau' && \text{with \textsc{Let}
                                                and
                                                (\ref{eq:substLet7})}
