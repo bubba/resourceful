@@ -415,6 +415,11 @@ disjointSub {Γ} {SS α σ s} (DisThere x dj) rewrite sub∉FTVC {Γ} {α} {σ} 
 ∉∈≢ : ∀ {x y a} → x ∉ a → y ∈ a → x ≢ y
 ∉∈≢ x∉a y∈a refl = ⊥-elim (x∉a y∈a)
 
+
+-- postulate αconv : ∀ {Γ x e τ}
+--                 → ((y : Id) → y ∉ FV e → y ≢ x → Γ ⊢ ƛ y ⇒ (e [ x := ` y ]) ⦂ τ)
+--                 → Γ ⊢ ƛ x ⇒ e ⦂ τ
+
 -- Wright & Felleisen lemma 4.4
 -- Note, in Wright & Felleisen's proposition, only values can be substitued in.
 -- Does this affect our approach here?
@@ -468,7 +473,18 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
                                       ⟨ (Disjoint (subRegion (BJS.to s)) αs) ×
                                         (Disjoint (subRegion (BJS.to s)) (FTVC Γ)) ⟩ ⟩
 
-    postulate x∉FVv : x' ∉ FV v
+
+    -- if a substitution region is disjoint from αs
+    -- then any FTVs on that substutiton will also be disjoint from αs
+    postulate ftvSubsDisjoint : ∀ {σ αs}
+                              → (s : Substitution)
+                              → (Disjoint (subRegion s) αs)
+                              → Disjoint (FTV (sub s σ)) αs
+
+    -- we can do alpha conversion so x' is a fresh variable
+    -- (Barendregt convention)
+    -- TODO: actually write these out
+    postulate x'∉FVv : x' ∉ FV v
 
     prf : Γ , x' ⦂ ` τ₁ ⊢ e₁ [ x := v ] ⦂ τ₂
     prf with absSubChoose (swap x'≢x ⊢e')
@@ -491,11 +507,13 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
 
 
           prt3 : Γ , x' ⦂ sub s (` τ₁) ⊢ v ⦂ τ
-          prt3 = ignore (λ x∈FVv x∈Γ → S x∈Γ (≢-sym (∉∈≢ x∉FVv x∈FVv))) ⊢e
+          prt3 = ignore (λ x∈FVv x∈Γ → S x∈Γ (≢-sym (∉∈≢ x'∉FVv x∈FVv))) ⊢e
           
           -- need to show Disjoint (FTV (sub (BJS.to bjs) (` τ₁))) αs
+          -- if there were any αs type variables inside τ₁
+          -- then the substitution would substitute them to α's
           prt4 : Disjoint αs (FTVC (Γ , x' ⦂ sub s (` τ₁)))
-          prt4 = {!!}
+          prt4 = disjointMerge (disjoint-sym djΓαs) (disjoint-sym (ftvSubsDisjoint s djsαs))
 
           prt5 : Γ , x' ⦂ sub s (` τ₁) ⊢ e₁ [ x := v ] ⦂ subT s τ₂
           prt5 = subst {Γ , x' ⦂ sub s (` τ₁)} prt3 prt2 prt4
@@ -506,14 +524,29 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
           in roundtripSub bjs prt6
              
 
--- variables renamed to match wright & felleisen
-subst {Γ} {x = y} {αs = σαs} {τ = στ}  ⊢v (⊢lt  {e = e} {τ = τ} {τ' = τ'} {x = x} ⊢e' ⊢e'') p with x ≟ y
-... | yes refl = ⊢lt (subst ⊢v ⊢e' p) (closeSmaller (drop ⊢e''))
-    where postulate closeSmaller : Γ , y ⦂ close (Γ , y ⦂ VV σαs στ) τ' ⊢ e ⦂ τ
-                                 → Γ , y ⦂ close Γ τ' ⊢ e ⦂ τ
-... | no x≢y = ⊢lt (subst ⊢v ⊢e' p)
-                   (let swp = (swap x≢y ⊢e'')                        
-                        in {!!})
+-- variables renamed to match the report
+subst {Γ} {x = x} {e} {αs = αs} {τ = τ}  ⊢v (⊢lt  {e = e₂} {e' = e₁} {τ = τ'} {τ' = τ₁} {x = y} ⊢e₁ ⊢e₂) p with y ≟ x
+... | yes refl = ⊢lt (subst ⊢v ⊢e₁ p) (closeSmaller (drop ⊢e₂))
+    where postulate closeSmaller : Γ , x ⦂ close (Γ , x ⦂ VV αs τ) τ₁ ⊢ e₂ ⦂ τ'
+                                 → Γ , x ⦂ close Γ τ₁ ⊢ e₂ ⦂ τ'
+... | no y≢x = ⊢lt (subst ⊢v ⊢e₁ p) ⊢ye₂
+    where
+      postulate y∉FVe : y ∉ FV e -- pretend we did alpha conversion here
+      postulate closeGeneral : ∀ {Γ x σ τ} → close Γ τ ≥ close (Γ , x ⦂ σ) τ
+
+      swp = (swap y≢x ⊢e₂)
+      y⊢e : Γ , y ⦂ (close (Γ , x ⦂ VV αs τ) τ₁) ⊢ e ⦂ τ
+      y⊢e = ignore (λ z∈FVe z∈Γ → S z∈Γ (∈-∉-≢ z∈FVe y∉FVe)) ⊢v
+      -- TODO: whip out the set theory and walk through this step by step
+      postulate alldisjoint : Disjoint αs (FTVC (Γ , y ⦂ close (Γ , x ⦂ VV αs τ) τ₁))
+      indhyp : Γ , y ⦂ (close (Γ , x ⦂ VV αs τ) τ₁) ⊢ e₂ [ x := e ] ⦂ τ'
+      indhyp = subst y⊢e swp alldisjoint
+      ⊢ye₂ : Γ , y ⦂ close Γ τ₁ ⊢ e₂ [ x := e ] ⦂ τ'
+      ⊢ye₂ = gen indhyp (closeGeneral {Γ} {y} {σ = VV αs τ})
+      ⊢let : Γ ⊢ lt y ⇐ (e₁ [ x := e ]) in' (e₂ [ x := e ]) ⦂ τ'
+      ⊢let = ⊢lt (subst ⊢v ⊢e₁ p) ⊢ye₂
+
+
                  
 subst {x = y} ⊢e (⊢· e e') p = ⊢· (subst ⊢e e p) (subst ⊢e e' p)
 subst {x = y} ⊢e (⊢× ⊢e₁ ⊢e₂) p = ⊢× (subst ⊢e ⊢e₁ p) (subst ⊢e ⊢e₂ p)
@@ -574,3 +607,20 @@ noConcurrentAccess (⊢sub ⊢e x ok) = ok
 -- It's impossible for two heaps, unioned together, to be well formed
 ¬okρ∪ρ : ∀ {ρ} → ¬ Ok (ρ ∪ ρ)
 ¬okρ∪ρ (OkS ok ok₁ dist) = ¬x∩x=∅ dist
+
+
+
+-- Proofs of substitution equivalence
+-- Turns out we didn't need to use them, agda was smart enough to figure this out earlier
+ltsub≡ : ∀ {x y} → ∀ e₁ e₂ e → x ≢ y → ((lt y ⇐ e₁ in' e₂) [ x := e ]) ≡ (lt y ⇐ (e₁ [ x := e ]) in' (e₂ [ x := e ]))
+ltsub≡ {x} {y} _ _ _ x≢y with y ≟ x
+... | yes x≡y = ⊥-elim (x≢y (sym x≡y))
+... | no _ = refl
+
+ltsub : ∀ {x y Γ τ} → ∀ e₁ e₂ e
+      → x ≢ y
+      → Γ ⊢ lt y ⇐ (e₁ [ x := e ]) in' (e₂ [ x := e ]) ⦂ τ
+      → Γ ⊢ (lt y ⇐ e₁ in' e₂) [ x := e ] ⦂ τ
+ltsub {x} {y} e₁ e₂ e x≢y ⊢e with y ≟ x | e₂ [ x := e ] | ltsub≡ {x} {y} e₁ e₂ e x≢y
+... | no y≢x | _ | refl = ⊢e
+... | yes y≡x | _ | _ = ⊥-elim (x≢y (sym y≡x))

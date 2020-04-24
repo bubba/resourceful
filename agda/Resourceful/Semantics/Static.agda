@@ -181,8 +181,8 @@ filter-[] = refl
 ⊆-id : ∀ {a} → a ⊆ a
 ⊆-id x = x
 
-∉-++⁺ˡ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
-∉-++⁺ˡ {v} {xs} {ys} ∉xs ∉ys x∈ with ∈-++⁻ (≡-setoid) {v} xs {ys} x∈
+∉-++⁺ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
+∉-++⁺ {v} {xs} {ys} ∉xs ∉ys x∈ with ∈-++⁻ (≡-setoid) {v} xs {ys} x∈
 ... | inj₁ ∈xs = ∉xs ∈xs
 ... | inj₂ ∈ys = ∉ys ∈ys
 
@@ -444,6 +444,12 @@ disjoint-[] {x ∷ a} = DisThere (λ ()) disjoint-[]
 ∉-∷ a∉xs b∉a∷ys (here refl) = b∉a∷ys (here refl)
 ∉-∷ a∉xs b∉a∷ys (there a∈b∷xs) = a∉xs a∈b∷xs
 
+-- ∉-++ : ∀ {v xs ys} → v ∉ xs → v ∉ ys → v ∉ xs ++ ys
+-- ∉-++ ∉xs ∉ys v with ∈-++⁻ 
+
+∈-∉-≢ : ∀ {a b xs} → a ∈ xs → b ∉ xs → a ≢ b
+∈-∉-≢ a∈xs b∉xs refl = b∉xs a∈xs
+
 disjoint-insert : ∀ {a b x} → Disjoint a b → x ∉ a → Disjoint a (x ∷ b)
 disjoint-insert DisHere x∉a = DisHere
 disjoint-insert {a ∷ as} {b} {x} (DisThere x∉b dj) x∉a∷as =
@@ -457,6 +463,10 @@ disjoint-sym (DisThere x∉ d) = disjoint-insert (disjoint-sym d) x∉
 
 disjointWeaken : ∀ {x xs ys} → Disjoint (x ∷ xs) ys → Disjoint xs ys
 disjointWeaken (DisThere _ d) = d
+
+disjointMerge : ∀ {αs xs ys} → Disjoint αs xs → Disjoint αs ys → Disjoint αs (xs ++ ys)
+disjointMerge DisHere djys = DisHere
+disjointMerge (DisThere ∉xs djxs) (DisThere ∉ys djys) = DisThere (∉-++⁺ ∉xs ∉ys) (disjointMerge djxs djys)
 
 postulate disjointSubContext : ∀ {Γ s} → Disjoint (subRegion s) (FTVC Γ) → subC s Γ ≡ Γ
 
