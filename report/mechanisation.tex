@@ -352,3 +352,28 @@ progress : ∀ {e τ}
            ----------
          → Progress e
 \end{minted}
+
+\section{Postulations}
+There are number of properties that are postulated throughout, and
+these should eventually be proven at some point. Postulations do not
+require any proofs and are just assumed by Agda to be true, so they
+should are used sparingly here. They are mainly used in cases where we
+know something to be true that is usually needed to prove another
+property, but the proof for them is large and non-trivial.
+
+One such example is when dealing with the Barendregt variable and
+convention. On paper it is fine to implicitly assume all bound
+variables are unique, but Agda is not so lenient. We need to
+explicitly perform the alpha conversion and show that the new variable
+is distinct from any free variable and that the two expressions are
+equivalent
+\begin{minted}{agda}
+α-conv : ∀ {x e}                                  
+       → ∃[ y ] ((∀ {e'} → y ∉ FV e') → (ƛ x ⇒ e ≡ ƛ y ⇒ (e [ x := ` y ])))
+\end{minted}
+Working with existential quantification and these non-trivial
+equivalences can get pretty unwieldly, so in some proofs we simply
+just make the postulation
+\begin{minted}{agda}
+postulate x∉FVv : x ∉ FV v
+\end{minted}

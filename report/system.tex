@@ -32,7 +32,7 @@ expressions $\pi_1 e$ and $\pi_2 e$.
 
 More interestingly we have the monadic additions. Unlike
 Krishnaswami~\cite{krishnaswami2006} we do not separate the language
-into two expression and computation languages.  $\lift{e}$, lifts a
+into two expression and computation languages. $\lift{e}$, lifts a
 regular expression into the $\IO$ monad (\texttt{return} in Haskell), and
 $e \bind e'$ is the standard monadic sequencing or binding operation.
 
@@ -55,7 +55,7 @@ $\IO$ monad similarly to $\lift{e}$, but it uses the resource $r$ in
 the process, starting a new heap with that resource. Unique to our
 language is the $e \curlyvee e'$ operator. It joins two monadic computations
 together into one that uses both resources, returning a new heap made
-by merging $e$ and $e'$s heaps -- provided that they do not overlap and
+by merging $e$ and $e'$s heaps --- provided that they do not overlap and
 are well formed (Well formedness will be defined later on).
 
 Note that for our type schemes, we may omit the bindings and write
@@ -84,7 +84,7 @@ $\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as
 \caption{The grammar for our resourceful language.}\label{fig:grammar}
 \end{figure}
 
-\section{Substitution}
+\subsection{Substitution}
 Substitution may seem self-explanatory, but it is important we define
 it crystal clear as it will play an imperative role in proving essential
 properties of our system, and there exist subtle differences with how it
@@ -181,6 +181,23 @@ instead of type variables.
   (e_1 \curlyvee e_2) [v/\alpha] &= e_1[v/\alpha] \curlyvee e_2 [v/\alpha]
 \end{align*}
 
+\subsection{Barendregt's Variable Convention}
+
+Sometimes, we will end up in a scenario with two separate expressions
+such as $\lambda x . x$ and $(y \ x)$. We know that the $x$ inside the first
+expression is distinct from the $x$ in the second expression, but when
+working with proofs we will need to show this somehow. We will use the
+Barendregt variable convention~\cite{barendregt1984} to deal with
+this: If we wanted to show that the $x$ inside ${\lambda x . x}$ is
+different from the $x$ in $(y \ x)$, we could use \emph{alpha
+  conversion} to rename $x$ to $z$ and get ${\lambda z . z}$. This new
+expression is in fact equivalent to ${\lambda x . x}$, and we can always
+choose a new unique name to avoid collisions with any \emph{free
+  variables}. The Barendregt variable convention says that whenever we
+have a bound variable (an $x$ inside a $\lambda x . e$ or
+$\letin{x=e'}{e}$), we just assume that we have performed alpha
+conversion on it so that the variable name is indeed unique.
+
 \section{Static Semantics}
 
 Our static semantics, or typing rules, begin with the syntax-directed
@@ -217,7 +234,7 @@ follows:
   \ftv(\Gamma) &= \bigcup_{x : \sigma \in \Gamma} \ftv(\sigma)
 \end{align*}
 
-Free variables are defined on terms -- be careful not to mix these up
+Free variables are defined on terms --- be careful not to mix these up
 with free type variables!
 \begin{align*}
   \fv(x) = \{ x \} && \fv(\lambda x . e) = \fv(e) \setminus \{ x \} \\
@@ -579,7 +596,7 @@ from a disk whilst simultaneously fetching data over the network.
 \end{mathpar}
 
 \subsubsection{Subsumption}
-\begin{minipage}{\textwidth}
+% \begin{minipage}{\textwidth}
 Assuming there is a function inside our context called
 \textsf{writeFile} with the type, $\square \rightarrow \IO_{\textsf{File}} \square$, we can
 subsume its heap to be part of a larger heap, namely
@@ -627,7 +644,7 @@ $\textsf{File} \cup \textsf{Net}$. We will show this with the expression
       : \IO_{\textsf{File} \cup \textsf{Net}} \square}
   \end{mathpar}
 
-\end{minipage}
+% \end{minipage}
 
 \section{Dynamic semantics}
 Dynamic semantics model how the program actually executes at

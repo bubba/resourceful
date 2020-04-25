@@ -483,7 +483,6 @@ subst {Γ} {x = x} {e = v} {e' = e} {αs} {τ} {τ'} ⊢e (⊢ƛ {x = x'} {τ' =
 
     -- we can do alpha conversion so x' is a fresh variable
     -- (Barendregt convention)
-    -- TODO: actually write these out
     postulate x'∉FVv : x' ∉ FV v
 
     prf : Γ , x' ⦂ ` τ₁ ⊢ e₁ [ x := v ] ⦂ τ₂

@@ -87,23 +87,20 @@ class Monad IO where
 
 Now IO actions can be easily chained together in a type-safe way that ensures
 their ordering.
-
 This ordering however, imposes limitations. One of the main benefits of pure
 functional languages, is that since expressions do not have side effects, there
 is no restriction on what order they need to be evaluated in.
-
 Take for example the following snippet.
 \begin{minted}{haskell}
 f, g, h :: Int -> Int
 f x = g x + h x
 \end{minted}
 
-\texttt{g} could be evaluted before \texttt{h}, or \texttt{h} could
-be evaluted before \texttt{g}. It wouldn't make a difference because there
-are no side effects. One might be tempted then to evaluate the two expressions
-concurrently -- and that would be safe.
-
-The same cannot be said for impure IO actions -- and the type system prevents that.
+\texttt{g} could be evaluated before \texttt{h}, or \texttt{h} could be
+evaluated before \texttt{g}. It wouldn't make a difference because there are no
+side effects. One might be tempted then to evaluate the two expressions
+concurrently, and indeed that would be safe to do so.  The same cannot be said
+for impure IO actions however, and Haskell's type system is well aware of that.
 \begin{minted}{haskell}
 f, g, h :: Int -> IO Int
 f x = g x >>= \y -> y + h x
@@ -144,14 +141,17 @@ which they execute could affect the outcome of the program, and all of a sudden
 some innocuous looking IO functions end up introducing non-determinism and
 tricky race conditions into our program.
 
-We know statically, that a program such as \mint{haskell}|g x `concurrently` h
-x| should probably not be allowed. But then why did the type system allow it?
-Has it failed us? The goal of the type system is to disallow as many incorrect
-programs as possible while allowing as many correct programs as possible. It is
-a fine line as to what programs are defined correct and what are defined as
-incorrect --- a type system too lenient and buggy programs will creep through. A
-type system too strict and the programmer will end up wasting time fighting the
-type checker.
+\begin{samepage}
+We know statically that a program such as
+\mint{haskell}|writeFile "foo.txt" "a" `concurrently` writeFile "foo.txt" "b"|
+should probably not be allowed.
+\end{samepage}
+But then why did the type system allow it?  Has it failed us? The goal of the
+type system is to disallow as many incorrect programs as possible while allowing
+as many correct programs as possible. It is a fine line as to what programs are
+defined correct and what are defined as incorrect. A type system too lenient and
+buggy programs will creep through: but a type system too strict and the
+programmer will waste time fighting the type checker.
 
 In this piece of research however, we are going to investigate the point in the
 design space that rejects such programs. We do \textbf{not} want to allow
@@ -244,6 +244,15 @@ refined, and areas of further work that would be interesting to explore.
 \include{evaluation}
 
 \include{appendix}
+
+\chapter{Conclusion}
+We have presented a pragmatic approach to reasoning about concurrency within a
+type system. Our monadic and resourceful extensions to the Hindley-Damas-Milner
+are compatible and we have shown this by proving soundness. There is solid base
+for
+
+Along the way we have also created a foundation for mechanising the proof of
+soundness for Hindley-Damas-Milner within Agda. 
 
 \bibliographystyle{acm}
 \bibliography{report}

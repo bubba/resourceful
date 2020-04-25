@@ -61,8 +61,6 @@ data _∩_=∅ : Heap → Heap → Set where
         ----------------
       → (ρ₁ ∪ ρ₂) ∩ ρ =∅
 
-
-
 distinct-sym : ∀ {ρ ρ'} → ρ ∩ ρ' =∅ → ρ' ∩ ρ =∅
 distinct-sym (DHZ x) = DHZ (λ z → x (sym z))
 distinct-sym (DHL dist dist₁ dist₂) = DHR dist dist₁ dist₂
@@ -473,3 +471,7 @@ postulate disjointSubContext : ∀ {Γ s} → Disjoint (subRegion s) (FTVC Γ) �
 postulate disjointSubTypeScheme : ∀ {αs τ s} → Disjoint (subRegion s) αs → sub s (VV αs τ) ≡ VV αs τ
 
 postulate freshTypeVars : (αs : List Id) → ∃[ βs ] (Disjoint αs βs)
+
+postulate α-conv : ∀ {x e}
+                 → ∃[ y ] ((∀ {e'} → y ∉ FV e')
+                         → (ƛ x ⇒ e ≡ ƛ y ⇒ (e [ x := ` y ])))
