@@ -1,10 +1,10 @@
 \chapter{A Formal Definition}\label{chapter:system}
 
 In this chapter we will formalize the idea of a language with
-``heaped'' IO monads. We will introduce a toy language
-and type system showcasing the basic properties, which is based off
-the Hindley-Damas-Milner type system that we saw in the previous
-chapter.
+``heaped'' IO monads. We will introduce a language and type system
+showcasing the basic properties, based off the Hindley-Damas-Milner
+type system that we saw in the previous chapter. This chapter aims to
+be as precise as possible, so some things may be redefined with more accuracy.
 
 \section{Syntax}
 
@@ -86,9 +86,9 @@ $\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as
 
 \subsection{Substitution}
 Substitution may seem self-explanatory, but it is important we define
-it crystal clear as it will play an imperative role in proving essential
-properties of our system, and there exist subtle differences with how it
-is defined on terms, types and type schemes.
+it crystal clear. It plays a vital role in proving properties
+about our system, and there exists subtle differences with how it is
+defined on terms, types and type schemes.
 
 Substitution on types is defined as usual, but extended to include the
 new types in our system. That is, a substitution is a map from type
@@ -104,12 +104,10 @@ variables to types, written in the form $[\tau/\alpha]$ for a single type.
   (\tau_1 \rightarrow \tau_2)[\tau/\alpha] &= (\tau_1[\tau/\alpha] \rightarrow \tau_2[\tau/\alpha]) \\
   (\IO_\rho \tau')[\tau/\alpha] &= \IO_\rho \tau'[\tau/\alpha]
 \end{align*}
-
-A substitution that substitutes multiple type variables at once can be
-written like $[\tau_1/\alpha_1,\ldots,\tau_m/\alpha_m]$.
-
-Substitution is also extended to type schemes, but note that this only
-substitutes \textbf{free} type variables.
+Substitution is associative, and a substitution that substitutes
+multiple type variables at once can be written like
+$[\tau_1/\alpha_1,\ldots,\tau_m/\alpha_m]$. It is also extended to type schemes, but note
+that this only substitutes \textbf{free} type variables.
 \begin{align*}
   \forall \alpha' . \sigma[\tau/\alpha] &=
             \begin{cases}
@@ -200,28 +198,25 @@ conversion on it so that the variable name is indeed unique.
 
 \section{Static Semantics}
 
-Our static semantics, or typing rules, begin with the syntax-directed
-rules of the Hindley-Damas-Milner system of the form $\Gamma \vdash e : \tau$.
+Our static semantics, begin with the syntax-directed
+rules of the Hindley-Damas-Milner system for the typing relation $\Gamma \vdash e : \tau$.
 
 \begin{mathpar}
-    \inferrule*[Right=Var]{e : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash e : \tau} \and
-    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
-    \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
-    \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e' : \tau}
-    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
-  \end{mathpar}
+  \inferrule*[Right=Var]{x : \sigma \in \Gamma \\ \sigma > \tau}{\Gamma \vdash x : \tau} \and
+  \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \\
+  \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
+  \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
+  {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau}
+\end{mathpar}
 
-Note that in the syntax-directed rules, the typing judgement assigns
-types to terms, not type schemes~\cite[p.15]{tofte1988}. Instantiation occurs
-directly within the \textsc{Var} rule, and generalisation occurs
-implicitly in $\overline{\Gamma}$.
-
-\newcommand{\ftv}{\operatorname{FTV}}
-\newcommand{\fv}{\operatorname{FV}}
+% Note that in the syntax-directed rules, the typing judgement assigns
+% types to terms, not type schemes~\cite[p.15]{tofte1988}. Instantiation occurs
+% directly within the \textsc{Var} rule, and generalisation occurs
+% implicitly in $\overline{\Gamma}$.
 
 Like before, $\overline{\Gamma}$ is defined as
-$$ \overline{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
-\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \ftv(\tau) \setminus \ftv(\Gamma)$$
+\[ \overline{\Gamma}(\tau) = \forall \alpha_1 \ldots \alpha_n . \tau \
+\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \ftv(\tau) \setminus \ftv(\Gamma) \]
 
 Free type variables are defined on types, type schemes and contexts as
 follows:
@@ -236,16 +231,18 @@ follows:
 
 Free variables are defined on terms --- be careful not to mix these up
 with free type variables!
-\begin{align*}
-  \fv(x) = \{ x \} && \fv(\lambda x . e) = \fv(e) \setminus \{ x \} \\
-  \fv(e \ e') = \fv(e) \cup \fv(e') && \fv(\letin{x = e}{e'}) = \fv(e) \cup
+\[
+\begin{aligned}
+  \fv(x) &= \{ x \} & \fv(\lambda x . e) &= \fv(e) \setminus \{ x \} \\
+  \fv(e \ e') &= \fv(e) \cup \fv(e') & \fv(\letin{x = e}{e'}) &= \fv(e) \cup
                                     (\fv(e') \setminus \{ x \}) \\
-  \fv(\lift{e}) = \fv(e) && \fv(e \bind e') = \fv(e) \cup \fv(e') \\
-  \fv(\square) = \emptyset && \fv(\use{r}{e}) = \fv(e) \\
-  \fv(e_1 \times e_2) = \fv(e_1) \cup \fv(e_2) && \fv(\pi_i e) = \fv{(e)}_{i = 1,
+  \fv(\lift{e}) &= \fv(e) & \fv(e \bind e') &= \fv(e) \cup \fv(e') \\
+  \fv(\square) &= \emptyset & \fv(\use{r}{e}) &= \fv(e) \\
+  \fv(e_1 \times e_2) &= \fv(e_1) \cup \fv(e_2) & \fv(\pi_i e) &= \fv{(e)}_{i = 1,
                                           2} \\
-  \fv(e_1 \curlyvee e_2) = \fv(e_1) \cup \fv(e_2)
-\end{align*}
+  \fv(e_1 \curlyvee e_2) &= \fv(e_1) \cup \fv(e_2)
+\end{aligned}
+\]
   
 We also introduce the typing rule for $\square$ expressions, to give us a
 concrete type, as well as a rule for products which are introduced
@@ -360,8 +357,7 @@ $\subtyp$ relation.
 
 \end{mathpar}
 
-\caption{Subheap rules}
-\label{fig:subheap}
+\caption{Subheap rules}\label{fig:subheap}
 \end{figure}
 
 Intuitively, a heap $\sigma$ can thought of being a subheap of another heap
@@ -423,10 +419,10 @@ unique.
 The premises include that the new merged heap must be well formed, as we do not
 want to allow programs that try to use the same resource concurrently,
 such as
-$$\use{\textsf{File}}{\square} \curlyvee \use{\textsf{File}}{\square}$$
+\[ \use{\textsf{File}}{\square} \curlyvee \use{\textsf{File}}{\square} \]
 We do however, want to allow programs that run two expressions that do
 not share any resources, like
-$$\use{\textsf{File}}{\square} \curlyvee \use{\textsf{Net}}{\square}$$
+\[ \use{\textsf{File}}{\square} \curlyvee \use{\textsf{Net}}{\square} \]
 
 The result of running two separate $\IO$ actions concurrently produces
 an expression whose type is also an $\IO$ monad, but with the two
@@ -661,7 +657,7 @@ inference rules, and from these build up proofs. Tofte~\cite{tofte1988}
 had the idea of using operational semantics for not for the
 typing rules, but also for the dynamic semantics. We choose this
 approach over denotational semantics as it unifies our approach to
-modelling and proving, and to quote Mads: \textit{``it seems a bit
+modelling and proving, and to quote Tofte: \textit{``it seems a bit
 unfortunate that we should have to understand domain theory to be able
 to investigate whether a type inference system admits faulty
 programs''}.

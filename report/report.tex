@@ -33,6 +33,8 @@
 \newcommand{\notsubtyp}{\ngeq:}
 \newcommand{\lift}[1]{\ensuremath{\llbracket#1\rrbracket}}
 \newcommand{\use}[2]{\ensuremath{\llbracket#2\rrbracket_{#1}}}
+\newcommand{\ftv}{\operatorname{FTV}}
+\newcommand{\fv}{\operatorname{FV}}
 
 \author{Luke Lau}
 \title{A Resourceful Monad for IO}
@@ -188,7 +190,7 @@ a single resource, and so on.
 Now that we know what resources each $\IO$ action is using, we would like to
 change the type of our concurrent function to take advantage of this new
 information. Perhaps we would like to reject any two functions that use the same
-resource, i.e. it only accepts $\IO$ actions with distinct resources.
+resource, i.e.\ it only accepts $\IO$ actions with distinct resources.
 
 \mint{haskell}|concurrently :: r /~ s => IO r a -> IO s b -> IO ? (a, b)|
 

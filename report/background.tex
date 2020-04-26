@@ -244,165 +244,217 @@ ways to embed this within GHC's type system.
 
 \section{Hindley-Damas-Milner}
 
-In this section, we are going to look at the Hindley-Damas-Milner type
-system~\cite{damas1982}. It is one of the first formalisations of a
-polymorphic type system, originally made to formalise the type system
-of the ML language. It was heavily influential at the time and still
-continues to be so today, paving the way for the type systems System
-F, and programming languages such Haskell, O-Caml and more.
+One of our aims when developing this resource-tracking monadic type
+system is to see how well it would integrate into existing functional
+programming languages, specifically those of the ML family. So for
+this reason we will basing our system off of the Hindley-Damas-Milner
+(HDM) type system~\cite{damas1982}. Originally designed to formalise
+the type system of ML, it is one of the first formalisations of a
+polymorphic type system. It was heavily influential at the time and
+still continues to be so today, paving the way for newer type systems
+such as System F. 
 
 \subsection{Syntax}
 
+Before we can talk about a type system, we need to talk about the
+language that it operates on. HDM uses an applicative language: A
+language in which you can apply abstractions.
 \def\defaultHypSeparation{\hskip .05in}
 \newcommand{\letin}[2]{\mathsf{let} \ #1 \ \mathsf{in} \ #2}
+\begin{grammar}
 
-\begin{figure}
-  \begin{grammar}
+  <expression $e$> ::= $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x=e'}{e}$ % | $\square$
 
-    <type $\tau$> ::= $()$ | $\alpha$ | $\tau \rightarrow \tau'$
-    
-    <type scheme $\sigma$> ::= $\tau$ | $\forall \alpha . \sigma$
+  <type $\tau$> ::= $\square$ | $\alpha$ | $\tau' \rightarrow \tau$
+  
+  <type scheme $\sigma$> ::= $\tau$ | $\forall \alpha . \sigma$
 
-    <expression $e$> ::= $x$
-    \alt $\lambda x . e$
-    \alt $e \ e'$
-    \alt $\mathsf{let} \ x = e \ \mathsf{in} \ e'$
+  <context $\Gamma$> ::= $\centerdot$ | $\Gamma, x : \sigma$
 
-    <context $\Gamma$> ::= $\centerdot$ | $\Gamma, x : \centerdot$
+\end{grammar}
+Expressions are an extension of the venerable lambda calculus, with the
+addition of a new let expression that binds an expression to a
+variable. As we will see later, this is notably different from
+abstraction as it provides the gateway to polymorphism.
 
-  \end{grammar}
-  \caption{Grammar of the applicative language}\label{grm:applang}
-\end{figure}
+Types are either unit types, type variables or function types. However
+expressions are not assigned types directly, instead they are given
+type schemes which quantify over type variables. The distinction
+between the two is necessary so that quantifiers can only
+appear at the top level. 
 
-We define the grammar for a simple applicative language in
-figure~\ref{grm:applang}.
-It defines expressions, types and type schemes. The distinguishment
-between type and type scheme is necessary so that quantifiers can only
-appear at the top level. Quantifiers bind type variables.
+A context is a linked list for looking up the type schemes of
+variables. Whenever we need to work out the type of a variable
+expression like $x$, we traverse the context to find its type scheme.
 
-Free type variables are type variables which have not be bound.
+There is also a notion of \emph{free type variables}, which are type
+variables \emph{inside a type scheme} which have not been bound
+(quantified over).
 \begin{align*}
-  \mathrm{fv}(\forall \alpha . \tau) &= \mathrm{fv}(\tau) \\ {\alpha} \\
-  \mathrm{fv}(()) &= \{ \} \\
-  \mathrm{fv}(\alpha) &= \{ \alpha \} \\
-  \mathrm{fv}(\tau \rightarrow \tau') &= \mathrm{fv}(\tau) \cup \mathrm{fv}(\tau')
+  \ftv(\forall \alpha . \tau) &= \ftv(\tau) \setminus \{\alpha\} \\
+  % \ftv(\square) &= \{ \} \\
+  \ftv(\alpha) &= \{ \alpha \} \\
+  \ftv(\tau \rightarrow \tau') &= \ftv(\tau') \cup \ftv(\tau)
 \end{align*}
 
-A \textit{type environment} is a mapping from variables to type schemes. 
-\[\Gamma : \mathsf{Variable} \ \rightarrow \sigma\]
+% A substitution $s$ maps type variables to types. A substitution of the
+% form $[\tau/\alpha]$ maps $\alpha$ to $\tau$.
 
-A substitution $S$ maps type variables to types. A substitution of the
-form $[\tau/\alpha]$ maps $\alpha$ to $\tau$.
+% It is extended to operate on types, such that every occurance of a
+% type variable in a type is substituted.
+% For instance, $(\alpha \rightarrow \alpha)[\tau/\alpha] = \tau \rightarrow \tau$ can be read as ``$(\alpha \rightarrow \alpha)$,
+% replacing every $\alpha$ with $\tau$.''
 
-It is extended to operate on types, such that every occurance of a
-type variable in a type is substituted.
-For instance, $(\alpha \rightarrow \alpha)[\tau/\alpha] = \tau \rightarrow \tau$ can be read as ``$(\alpha \rightarrow \alpha)$,
-replacing every $\alpha$ with $\tau$.''
+% % \begin{minipage}{1.0\linewidth}
+%   Substitution is \textbf{associative}. It is defined on types as
+%   \begin{align*}
+%     % \square [\tau/\alpha] &= \square \\
+%     \alpha' [\tau/\alpha] &=
+%                             \begin{cases}
+%                               \tau & \mathsf{if} \ \alpha' = \alpha \\
+%                               \alpha' & \mathsf{otherwise}
+%                             \end{cases} \\
+%     (\tau_1 \rightarrow \tau_2)[\tau/\alpha] &= (\tau_1[\tau/\alpha] \rightarrow \tau_2[\tau/\alpha])
+%   \end{align*}
+% % \end{minipage}
 
-% \begin{minipage}{1.0\linewidth}
-  Substitution is \textbf{associative}. It is defined on types as
-  \begin{align*}
-    () [\tau/\alpha] &= () \\
-    \alpha' [\tau/\alpha] &=
-                            \begin{cases}
-                              \tau & \mathsf{if} \ \alpha' = \alpha \\
-                              \alpha' & \mathsf{otherwise}
-                            \end{cases} \\
-    (\tau_1 \rightarrow \tau_2)[\tau/\alpha] &= (\tau_1[\tau/\alpha] \rightarrow \tau_2[\tau/\alpha])
-  \end{align*}
-% \end{minipage}
+% And on type schemes as
+% \[(\forall \alpha . \sigma)[\tau/\alpha] = \forall \tau . \sigma[\tau/\alpha]\]
 
-And on type schemes as
-\[(\forall \alpha . \sigma)[\tau/\alpha] = \forall \tau . \sigma[\tau/\alpha]\]
+% We may write $S(\sigma)$ to apply an arbitrary substitution to a type
+% scheme.
 
-We may write $S(\sigma)$ to apply an arbitrary substitution to a type
-scheme.
+% $[\tau_1/\alpha_1, \ldots, \tau_n/\alpha_n]$ may be used to notate the composition of
+% substitutions $S_1 = [\tau_1/\alpha_1], \ldots, S_n = [\tau_n/\alpha_n]$, $S_1(\ldots(S_n(\sigma)))$.
 
-$[\tau_1/\alpha_1, \ldots, \tau_n/\alpha_n]$ may be used to notate the composition of
-substitutions $S_1 = [\tau_1/\alpha_1], \ldots, S_n = [\tau_n/\alpha_n]$, $S_1(\ldots(S_n(\sigma)))$.
+% We say a type $\tau$ is an \textit{instance} of a type $\tau'$,
+% written as $t > \tau'$ if there exists a substitution $S$ such that
 
-We say a type $\tau$ is an \textit{instance} of a type $\tau'$,
-written as $t > \tau'$ if there exists a substitution $S$ such that
+% \[ \tau > \tau' \rightarrow \exists S. S(\tau) = \tau' \]
 
-\[ \tau > \tau' \rightarrow \exists S. S(\tau) = \tau' \]
+% Intuitively, this can be thought of as $\tau$ being more general than
+% type $\tau'$. For example,
+% \[ \alpha \rightarrow \beta > \alpha \rightarrow \alpha \]
+% with the substitution $[\alpha/\beta]$, but there exists no substitution for
+% \[ \alpha \rightarrow \alpha \ngtr \alpha \rightarrow \beta \]
 
-Intuitively, this can be thought of as $\tau$ being more general than
-type $\tau'$. For example,
-\[ \alpha \rightarrow \beta > \alpha \rightarrow \alpha \]
-with the subsitution $[\alpha/\beta]$, but there exists no substitution for
-\[ \alpha \rightarrow \alpha \ngtr \alpha \rightarrow \beta \]
+\subsection{Static semantics}
 
-\section{Static semantics}
-
-Static semantics define the typing rules.
-
-Before we look at the Hindley-Damas-Milner system, designed for
-type-inference, we should take a look at a simpler variant.
-
-The simply-typed lambda caclulus is a variant of the lambda
-calculus, and very much a pre-cursor to what we will be building up
-to. It defined three typing rules:
+A type system describes how we assign \emph{valid} types to our
+expressions. Most of the time, it's through a typing relation like this
+\[ \Gamma \vdash e : \tau \]
+You can read this as ``\textit{In the context
+  $\Gamma$, $e$ has the type $\tau$}''. This is a relation between a context,
+an expression and a type, in the same way that $a \leq b$ is a relation
+between two numbers. With relations we can form \textit{judgements},
+such as ${1 \leq 2}$, or
+${\Gamma \vdash \lambda x . (y \ x) : \alpha \rightarrow \tau}$.  These are just statements that we can
+make --- they might be true, they might be false. Is $42 \leq 19$? Does
+${\Gamma \vdash z : \beta}$? I don't know, you tell me. We need something else to be
+able to tell whether or not they make sense: whether or not they are
+\textit{well typed}. So there are \emph{typing rules} that allow us to
+prove that these typing judgements are indeed well typed, and that the
+expressions can have the type that they claim to have.
 \begin{mathpar}
-  \inferrule{x : \tau \in \Gamma}{\Gamma \vdash x : \tau} \and
-  \inferrule{\Gamma, x : \tau' \vdash e : \tau}{\Gamma \vdash \lambda x : \tau . e : \tau' \rightarrow \tau} \and
-  \inferrule{\Gamma \vdash e_1 : \tau' \rightarrow \tau \\ \Gamma \vdash e_2 : \tau'}{\Gamma \vdash e_1 e_2 : \tau}
+  \inferrule*[Right=Var]{x : \sigma \in \Gamma \\ \sigma > \tau}{\Gamma \vdash x : \tau} \and
+  \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \\
+  \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
+  \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e : \tau}
+  {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau}
 \end{mathpar}
-These rules consist of some \textit{judgements} above and below a line. There
-are some regular judgements you might have seen in regular set theory,
-such as $x : \tau \in \Gamma$ --- $x : \tau$ is in $\Gamma$. But there are also typing
-judgements, which tell us what type a term has in what context. For
-example, $\Gamma \vdash e_1 : \tau' \rightarrow \tau$ can be read as ``given the context
-$\Gamma$, the expression $e_1$ is of type $:\tau' \rightarrow \tau$''.
+These rules consist of some \emph{premises} above a line, and a
+\emph{conclusion} below it. Premises and conclusions are just other
+judgements, that we have been able to prove.
+The gist of these rules is that if you have proof of all the premises
+above, then you can infer the conclusion at the bottom. So for example, you
+can read \textsc{App} as \textsl{``If $e$ has the function type $\tau' \rightarrow \tau$
+  in $\Gamma$ and $e'$ has the type $\tau'$ also in $\Gamma$, then $e'$ applied to
+  $e$ has the type $\tau$ in $\Gamma$ too.''}.
 
-A typing rule tell us that from the judgements above the line,
-called \textit{premises}, we are allowed to derive the judgement
-below the line, known as the \textit{conclusion}. So to put it all
-together, the rule
+\textsc{App} is one of the four typing rules in the syntax-directed
+HDM type system, and tells us what happens to the types when we apply
+an argument to a function. Let's take a look at what the others mean.
+\textsc{Abs} relates to functions, sometimes called abstractions. It
+says if $e$ has the type $\tau$ in the context $\Gamma$, \textit{extended}
+with $x$ having the type scheme $\tau'$, then $\lambda x.e$ has the type ${\tau' \rightarrow
+\tau}$ in $\Gamma$. In other words, if $e$ can have type $\tau$ provided it has
+access to $x : \tau'$, then we can make a lambda out of it.
+
+If we have a variable expression $x$, then \textsc{Var} tells us how
+we can get the type for it. First, we need to make sure $x$ exists in
+the context $\Gamma$. It will have some type scheme $\sigma$, but we can't
+directly assign that to an expression --- the typing relation assigns
+types to terms, not type schemes. Instead, we need to instantiate it
+to a type with $\sigma > \tau$. This instantiation relation says that if we
+have a type scheme $\forall \alpha_1\ldots\alpha_n . \tau'$, then there exists a mapping of
+type variables to types
+${\alpha_1\mapsto\tau_1,\ldots,\alpha_n\mapsto\tau_n}$ which we can apply to those bound type variables
+in $\tau'$ to give us $\tau$.
+
+As it turns out, these mappings from type
+variables to types are really common, and they are called
+\emph{substitutions}.  The whole rule then means, if we can look up a
+type scheme $\sigma$ for $x$, and then instantiate to some type
+$\tau$, then we can infer that $x$ has the type $\tau$ in $\Gamma$.
+
+The \textsc{Let} rule introduces polymorphism to the language. That
+is, it allows one expression to be used for multiple types. Consider
+the identity function
+\[ \lambda x . x \]
+What type should it have? It could be used both as a
+$\mathsf{Int} \rightarrow \mathsf{Int}$. But the reality is that we don't care
+about the underlying type, and want it to work on \emph{anything}.
+\[ \Gamma \vdash \lambda x . x : \alpha \rightarrow \alpha \] Now with type variables instead, we have
+nicely abstracted over the concrete types. Assuming we have a context
+like $\Gamma = \centerdot , a : \mathsf{Int}$, we might try to use it multiple
+times, each with different types, by passing it in as an argument to
+abstraction.
+\[ \Gamma \vdash (\lambda y . (y \ y) \ (y \ a)) \ (\lambda x . x) : \mathsf{Int} \]
+But this will not work, and it is in fact ill-typed. Our identity
+function will get passed around as ${y : \alpha \rightarrow \alpha}$ through \textsc{Abs}. When
+either $(y \ y)$ or $(y \ a)$ try to look up $y$ in \textsc{Var}, they
+will find that they can't instantiate it to the type they want,
+because $\alpha$ is not quantified over!
+
+Instead, we need to pass around the identity function as ${y : \forall \alpha . \alpha
+\rightarrow \alpha}$. With a let expression, we can instead say
+\[ \Gamma \vdash \letin{y = \lambda x . x}{(y \ y) \ (y \ a)} : \mathsf{Int} \]
+If we look at the first premise for \textsc{Let}, we can show that
+${\Gamma \vdash \lambda x . x : \alpha \rightarrow \alpha}$. In the second premise however, we put it into
+the context as $y : \overline{\Gamma}(\alpha \rightarrow \alpha)$. $\overline{\Gamma}(\alpha \rightarrow \alpha)$ is the
+close function, which is defined as
+\[ \overline{\Gamma}(\tau) = \forall \alpha_1 \ldots \alpha_n . \tau \
+\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \ftv(\tau) \setminus \ftv(\Gamma) \]
+This will take the dangling free type variables in our type and create a
+new type scheme that binds them by quantifying over them.
+\[ \overline{\Gamma}(\alpha \rightarrow \alpha) = \forall \alpha . \alpha \rightarrow \alpha \]
+And now that we have it quantified, \textsc{Var} is able to instantiate $y$
+to \emph{both} an
+${(\alpha \rightarrow \alpha) \rightarrow (\alpha \rightarrow \alpha)}$ and an ${\mathsf{Int} \rightarrow \mathsf{Int}}$.
+
+\subsubsection{Syntax directed}
+Note that we have been using the syntax-directed rules: a more modern
+treatment of the original system. In the syntax-directed rules, the
+typing relation assigns types to terms, not type
+schemes~\cite[p.15]{tofte1988} as in~\cite{damas1982}. The original
+system had six rules:
 \begin{mathpar}
-  \inferrule{\Gamma \vdash e_1 : \tau' \rightarrow \tau \\ \Gamma \vdash e_2 : \tau'}{\Gamma \vdash e_1 e_2 : \tau}
+  \inferrule*[Right=Taut]{x : \sigma \in \Gamma}{\Gamma \vdash x : \sigma} \and
+  \inferrule*[Right=Inst]{\Gamma \vdash e : \sigma \\ \sigma > \sigma'}{\Gamma \vdash e : \sigma'} \and
+  \inferrule*[Right=Gen]{\Gamma \vdash e : \sigma \\ \alpha \notin \ftv(\Gamma)}{\Gamma \vdash e : \forall \alpha . \sigma}  \\
+  \inferrule*[Right=Comb]{\Gamma \vdash e : \tau'\rightarrow\tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau}
+  \and
+  \inferrule*[Right=Abs]{\Gamma, x : \tau' \vdash e : \tau}{\Gamma \vdash \lambda x.e : \tau'\rightarrow\tau} \\
+  \inferrule*[Right=Let]{\Gamma \vdash e : \sigma \\ \Gamma,x :\sigma \vdash e' : \tau}{\Gamma \vdash
+    \letin{x=e}{e'} : \tau}
 \end{mathpar}
-can be read as: ``If $e_1$ has the type $\tau' \rightarrow \tau$ in the context $\Gamma$,
-and if $e_2$ has the type $\tau'$ in the context $\Gamma$, then we can derive
-that $e_1 e_2$ has the type $\tau$ also in $\Gamma$.
-
-This particular rule defines how application of two terms should be
-typed in the simply-typed lambda calculus. 
-
-\subsubsection{Let polymorphism}
-
-Consider the below expression with the context $\Gamma = \{ a :
-\textsf{Int} \rightarrow \textsf{Bool}, b : \textsf{Int} \}$
-\[ \lambda x . (x (a (x \ b)))\]
-
-What type should be inferred for $x$? It is used as both an
-$\textsf{Int} \rightarrow \textsf{Int}$ and a $\textsf{Bool} \rightarrow \alpha$, where $\alpha$ is
-the type of the entire expression. One possibility is $x : \alpha \rightarrow \alpha$.
-
-\[ \letin{x = \lambda y. y}{x (a (x \ b))} \]
-
-In the original definition by Milner there exited separate rules for
-instantiation and generalisation. In our system we have combined them
-into \textsc{Var} and \textsc{Let} respectively, so that they are
-\textit{syntax-directed} --- there is exactly one rule for each form of
-expression. This will make it easier to prove soundness later on.
-
-As a part of this, we define $\bar{\Gamma}$ to generalize a type $\tau$,
-binding over any free type variables.
-\[ \bar{\Gamma}(\tau) =^{\textsf{def}} \forall \alpha_1, \ldots, \alpha_n . \tau \
-\textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \mathrm{fv}(\tau) \setminus \mathrm{fv}(\Gamma) \]
-
-\begin{figure}
-  \centering
-  \begin{mathpar}
-    \inferrule*[Right=Var]{e : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash e : \tau} \and
-    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
-    \inferrule*[Right=Abs]{\Gamma,x:\tau' \vdash e : \tau}{\Gamma \vdash \lambda x . e : \tau' \rightarrow \tau} \and
-    \inferrule*[Right=Let]{\Gamma \vdash e : \tau' \\ \Gamma,x : \bar{\Gamma}(\tau') \vdash e' : \tau}
-    {\Gamma \vdash \mathsf{let} \ x = e \ \mathsf{in} \ e' : \tau}
-  \end{mathpar}
-  \caption{Type inference rules}\label{rules:hmtypeinference}
-\end{figure}
-
+As we can see, the syntax-directed rules have merged \textsc{Taut} and
+\textsc{Inst} into \textsc{Var}, and \textsc{Gen} into \textsc{Let}
+via $\overline{\Gamma}$. It is possible to prove that these two systems are
+equivalent, but the benefit of having just four rules is that we now
+have exactly one rule for each syntactic form of expression. This
+means that \emph{the shape of the proof is identical to the shape of
+  the syntax}. This is discussed in more detail in Section~\ref{sec:almost-synt-direct}.
 
 \subsection{Dynamic Semantics}
 
@@ -425,7 +477,7 @@ of them, hence the term \textit{partial}), such that:
 \end{enumerate}
 
 \begin{align*}
-  \mathbb{V} &= \mathbb{B}_{()} + \mathbb{B}_{bool} + \mathbb{F} + \mathbb{W} \\
+  \mathbb{V} &= \mathbb{B}_{\square} + \mathbb{B}_{bool} + \mathbb{F} + \mathbb{W} \\
   \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
   \mathbb{W} &= \{ . \}
 \end{align*}
@@ -434,7 +486,7 @@ Or visually,
 
 \begin{center}
   \tikz \graph[layered layout] { "$\mathbb{V}$" ->
-    { "$\mathbb{B}_{()}$" -> "$()$",
+    { "$\mathbb{B}_{\square}$" -> "$\square$",
       "$\mathbb{B}_{\textrm{Bool}}$" -> {true, false},
       I} ->
     "$\bot$"; };
@@ -479,9 +531,9 @@ Take for example the following program which doesn't terminate.
 
 What type does should this program have? It should assume the
 type of whatever is needed. For instance, we would expect this program
-to have a type of $()$ as the argument is not used.
+to have a type of $\square$ as the argument is not used.
 
-$$(\lambda z. ()) (\letin{x = \lambda y. y}{x x}) : ()$$
+\[ (\lambda z. \square) (\letin{x = \lambda y. y}{x x}) : \square \]
 
 Since $\bot$ is a member of all ideals, this program is well typed.
 
@@ -552,7 +604,7 @@ There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
 \rightarrow \mathsf{Valuation} \rightarrow \overline{\mathbb{V}}$
 
 \begin{align*}
-  \mathcal{T}\llbracket () \rrbracket\psi &= \mathbb{B}_{()} \\
+  \mathcal{T}\llbracket \square \rrbracket\psi &= \mathbb{B}_{ \square } \\
   \mathcal{T}\llbracket \mathsf{Bool} \rrbracket \psi &= \mathbb{B}_{\mathsf{Bool}} \\
   \mathcal{T}\llbracket \alpha \rrbracket \psi &= \psi \llbracket \alpha \rrbracket \\
   \mathcal{T} \llbracket \tau \rightarrow \tau' \rrbracket \psi &= \mathcal{T}\llbracket \tau \rrbracket \psi \ \rightarrow \
@@ -641,3 +693,5 @@ TODO: Is this too trivial to be a lemma? The proof is pretty vacuous
 %%% TeX-engine: luatex
 %%% TeX-command-extra-options: "-shell-escape"
 %%% End:
+
+% LocalWords:  instantiation

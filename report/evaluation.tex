@@ -139,7 +139,7 @@ interact much with the monadic and resourceful parts of the type
 system, but it is desirable to show that the two are compatible with
 each other regardless.
 
-\section{Almost syntax directed}
+\section{Almost syntax directed}\label{sec:almost-synt-direct}
 As mentioned earlier, the system was based off a syntax directed
 treatment of Hindley-Damas-Milner. That meant that there were only
 four rules instead of the usual six, where instantiation and
@@ -151,7 +151,6 @@ for each term. For example, in the expression $\letin{z = \lambda x . x}{z \
   z}$, a let consisting of an abstraction and an application, the proof begins with a
 \textsc{Let}, then the premises \textsc{Abs} and \textsc{App} as shown
 in figure~\ref{fig:syntaxdirected}.
-
 
 \begin{figure}
   \centering
