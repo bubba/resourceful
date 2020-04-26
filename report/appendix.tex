@@ -1,5 +1,29 @@
 \appendix
-\chapter{Proofs}
+\chapter{} % needed to get section numbering?
+\section{Definition of a Complete Partial Order}\label{sec:defin-compl-part}
+A complete partial order (cpo) is a pair $(D, \sqsubseteq)$ consisting of a set
+$D$ and a partial order $\sqsubseteq$ (a function that orders elements in
+$D$, but not necessarily all of them, hence the term partial), such
+that
+\begin{enumerate}
+\item there is a least element $\bot$
+\item each directed subset $x_0 \sqsubseteq \ldots \sqsubseteq x_n \sqsubseteq \ldots$ has a least upper bound
+  (\emph{lub})
+\end{enumerate}
+
+\section{Evaluation Function Notation}\label{sec:eval-funct-notat}
+If $\mathbb{D} \subset \mathbb{V}$, and $d \in \mathbb{D}$, we will say $d \ \mathsf{in} \
+\mathbb{V}$ to represent $d$ but treated as if its in $\mathbb{V}$. \\
+We will then define the reverse
+
+\[
+  v | \mathbb{D} =
+\begin{cases}
+  d & \textsf{if} \ v = d \ \textsf{in} \ \mathbb{V} \ \textsf{for
+    some} \ d \in \mathbb{D} \\
+  \bot_{\mathbb{D}} & \textsf{otherwise}
+\end{cases}
+\]
 
 \section{Transitivity of the subheap relation}\label{proof:subheaptransitive}
 \begin{proof}

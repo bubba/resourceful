@@ -107,7 +107,7 @@ variables to types, written in the form $[\tau/\alpha]$ for a single type.
 Substitution is associative, and a substitution that substitutes
 multiple type variables at once can be written like
 $[\tau_1/\alpha_1,\ldots,\tau_m/\alpha_m]$. It is also extended to type schemes, but note
-that this only substitutes \textbf{free} type variables.
+that this only substitutes \emph{free} type variables.
 \begin{align*}
   \forall \alpha' . \sigma[\tau/\alpha] &=
             \begin{cases}
@@ -119,7 +119,7 @@ that this only substitutes \textbf{free} type variables.
 
 \newcommand{\dom}{\operatorname{dom}}
 
-It should not be confused with instantiation, where the \textbf{bound}
+It should not be confused with instantiation, where the \emph{bound}
 type variables $\forall \alpha_1 , \ldots , \alpha_n$ are substituted inside the type of a
 type scheme. Instantiation is not a function though: instead it is
 a relation $\sigma > \tau$ in which we say $\sigma$ can be instantiated to $\tau$.
@@ -142,7 +142,7 @@ where for any two type schemes $\sigma$ and $\sigma'$,
 $\sigma > \sigma'$ if for all $\tau$, $\sigma' > \tau \rightarrow \sigma > \tau$.
 
 We then extend this to define substitution on contexts, not
-instantiation. Substitution on contexts only substitutes \textbf{free}
+instantiation. Substitution on contexts only substitutes \emph{free}
 type variables.
 \begin{align*}
   \centerdot[\tau/\alpha] = \centerdot \\
@@ -261,9 +261,9 @@ out the inner type.
 
 Now we introduce the monadic parts of the language. Our language only
 has one type of monad, the $\IO$ monad, which is parameterised by both
-its \textit{heap} $\rho$ and its encapsulated type. Monadic values are
+its \emph{heap} $\rho$ and its encapsulated type. Monadic values are
 introduced into the language with $\lift{e}$, which lifts a pure term into
-\textbf{any} \textit{well formed} heap. 
+\textbf{any} \emph{well formed} heap. 
 \begin{mathpar}
   \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} : \IO_\rho \tau}
 \end{mathpar}

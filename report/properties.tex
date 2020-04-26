@@ -1,22 +1,24 @@
 \chapter{Properties}\label{cha:properties}
 A type system is no good unless we can prove it is worth its salt. In
 this section we will prove a number of lemmas and theorems which will
-eventually show that the type system is sound. We will begin with a
-couple of properties about contexts that we will later use on in
-various other proofs. The first states that if we have two variables
-in the context with the same names but different type schemes, then we
-can ignore the first one as it is overshadowed by the second --- any
-reference to $x$ will result in $x : \sigma'$.
+eventually show that the type system is sound. But first, we need to
+show a couple of properties about contexts that we crop up later on
+in our proofs.
+
+The first states that if we have two variables in the context with the
+same names but different type schemes, then we can ignore the first
+one as it is overshadowed by the second --- any reference to $x$ will
+result in $x : \sigma'$.
 \begin{lemma}[Drop]\label{lem:drop}
   If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
 \end{lemma}
-The second states that we can sneak in another variable before another
+The second says that we can ``sneak'' in another variable before another
 variable of the same name, for the exact same reason.
 \begin{lemma}[Sneak]\label{lem:sneak}
   If $\Gamma , x : \sigma' \vdash e : \tau$, then for any $\sigma$, $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$
 \end{lemma}
 We can then also say that if two variables $x$ and $y$ are indeed
-different, we are free to permute them and swap them about.
+different, we are free to permute them, swapping them about.
 \begin{lemma}[Swap]\label{lem:swap}
   If $x \neq y$ and $\Gamma , x : \sigma, y : \sigma' \vdash e : \tau$, then $\Gamma , y : \sigma' , x : \sigma \vdash e
   : \tau$
@@ -337,7 +339,7 @@ Note that the domain of a context $\dom(\centerdot , x_1 : \sigma_1 , \ldots , x
   \end{description}
 \end{proof}
 
-\section{Type Soundness}
+\section{Type Soundness}\label{sec:type-soundness}
 
 Now that we have the prerequisite lemmas out of the way, we can move
 onto proving that the system is \textbf{sound}. Soundness is a

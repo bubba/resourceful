@@ -35,6 +35,8 @@
 \newcommand{\use}[2]{\ensuremath{\llbracket#2\rrbracket_{#1}}}
 \newcommand{\ftv}{\operatorname{FTV}}
 \newcommand{\fv}{\operatorname{FV}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
 
 \author{Luke Lau}
 \title{A Resourceful Monad for IO}
@@ -245,8 +247,6 @@ refined, and areas of further work that would be interesting to explore.
 
 \include{evaluation}
 
-\include{appendix}
-
 \chapter{Conclusion}
 We have presented a pragmatic approach to reasoning about concurrency within a
 type system. Our monadic and resourceful extensions to the Hindley-Damas-Milner
@@ -254,10 +254,12 @@ are compatible and we have shown this by proving soundness. There is solid base
 for
 
 Along the way we have also created a foundation for mechanising the proof of
-soundness for Hindley-Damas-Milner within Agda. 
+soundness for Hindley-Damas-Milner within Agda.
 
 \bibliographystyle{acm}
 \bibliography{report}
+
+\include{appendix}
 
 \end{document}
 
