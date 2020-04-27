@@ -1,6 +1,30 @@
 \appendix
 \chapter{} % needed to get section numbering?
-\section{Definition of a Complete Partial Order}\label{sec:defin-compl-part}
+
+\section{Denotational Semantics of Hindley-Damas-Milner}\label{sec:denot-semant-hindl}
+
+The denotational semantics of Hindley-Damas-Milner begins with the
+semantic algebra of the expression language.
+
+The \emph{semantic domain} of the expression language defines the
+possible values an expression can have. It is a \emph{complete partial
+  order}, defined as
+\begin{align*}
+  \mathbb{V} &= \mathbb{B}_0 + \cdots + \mathbb{B}_n + \mathbb{F} + \mathbb{W} \\
+  \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
+  \mathbb{W} &= \{ . \}
+\end{align*}
+Where $\mathbb{B}_0 , \ldots , \mathbb{B}_n$ represent the sets of
+``basic'' values, such as booleans and naturals. A visual example of
+such an ordering might look like this:
+\begin{center}
+  \tikz \graph[layered layout] { "$\mathbb{V}$" ->
+    { "$\mathbb{B}_{\square}$" -> "$\square$",
+      "$\mathbb{B}_{\textrm{Bool}}$" -> {true, false},
+      I} ->
+    "$\bot$"; };
+\end{center}
+
 A complete partial order (cpo) is a pair $(D, \sqsubseteq)$ consisting of a set
 $D$ and a partial order $\sqsubseteq$ (a function that orders elements in
 $D$, but not necessarily all of them, hence the term partial), such
@@ -11,7 +35,42 @@ that
   (\emph{lub})
 \end{enumerate}
 
-\section{Evaluation Function Notation}\label{sec:eval-funct-notat}
+Since $\mathbb{V}$ represents all possible data values, we
+can extract a subset of it to model the values of certain
+types %~\ref{shamirwadge77}.
+A subset $I$ of our cpo $\mathbb{V}$ is called an ideal, iff it
+satisfies the following properties:
+
+\begin{enumerate}
+\item it is downwards closed: $\forall v_0 \in V, v_1 \in V, v_0, v_0 \sqsubseteq v_1 \rightarrow
+  v_0 \in I \rightarrow v_1 \in I$.
+  
+\item it is closed under lubs of \omega-chains.
+\end{enumerate}
+
+Our function domain $\mathbb{F}$ is a map from $\mathbb{V}$ to
+$\mathbb{V}$. Maps over ideals are defined as
+$I \rightarrow I' \equiv \{ v \in V | v \in \mathbb{F} \ \mathsf{and} \ \forall v' \in I \
+(v_{|\mathbb{F}})v' \in I' \}$.
+
+With all the mechanisms in place, we can now define what it means for
+a value to semantically be a type:
+
+\[v \in \mathbb{V}^\tau \iff \vDash v : \tau\]
+
+$\bot$ ends up being very useful to represent values that don't exist.
+Take for example the following program which doesn't terminate. 
+
+\[\letin{x = \lambda y. y}{x x}\]
+
+What type does should this program have? It should assume the
+type of whatever is needed. For instance, we would expect this program
+to have a type of $\square$ as the argument is not used.
+
+\[ (\lambda z. \square) (\letin{x = \lambda y. y}{x x}) : \square \]
+
+Since $\bot$ is a member of all ideals, this program is well typed.
+
 If $\mathbb{D} \subset \mathbb{V}$, and $d \in \mathbb{D}$, we will say $d \ \mathsf{in} \
 \mathbb{V}$ to represent $d$ but treated as if its in $\mathbb{V}$. \\
 We will then define the reverse
@@ -24,6 +83,69 @@ We will then define the reverse
   \bot_{\mathbb{D}} & \textsf{otherwise}
 \end{cases}
 \]
+
+An environment $\eta$ is defined as a map from identifiers to values,
+${\mathsf{Environment} : \mathsf{Id} \rightarrow \mathbb{V}}$.
+There is then the semantic equation
+${\mathcal{E} : \mathsf{Expression} \rightarrow \mathsf{Environment} \rightarrow
+\mathbb{V}}$, which describes how the syntax is evaluated in a given
+environment.
+\begin{align*}
+  \mathcal{E} \llbracket x \rrbracket \eta
+  &= \eta \llbracket x \rrbracket \\
+  \mathcal{E} \llbracket e_1 e_2 \rrbracket \eta
+  &=
+    \begin{cases}
+      \bot & \mathsf{if} \ v_1 = \bot \\
+      (v_1 | \mathbb{F}) v_2 & \mathsf{if} \ v_1 \in \mathbb{F} \\
+      \mathsf{wrong} & \mathsf{otherwise}
+    \end{cases}
+  \\
+  & \quad \textsf{where} \ v_i = \mathcal{E} \llbracket e_i \rrbracket \eta , \ i = \{
+    1, 2\} \\
+  \mathcal{E} \llbracket \lambda x . \ e \rrbracket \eta
+  &=
+    (\lambda v . \ \mathcal{E} \llbracket e \rrbracket \eta [v / x ])
+    \ \mathsf{in} \ \mathbb{V} \\
+  \mathcal{E} \llbracket \textsf{let} \ x = e_1 \ \textsf{in} \ e_2 \rrbracket \eta
+  &=
+    \mathcal{E} \llbracket e_2 \rrbracket \ \eta [ \mathcal{E} \llbracket e_1 \rrbracket\rho / x ]
+\end{align*}
+
+Note that these evaluation rules are not as strict as the semantics
+defined by Milner~\cite{milner1978} --- namely, that the second argument
+of application and let binding is not checked if it is a
+\textsf{wrong}.
+
+We introduce the notion of an environment $\eta : \mathsf{Variable} \rightarrow
+\mathbb{V}$. It is a map of variables bound to values.
+
+An environment $\eta$ can be said to \textit{respect} a type environment
+$\Gamma$ if all bindings in $\Gamma$ can be found in $\eta$ with the same type.
+\[\eta : \Gamma \iff \forall x : \tau \in \Gamma. \ \eta \llbracket x \rrbracket : \tau\]
+
+\[
+  \Gamma \vDash e : \tau \iff \forall \eta. \ \eta : \Gamma \rightarrow \mathcal{E} \llbracket e \rrbracket \eta : \tau
+\]
+
+An assertion of the form above is said to be \textit{closed} if there
+are no free type variables in $\Gamma$ or $\tau$, and an assertion only holds
+iff its closed instances hold.
+
+Let $\overline{\mathbb{V}}$ be the set of all ideals in $\mathbb{V}$
+that do not contain $\mathsf{wrong}$.
+
+There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
+\rightarrow \mathsf{Valuation} \rightarrow \overline{\mathbb{V}}$
+
+\begin{align*}
+  \mathcal{T}\llbracket \square \rrbracket\psi &= \mathbb{B}_{ \square } \\
+  \mathcal{T}\llbracket \mathsf{Bool} \rrbracket \psi &= \mathbb{B}_{\mathsf{Bool}} \\
+  \mathcal{T}\llbracket \alpha \rrbracket \psi &= \psi \llbracket \alpha \rrbracket \\
+  \mathcal{T} \llbracket \tau \rightarrow \tau' \rrbracket \psi &= \mathcal{T}\llbracket \tau \rrbracket \psi \ \rightarrow \
+                             \mathcal{T} \llbracket \tau' \rrbracket \psi
+\end{align*}
+
 
 \section{Transitivity of the subheap relation}\label{proof:subheaptransitive}
 \begin{proof}

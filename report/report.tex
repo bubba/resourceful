@@ -47,24 +47,28 @@
 \chapter{Introduction}
 The immutability and pureness of certain functional languages make them seem
 like a perfect fit for parallelism and concurrency. The lack of side effects
-mean we are free to compute in any whatever order we please, without any shared
-mutable state, free from the fear of race conditions and deadlocks. However, in
-the real world, code is never completely pure. Useful programs need to interact
-with the real world at some point, whether that be by reading from standard
-input or connecting to a network. 
+mean we are free to compute expressions in any whatever order we please. However
+in the real world, code is never completely pure. Useful programs need to
+interact with the real world at some point, whether that be by reading from a
+keyboard or sending packets over a network.
 
-Effectfullness and order
-
-The most popular solution today is to capture the entire state of the outside
-universe and write functions that operate on state. That way any particle that
-may have been perturbed by writing to \texttt{stdout} is appropriately reflected.
+So when it comes to side effects in a language with referential transparency,
+one must model the sequence in which effects are carried out. One of the most
+successful approaches to modelling this has been to capture the state of the
+outside universe, and use functions that operate on that state. This way, if
+writing some bytes to \texttt{stdout} causes some particles to be perturbed on a
+display monitor, then we can track that by saying the state of the universe has
+changed. We don't actually track what particles are there, where they might
+be or what their current charge is. All we need to know is that the universe is
+slightly different than what it was before --- and that the order in which it
+changes is important.
 
 Concurrent Clean models this by threading the \texttt{World} in and out of
 functions. Uniqueness types guarantee that the same world is only used once, so
 that the programmer does create an alternative timeline by duplicating it.
 
 \begin{minted}[breaklines]{clean}
-readFile :: !String !*World -> (!MaybeError FileError String,!*World)
+readFile :: !String !*World -> (!MaybeError FileError String, !*World)
 \end{minted}
 
 Haskell also treats the world as a state, but without the uniquness guarantee.
@@ -80,9 +84,9 @@ fresh new one, is by hiding the implementation from the user, tucking it away
 into a \textit{monad}. This notion of using monads to sequence together stateful
 computations was first introduced by Peyton Jones and
 Wadler~\cite{peytonjones1993}\cite{wadler1995}. The programmer no longer needs
-to keep track of the world, and they can keep their imperative code imperative,
+to keep track of the state of the universe. They can keep their imperative code imperative,
 and their pure code pure. This marriage of monads and IO is one of the crown
-jewels of functional language research to come out of Haskell.
+jewels of functional language research.
 \begin{minted}{haskell}
 class Monad IO where
   return x = \w -> (w, x)
@@ -228,14 +232,13 @@ then look at the original design of Hindley-Damas-Milner which we will build upo
 
 Chapter~\ref{chapter:system} introduces the language, its type system and its
 semantics.  It gives a complete definition of all the parts needed to prove
-properties.  We prove these properties in Chapter~\ref{cha:properties}, in
-which we eventually build up and present a proof of its soundness. This proof,
-and the others that accompany it, are then mechanised within the dependently
-typed language and proof assistant Agda. The technique and design used to do so
-are discussed in Chapter~\ref{cha:mechanisation}.
-
-Finally, Chapter~\ref{cha:evaluation} evaluates our type system, how it might be
-refined, and areas of further work that would be interesting to explore.
+properties.  We prove these properties in Chapter~\ref{cha:properties}, in which
+we eventually build up and present a proof of its soundness. This proof, and the
+others that accompany it, are then mechanised within the dependently typed
+language and proof assistant Agda. The methodology of this is discussed in
+Chapter~\ref{cha:mechanisation}.  Finally, Chapter~\ref{cha:evaluation}
+evaluates our type system. We look at how it might be refined, and find many
+areas of further work that would be interesting to explore.
 
 \include{background}
 
@@ -250,9 +253,8 @@ refined, and areas of further work that would be interesting to explore.
 \chapter{Conclusion}
 We have presented a pragmatic approach to reasoning about concurrency within a
 type system. Our monadic and resourceful extensions to the Hindley-Damas-Milner
-are compatible and we have shown this by proving soundness. There is solid base
-for
-
+are compatible and we have shown this by proving soundness.
+% fit nicely into exiting monadic languages
 Along the way we have also created a foundation for mechanising the proof of
 soundness for Hindley-Damas-Milner within Agda.
 

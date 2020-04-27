@@ -341,10 +341,10 @@ types like so\footnote{$\Gamma \vdash \tau : \star$ is a judgement saying that $
 We would need to combine the syntaxes for resources and types together
 for this rule, or fleshing out types to include type constructors
 through which resources and heaps could be embedded in.
-Alternatively, we could be lazy and avoid this by make
-it dependent only in the heap. One such way would be to introduce a
-type of lambda for $\IO$ monads that tags it with a placeholder
-resource, which is then substituted when an argument is applied.
+Alternatively, we could be lazy and avoid this by making it dependent
+only in the heap. We could introduce a type of lambda for
+$\IO$ monads that tags it with a placeholder resource, which gets
+substituted when an argument is applied.
 \begin{mathpar}
   \infer{\Gamma, x : \tau' \vdash e : \tau }
   {\Gamma \vdash (\lambda_\IO x . e) : \tau' \rightarrow_\IO \tau} \\
@@ -362,6 +362,66 @@ represent the same resource. Does the typechecker here know that $x=y$?
   &\textsf{readFile} \ x \\
   &\letin{y = x}{\textsf{writeFile} \ y \ \textsf{``hello''}}
 \end{flalign*}
+
+\section{Casting Heaps}
+One practical question to consider is what will this look like in a
+real-world programming language. We have only been passing about the
+primitive unit type, but realistically we are going to want to have
+functions that actually have functionality, like the aforementioned
+\[\textsf{readFile} : \textsf{String} \rightarrow \IO_\rho \textsf{String}\]
+A function like this is not going to be built-in, instead it will
+probably be part of a standard library. So how will it be
+implemented? The easiest solution would be to
+wrap around an existing function that reads files in a plain $\IO$
+monad. Remember that plain $\IO$ is equivalent to
+$\IO_{\textsf{World}}$:
+\[\textsf{readFile'} : \textsf{String} \rightarrow \IO_{\textsf{World}}
+  \textsf{String} \]
+
+How do we bring this into a $\textsf{File}$ heap? If it were a pure
+computation, then we could have just used the use operator:
+\[\lambda s \rightarrow \use{\textsf{File}}{\textsf{readFile'} \ s }\]
+
+But it's a monadic computation, so we would end up with a doubly
+nested monad like
+${\IO_{\textsf{File}} (\IO_{\textsf{World}} \textsf{String})}$. Can
+we subsume it? No! Because \textsf{World} is at the top of the
+sub-heap chain. It already uses all possible resources, and we can't
+claim that it uses less than what it actually does! The type is
+overly cautious in this case.
+
+In an ideal world, standard library functions would built up from a
+handful of built-ins for extremely low level primitives, that keep
+track of things like file descriptors. Then when they are put
+together, we could subsume them to keep track of higher-level
+resources. For example, after opening several file descriptors, we
+could say we are using them to access a database. But practically, we
+are going to have to port functions that use the full
+$\IO_{\textsf{World}}$ monad to a monad that uses only the resources
+that we \emph{know} the function is accessing.
+
+Haskell's \texttt{base} library contains the
+\mintinline{haskell}{unsafePerformIO} function, which has the
+blasphemous type signature \mintinline{haskell}{IO a -> a}. But it
+provides an escape mechanism for library authors to tell the type
+checker that something really doesn't have any side effects, and is
+safe to use as such. If we are to allow library authors to annotate
+their heaps correctly, one such solution would be to provide an
+``unsafe'' function like this, except instead of discarding the $\IO$
+part, it would discard heap annotations.
+\[ \textsf{unsafeCastHeap} : \IO_\rho \alpha \rightarrow \IO_{\rho'} \alpha \]
+
+There is an
+implicit element of trust here that this will be used selectively by
+library authors, only when they know that a function accesses a
+specific set of resources, and only those resources.
+
+Another more radical approach to this would be to flip \textsf{World}
+on its head: Introduce a notion of an ``empty'' heap which uses no
+resources, and as such is distinct from all other heaps. Existing code
+in a plain $\IO$ monad would have this empty heap by default, and when a
+library author wants to tag resources a function might use, they would
+subsume it upwards into the heap they want.
 
 %%% Local Variables:
 %%% TeX-master: "report"
