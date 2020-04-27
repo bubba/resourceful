@@ -86,7 +86,7 @@ computations was first introduced by Peyton Jones and
 Wadler~\cite{peytonjones1993}\cite{wadler1995}. The programmer no longer needs
 to keep track of the state of the universe. They can keep their imperative code imperative,
 and their pure code pure. This marriage of monads and IO is one of the crown
-jewels of functional language research.
+jewels of functional language research to come out of Haskell.
 \begin{minted}{haskell}
 class Monad IO where
   return x = \w -> (w, x)
@@ -225,18 +225,22 @@ errors.
 
 \section{Overview}
 
+This dissertation has been written in a style that should be accessible to those
+without prior knowledge of type theory, and partly serves as a tutorial in this
+regard.
+
 In Chapter~\ref{chapter:background} we will talk about the inspirations of the
 type system, namely separation logic, and how it parallels with our monadic
 language. We will also briefly go over what we mean by a monad formally, and
-then look at the original design of Hindley-Damas-Milner which we will build upon.
-
+then look at the original design of Hindley-Damas-Milner which we will build
+upon.
 Chapter~\ref{chapter:system} introduces the language, its type system and its
 semantics.  It gives a complete definition of all the parts needed to prove
 properties.  We prove these properties in Chapter~\ref{cha:properties}, in which
 we eventually build up and present a proof of its soundness. This proof, and the
 others that accompany it, are then mechanised within the dependently typed
 language and proof assistant Agda. The methodology of this is discussed in
-Chapter~\ref{cha:mechanisation}.  Finally, Chapter~\ref{cha:evaluation}
+Chapter~\ref{cha:mechanisation}. Finally, Chapter~\ref{cha:evaluation}
 evaluates our type system. We look at how it might be refined, and find many
 areas of further work that would be interesting to explore.
 
@@ -252,11 +256,16 @@ areas of further work that would be interesting to explore.
 
 \chapter{Conclusion}
 We have presented a pragmatic approach to reasoning about concurrency within a
-type system. Our monadic and resourceful extensions to the Hindley-Damas-Milner
-are compatible and we have shown this by proving soundness.
-% fit nicely into exiting monadic languages
-Along the way we have also created a foundation for mechanising the proof of
-soundness for Hindley-Damas-Milner within Agda.
+type system. We build upon the Hindley-Damas-Milner type system, incorporating
+the idea of using monads for modelling effects, and extend it with our
+resourceful constructs. We can prove it retains type soundness, and in the
+process of doing so we have also created a framework for mechanising the proof
+of HDM's soundness within Agda.
+
+The system is simple, but it occupies a point in the design space that fits well
+into existing functional programming languages, and would provide immediate
+utility in keeping track of concurrent resourcefulness. Furthermore, there are
+many different interesting directions the system can be extended in.
 
 \bibliographystyle{acm}
 \bibliography{report}
@@ -265,7 +274,7 @@ soundness for Hindley-Damas-Milner within Agda.
 
 \end{document}
 
-% LocalWords: stdout LocalWords Idris haskell
+% LocalWords: stdout LocalWords Idris haskell Agda
 %%% Local Variables:
 %%% TeX-engine: luatex
 %%% End:

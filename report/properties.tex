@@ -1,14 +1,14 @@
 \chapter{Properties}\label{cha:properties}
-A type system is no good unless we can prove it is worth its salt. In
-this section we will prove a number of lemmas and theorems which will
-eventually show that the type system is sound. But first, we need to
-show a couple of properties about contexts that we crop up later on
-in our proofs.
+A type system is no good unless we can trust that the programs
+actually evaluate to the type they are given. In this section we
+will prove a number of lemmas and theorems which will eventually show
+that the type system is sound.
 
-The first states that if we have two variables in the context with the
-same names but different type schemes, then we can ignore the first
-one as it is overshadowed by the second --- any reference to $x$ will
-result in $x : \sigma'$.
+Before we begin, we need to show a couple of properties about contexts
+that we crop up later on in our proofs. The first states that if we
+have two variables in the context with the same names but different
+type schemes, then we can ignore the first one as it is overshadowed
+by the second --- any reference to $x$ will result in $x : \sigma'$.
 \begin{lemma}[Drop]\label{lem:drop}
   If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
 \end{lemma}
@@ -369,7 +369,7 @@ The proofs of both of these properties come from induction on the
 proof of the typing judgement:
 
 \begin{theorem}[Progress]\label{thm:progress}
-  If $\centerdot \vdash e : \tau$, then either $\textsf{value} \ e$ or there exists a $e'$ such that $e \leadsto e'$.
+  If $\centerdot \vdash e : \tau$, then either $\textsf{Value} \ e$ or there exists a $e'$ such that $e \leadsto e'$.
 \end{theorem}
 \begin{proof}
   Begin by induction on $\centerdot \vdash e : \tau$.

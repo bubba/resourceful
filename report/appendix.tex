@@ -3,27 +3,18 @@
 
 \section{Denotational Semantics of Hindley-Damas-Milner}\label{sec:denot-semant-hindl}
 
-The denotational semantics of Hindley-Damas-Milner begins with the
-semantic algebra of the expression language.
-
 The \emph{semantic domain} of the expression language defines the
 possible values an expression can have. It is a \emph{complete partial
   order}, defined as
 \begin{align*}
   \mathbb{V} &= \mathbb{B}_0 + \cdots + \mathbb{B}_n + \mathbb{F} + \mathbb{W} \\
   \mathbb{F} &= \mathbb{V} \rightarrow \mathbb{V} \\
-  \mathbb{W} &= \{ . \}
+  \mathbb{W} &= \{ \cdot \}
 \end{align*}
-Where $\mathbb{B}_0 , \ldots , \mathbb{B}_n$ represent the sets of
-``basic'' values, such as booleans and naturals. A visual example of
-such an ordering might look like this:
-\begin{center}
-  \tikz \graph[layered layout] { "$\mathbb{V}$" ->
-    { "$\mathbb{B}_{\square}$" -> "$\square$",
-      "$\mathbb{B}_{\textrm{Bool}}$" -> {true, false},
-      I} ->
-    "$\bot$"; };
-\end{center}
+$\mathbb{F}$ is the set of functions, $\mathbb{W}$ is the set of error
+values and $\mathbb{V}$ is the set of possible values.
+$\mathbb{B}_0 , \ldots , \mathbb{B}_n$ represent the sets of
+``basic'' values, such as booleans and naturals.
 
 A complete partial order (cpo) is a pair $(D, \sqsubseteq)$ consisting of a set
 $D$ and a partial order $\sqsubseteq$ (a function that orders elements in
@@ -36,60 +27,30 @@ that
 \end{enumerate}
 
 Since $\mathbb{V}$ represents all possible data values, we
-can extract a subset of it to model the values of certain
-types %~\ref{shamirwadge77}.
-A subset $I$ of our cpo $\mathbb{V}$ is called an ideal, iff it
+can extract an \emph{ideal} of it to model the values of certain
+types. A subset $I$ of our cpo $\mathbb{V}$ is called an ideal, iff it
 satisfies the following properties:
-
 \begin{enumerate}
-\item it is downwards closed: $\forall v_0 \in V, v_1 \in V, v_0, v_0 \sqsubseteq v_1 \rightarrow
+\item it is downwards closed: $\forall v_0 \in \mathbb{V}, v_1 \in \mathbb{V}, v_0 \sqsubseteq v_1 \rightarrow
   v_0 \in I \rightarrow v_1 \in I$.
-  
-\item it is closed under lubs of \omega-chains.
+\item it is closed under lubs of \omega-chains ($v_0 \sqsubseteq v_1 \sqsubseteq v_2 \sqsubseteq \ldots$)
 \end{enumerate}
 
-Our function domain $\mathbb{F}$ is a map from $\mathbb{V}$ to
-$\mathbb{V}$. Maps over ideals are defined as
-$I \rightarrow I' \equiv \{ v \in V | v \in \mathbb{F} \ \mathsf{and} \ \forall v' \in I \
-(v_{|\mathbb{F}})v' \in I' \}$.
-
-With all the mechanisms in place, we can now define what it means for
-a value to semantically be a type:
-
-\[v \in \mathbb{V}^\tau \iff \vDash v : \tau\]
-
-$\bot$ ends up being very useful to represent values that don't exist.
-Take for example the following program which doesn't terminate. 
-
-\[\letin{x = \lambda y. y}{x x}\]
-
+Bottom $\bot$ is useful for representing programs that do not terminate,
+like below:
+\[\letin{x = \lambda y. y}{x \ x}\]
 What type does should this program have? It should assume the
 type of whatever is needed. For instance, we would expect this program
 to have a type of $\square$ as the argument is not used.
+\[ (\lambda z. \square) \ (\letin{x = \lambda y. y}{x \ x}) : \square \]
 
-\[ (\lambda z. \square) (\letin{x = \lambda y. y}{x x}) : \square \]
-
-Since $\bot$ is a member of all ideals, this program is well typed.
-
-If $\mathbb{D} \subset \mathbb{V}$, and $d \in \mathbb{D}$, we will say $d \ \mathsf{in} \
-\mathbb{V}$ to represent $d$ but treated as if its in $\mathbb{V}$. \\
-We will then define the reverse
-
-\[
-  v | \mathbb{D} =
-\begin{cases}
-  d & \textsf{if} \ v = d \ \textsf{in} \ \mathbb{V} \ \textsf{for
-    some} \ d \in \mathbb{D} \\
-  \bot_{\mathbb{D}} & \textsf{otherwise}
-\end{cases}
-\]
-
+The semantic equation for the expression language
+${\mathcal{E} : \mathsf{Expression} \rightarrow \mathsf{Environment} \rightarrow
+\mathbb{V}}$ describes how the syntax (enclosed in $\llbracket\ \rrbracket$) is evaluated in a given
+environment.
 An environment $\eta$ is defined as a map from identifiers to values,
 ${\mathsf{Environment} : \mathsf{Id} \rightarrow \mathbb{V}}$.
-There is then the semantic equation
-${\mathcal{E} : \mathsf{Expression} \rightarrow \mathsf{Environment} \rightarrow
-\mathbb{V}}$, which describes how the syntax is evaluated in a given
-environment.
+
 \begin{align*}
   \mathcal{E} \llbracket x \rrbracket \eta
   &= \eta \llbracket x \rrbracket \\
@@ -97,7 +58,7 @@ environment.
   &=
     \begin{cases}
       \bot & \mathsf{if} \ v_1 = \bot \\
-      (v_1 | \mathbb{F}) v_2 & \mathsf{if} \ v_1 \in \mathbb{F} \\
+      (v_1 | \mathbb{F}) v_2 & \mathsf{if} \ v_1 \ \mathbb{F} \\
       \mathsf{wrong} & \mathsf{otherwise}
     \end{cases}
   \\
@@ -111,33 +72,9 @@ environment.
   &=
     \mathcal{E} \llbracket e_2 \rrbracket \ \eta [ \mathcal{E} \llbracket e_1 \rrbracket\rho / x ]
 \end{align*}
-
-Note that these evaluation rules are not as strict as the semantics
-defined by Milner~\cite{milner1978} --- namely, that the second argument
-of application and let binding is not checked if it is a
-\textsf{wrong}.
-
-We introduce the notion of an environment $\eta : \mathsf{Variable} \rightarrow
-\mathbb{V}$. It is a map of variables bound to values.
-
-An environment $\eta$ can be said to \textit{respect} a type environment
-$\Gamma$ if all bindings in $\Gamma$ can be found in $\eta$ with the same type.
-\[\eta : \Gamma \iff \forall x : \tau \in \Gamma. \ \eta \llbracket x \rrbracket : \tau\]
-
-\[
-  \Gamma \vDash e : \tau \iff \forall \eta. \ \eta : \Gamma \rightarrow \mathcal{E} \llbracket e \rrbracket \eta : \tau
-\]
-
-An assertion of the form above is said to be \textit{closed} if there
-are no free type variables in $\Gamma$ or $\tau$, and an assertion only holds
-iff its closed instances hold.
-
-Let $\overline{\mathbb{V}}$ be the set of all ideals in $\mathbb{V}$
-that do not contain $\mathsf{wrong}$.
-
+The notation used here is described in~\cite{milner1978,damas1984}.
 There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
 \rightarrow \mathsf{Valuation} \rightarrow \overline{\mathbb{V}}$
-
 \begin{align*}
   \mathcal{T}\llbracket \square \rrbracket\psi &= \mathbb{B}_{ \square } \\
   \mathcal{T}\llbracket \mathsf{Bool} \rrbracket \psi &= \mathbb{B}_{\mathsf{Bool}} \\
@@ -145,7 +82,20 @@ There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
   \mathcal{T} \llbracket \tau \rightarrow \tau' \rrbracket \psi &= \mathcal{T}\llbracket \tau \rrbracket \psi \ \rightarrow \
                              \mathcal{T} \llbracket \tau' \rrbracket \psi
 \end{align*}
-
+Where $\overline{\mathbb{V}}$ is the set of all ideals in $\mathbb{V}$
+that do not contain $\mathsf{wrong}$. 
+Given a valuation, we can define a relation between values and types.
+\[ v :_\psi \tau \iff v \in \mathcal{T} \llbracket \tau \rrbracket\psi \]
+With it, we can also define a relation between environments $\eta$ and
+type environments $\Gamma$ (contexts), that says an environment respects a
+type environment if each binding
+in the context has the same type in the environment.
+\[ \eta :_\psi \Gamma \iff \forall x : \tau \in \Gamma \ \eta\llbracket x \rrbracket :_\psi \tau\]
+Finally, we can then define what semantic entailment means
+given a type environment, expression and type.
+\[
+  \Gamma \vDash e : \tau \iff \forall \psi \forall \eta \ \eta:_\psi \Gamma \rightarrow \mathcal{E} \llbracket e \rrbracket \eta :_\psi \tau
+\]
 
 \section{Transitivity of the subheap relation}\label{proof:subheaptransitive}
 \begin{proof}
@@ -191,3 +141,4 @@ There is also a type evaluation function $\mathcal{T} : \mathsf{Type}
   Identical to that of Lemma~\ref{lem:unwrapLift}, except we handle
   the case \textsc{Use} instead of \textsc{Lift}.
 \end{proof}
+% LocalWords:  denotational Hindley Damas Milner cpo lub
