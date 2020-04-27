@@ -53,9 +53,9 @@ heap, and thus not accessed concurrently.
 \begin{proof}
   By induction on the possible proofs for $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$.
   \begin{description}
-  \item[\textmd{\boxed{\textsc{Conc}}}]
+  \item[\rm\textsc{Conc}]
     We need to show $\textsf{ok} \ \rho_1 \cup \rho_2$, and from the premises we have $\textsf{ok} \ \rho_1 \cup \rho_2$.
-  \item[\textmd{\boxed{\textsc{Sub}}}]
+  \item[\rm\textsc{Sub}]
     We need to show $\textsf{ok} \ \rho'$ and from the premises, we also have $\textsf{ok} \ \rho'$. 
   \end{description}
 \end{proof}

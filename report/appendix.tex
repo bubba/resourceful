@@ -44,14 +44,14 @@ type of whatever is needed. For instance, we would expect this program
 to have a type of $\square$ as the argument is not used.
 \[ (\lambda z. \square) \ (\letin{x = \lambda y. y}{x \ x}) : \square \]
 
-The semantic equation for the expression language
-${\mathcal{E} : \mathsf{Expression} \rightarrow \mathsf{Environment} \rightarrow
-\mathbb{V}}$ describes how the syntax (enclosed in $\llbracket\ \rrbracket$) is evaluated in a given
-environment.
-An environment $\eta$ is defined as a map from identifiers to values,
-${\mathsf{Environment} : \mathsf{Id} \rightarrow \mathbb{V}}$.
 
+An environment $\eta$ is defined as a map from identifiers to values
+\[ \mathsf{Environment} : \mathsf{Id} \rightarrow \mathbb{V} \]
+The semantic equation for the expression language describes how the
+syntax (enclosed in $\llbracket\ \rrbracket$) is evaluated in a given environment.
 \begin{align*}
+  \mathcal{E} &: \mathsf{Expression} \rightarrow \mathsf{Environment} \rightarrow
+  \mathbb{V} \\
   \mathcal{E} \llbracket x \rrbracket \eta
   &= \eta \llbracket x \rrbracket \\
   \mathcal{E} \llbracket e_1 e_2 \rrbracket \eta
