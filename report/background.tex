@@ -244,33 +244,30 @@ concExample = runSubIO $ someIO ||| someMoreIO "blah"
 \end{minted}
 However we ultimately discovered that overlapping instances don't
 always throw a type error, as the phantom type parameter keeping track
-of the heap was evaluated \textbf{lazily}. There was a workaround that
-involved lowering the heap down to the term level and forcing
-evaluation via \mintinline{haskell}{Data.Proxy} and
-\mintinline{haskell}{seq}, but we think there are most likely better
-ways to embed this within GHC's type system.
+of the heap was evaluated \textbf{lazily}. One workaround involved
+lowering the heap down to the term level and forcing evaluation via
+\mintinline{haskell}{Data.Proxy} and \mintinline{haskell}{seq}. Still,
+we think there are most likely better ways to embed this within GHC's
+type system.
 
 \section{Hindley-Damas-Milner}
-
-One of our aims when developing this resource-tracking monadic type
-system is to see how well it would integrate into existing functional
-programming languages, specifically those of the ML family. So for
-this reason we will basing our system off of the Hindley-Damas-Milner
-(HDM) type system~\cite{damas1982}. Originally designed to formalise
-the type system of ML, it is one of the first formalisations of a
-polymorphic type system. It was heavily influential at the time and
-still continues to be so today, paving the way for newer type systems
-such as System F. 
+One of our aims whilst developing this type system was to see how well
+it integrates with existing functional programming languages,
+specifically those in the ML family. Therefore we based our system off
+of the Hindley-Damas-Milner (HDM) type
+system~\cite{damas1982}. Originally designed to formalise the type
+system of ML, it is one of the first formalisations of a polymorphic
+type system. It was heavily influential at the time and still
+continues to be so today, paving the way for newer type systems such
+as System F.
 
 \subsection{Syntax}
-
 Before we can talk about a type system, we need to talk about the
 language that it operates on. HDM uses an applicative language: A
 language in which you can apply abstractions.
 \def\defaultHypSeparation{\hskip .05in}
 \newcommand{\letin}[2]{\mathsf{let} \ #1 \ \mathsf{in} \ #2}
 \begin{grammar}
-
   <expression $e$> ::= $x$ | $\lambda x . e$ | $e \ e'$ | $\letin{x=e'}{e}$ % | $\square$
 
   <type $\tau$> ::= $\square$ | $\alpha$ | $\tau' \rightarrow \tau$
@@ -278,7 +275,6 @@ language in which you can apply abstractions.
   <type scheme $\sigma$> ::= $\tau$ | $\forall \alpha . \sigma$
 
   <context $\Gamma$> ::= $\centerdot$ | $\Gamma, x : \sigma$
-
 \end{grammar}
 Expressions are an extension of the venerable lambda calculus, with the
 addition of a new let expression that binds an expression to a
