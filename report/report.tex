@@ -67,65 +67,61 @@
 \tableofcontents
 
 \chapter{Introduction}
-The immutability and pureness of certain functional languages make them seem
-like a perfect fit for parallelism and concurrency. The lack of side effects
-mean we are free to compute expressions in any whatever order we please. However
-in the real world, code is never completely pure. Useful programs need to
-interact with the real world at some point, whether that be by reading from a
-keyboard or sending packets over a network.
+The immutability and purity of some functional languages make them seem like a
+perfect fit for parallelism and concurrency. The lack of side effects mean we
+are free to compute expressions in whatever order we please, and there is no
+shared mutable state to plague us with race conditions. However in the
+real world, code is never completely pure. Useful programs need to interact with
+the real world at some point, whether that be by reading from a keyboard or
+sending packets over a network. That is, they need to carry out side
+effects: And the order in which they are carried out is important.
 
 So when it comes to side effects in a language with referential transparency,
-one must model the sequence in which effects are carried out. One of the most
-successful approaches to modelling this has been to capture the state of the
-outside universe, and use functions that operate on that state. This way, if
-writing some bytes to \texttt{stdout} causes some particles to be perturbed on a
-display monitor, then we can track that by saying the state of the universe has
-changed. We don't actually track what particles are there, where they might
-be or what their current charge is. All we need to know is that the universe is
-slightly different than what it was before --- and that the order in which it
-changes is important.
+the language must model the sequence in which effects are carried out. One of
+the most successful approaches has been to capture the state of the outside
+universe, and have functions with side effects write to that state. This way, if
+writing to \texttt{stdout} causes some particles to be perturbed on a display
+monitor, then we can track that by saying the state of the universe has changed,
+and that it matters what order it changed in. We don't actually track what
+particles are there, where they might be or what their current charge is. All we
+need to know is that the universe is slightly different than what it was before.
 
-Concurrent Clean models this by threading the \texttt{World} in and out of
+Concurrent Clean models this by threading the world in and out of
 functions. Uniqueness types guarantee that the same world is only used once, so
-that the programmer does create an alternative timeline by duplicating it.
-
+that the programmer doesn't create an alternative timeline by duplicating it.
 \begin{minted}[breaklines]{clean}
 readFile :: !String !*World -> (!MaybeError FileError String, !*World)
 \end{minted}
-
 Haskell also treats the world as a state, but without the uniquness guarantee.
-Any function that interacts with the World returns a function, which returns a
+Any function that interacts with the world returns a function, which returns a
 new version of the World alongside the function result.\footnote{The actual
   definition in GHC is \\ \mintinline{haskell}{newtype IO a = IO (State#
     RealWorld -> (# State# RealWorld, a #))}}
 
 \mint{haskell}|type IO a = World -> (World, a)|
 
-How Haskell ensures that an old World isn't erroneously used instead of the
-fresh new one, is by hiding the implementation from the user, tucking it away
-into a \textit{monad}. This notion of using monads to sequence together stateful
-computations was first introduced by Peyton Jones and
+How Haskell ensures that an old world isn't erroneously used instead of a
+fresh new one is by hiding the updating of the state from the user, tucking it
+away into a \textit{monad}. This idea of using monads to sequence together
+stateful computations was first introduced by Peyton Jones and
 Wadler~\cite{peytonjones1993}\cite{wadler1995}. The programmer no longer needs
-to keep track of the state of the universe. They can keep their imperative code imperative,
-and their pure code pure. This marriage of monads and IO is one of the crown
-jewels of functional language research to come out of Haskell.
+to keep track of the state of the universe. They can keep their imperative code
+imperative, and their pure code pure. This marriage of monads and IO is one of
+the crown jewels of functional language research to come out of Haskell.
 \begin{minted}{haskell}
-class Monad IO where
+instance Monad IO where
   return x = \w -> (w, x)
   x >>= f = \w -> let (w', y) = x w in f y w'
 \end{minted}
-
 Now IO actions can be easily chained together in a type-safe way that ensures
-their ordering.
-This ordering however, imposes limitations. One of the main benefits of pure
-functional languages, is that since expressions do not have side effects, there
-is no restriction on what order they need to be evaluated in.
-Take for example the following snippet.
+their ordering.  Unfortunately, this ordering imposes limitations. One of the
+main benefits of pure functional languages is that since expressions do not
+have side effects, there is no restriction on what order they need to be
+evaluated in.  Take for example the following program:
 \begin{minted}{haskell}
 f, g, h :: Int -> Int
 f x = g x + h x
 \end{minted}
-
 \texttt{g} could be evaluated before \texttt{h}, or \texttt{h} could be
 evaluated before \texttt{g}. It wouldn't make a difference because there are no
 side effects. One might be tempted then to evaluate the two expressions
@@ -135,69 +131,60 @@ for impure IO actions however, and Haskell's type system is well aware of that.
 f, g, h :: Int -> IO Int
 f x = g x >>= \y -> y + h x
 \end{minted}
-We need to explicitly bind the actions and sequence evaluation.
-Does this mean that concurrency is not possible for IO actions? No, as many
-languages provide primitives to run these actions concurrently in a type safe
-way. Haskell has \mintinline{haskell}{forkIO}, but for simpliclty we are going
-to assume a higher level function for running two IO actions simultaneously and
-collecting the results.
-
+We need to explicitly bind the actions and sequence evaluation.  Does this mean
+that concurrency is impossible for IO actions? Not at all, many languages
+provide primitives to run these actions concurrently in a type safe
+way. Haskell's \texttt{base} library has \mintinline{haskell}{forkIO}, but for
+simpliclty we are going to assume the existence of a higher level function that
+runs two IO actions simultaneously and collects the results.
 \begin{minted}{haskell}
 concurrently :: IO a -> IO b -> IO (a, b)
 \end{minted}
-
 Now we can use it to run our two IO actions side by side safely. 
 \begin{minted}{haskell}
 f, g, h :: Int -> IO Int
 f x = g x `concurrently` h x >>= \(a, b) -> return (a + b)
 \end{minted}
-
 But what if \texttt{g} and \texttt{h} actually looked like this?
-
-\begin{minted}{haskell}
-readFile :: FilePath -> IO String
-writeFile :: FilePath -> String -> IO ()
-
+\begin{minted}[samepage]{haskell}
 g x = do
   txt <- readFile "foo.txt"
   return (x + (read txt))
 h x = do
   writeFile "foo.txt" "hello"
   return (42 - x)
+
+readFile :: FilePath -> IO String
+writeFile :: FilePath -> String -> IO ()
 \end{minted}
 
-Running these two functions concurrently could be disastrous as the order in
-which they execute could affect the outcome of the program, and all of a sudden
-some innocuous looking IO functions end up introducing non-determinism and
-tricky race conditions into our program.
-
+Running these two functions concurrently could be disastrous, as the order in
+which they execute could affect the outcome of the program. These innocuous
+looking IO actions then end up introducing non-determinism and race conditions.
 \begin{samepage}
 We know statically that a program such as
 \mint{haskell}|writeFile "foo.txt" "a" `concurrently` writeFile "foo.txt" "b"|
-should probably not be allowed.
+\noindent should probably not be allowed, because it is blatantly accessing the
+same resource simultaneously.
 \end{samepage}
 But then why did the type system allow it?  Has it failed us? The goal of the
-type system is to disallow as many incorrect programs as possible while allowing
-as many correct programs as possible. It is a fine line as to what programs are
-defined correct and what are defined as incorrect. A type system too lenient and
+type system is to disallow as many incorrect programs as possible whilst
+allowing all correct programs. It is a fine line as to what programs are
+deemed correct and what are deemed incorrect. A type system too lenient and
 buggy programs will creep through: but a type system too strict and the
 programmer will waste time fighting the type checker.
 
-In this piece of research however, we are going to investigate the point in the
-design space that rejects such programs. We do \textbf{not} want to allow
-programs that have glaring race conditions, where we can see that there is a
-contentious access of resources.
-
-The genesis of the rest of this work is based around the idea of modelling the
-resources in use at the type level. We begin by adding another type parameter to
-our IO type to represent what resource an IO action uses:
-
+In this dissertation we aim to find a point in the design space that rejects
+such programs as the one above. We do \textbf{not} want to allow programs that
+have glaring race conditions, where we can see that there is a contentious
+access of resources. Our work is based around the idea of keeping track of what
+resources are in use, at the type level. We first imagine what this might look
+like in Haskell by adding another type parameter to
+our IO type, representing what resource an IO action uses:
 \mint{haskell}|type IO r a = World -> (World, a)|
-
-This is a phantom type parameter, as it only exists at the type level. Now our
+$r$ is a phantom type parameter, which only exists at the type level. Now our
 type signatures could look like this, annotating the API with what resources it
 might use.
-
 \begin{minted}{haskell}
 data Resource = FileSystem | Net | Database | OpenGL | ...
 readFile :: FilePath -> IO FileSystem ()
@@ -208,36 +195,30 @@ swapBuffers :: IO OpenGL ()
 \end{minted}
 
 Keep in mind we are painting in broad strokes when we use the word
-``resource''. In the running example the resource is a file,
-\texttt{foo.txt}. But the notion of a resource can be as broad or as specific as
-the author of a function needs it to be. It could represent a specific database
-instance, or a single network socket. For simplicity in our example we will
+``resource''. In the running example the resource has been a file,
+\texttt{foo.txt}, but the notion of a resource can be as broad or as specific as
+a function needs it to be. It could represent a specific database
+instance, or a network socket. For simplicity in our example we will
 consider the entire file system as a single resource, the entire network as
 a single resource, and so on.
 
-Now that we know what resources each $\IO$ action is using, we would like to
-change the type of our concurrent function to take advantage of this new
+Now that we know what resources each IO action is using, we would like to change
+the type of our concurrent function to take advantage of this new
 information. Perhaps we would like to reject any two functions that use the same
-resource, i.e.\ it only accepts $\IO$ actions with distinct resources.
-
-\mint{haskell}|concurrently :: r /~ s => IO r a -> IO s b -> IO ? (a, b)|
-
+resource, i.e.\ it only accepts IO actions with distinct resources.
+\mint{haskell}|concurrently :: r \~ s => IO r a -> IO s b -> IO ? (a, b)|
 You can read \verb$r \~ s$ as ``r is distinct from s'', or the opposite of a
-\verb$r \~ s$ equality constraint that one might see in a type signature. This
-of course however, does not exist in Haskell.  And what does it exactly mean for
-two resources to ``be distinct''? And what resources would the returned $\IO$
-use?
+\verb$r ~ s$ equality constraint that one might see in a type signature. This,
+however, does not exist in Haskell.  And what does it exactly mean for two
+resources to ``be distinct''? And what resources would the returned $\IO$ use?
 
-These are questions that are answered in Chapter~\ref{chapter:system} with a
+These questions are answered with a
 formal definition of a type system that tracks resource usage. We explore a
 specific point in the design space, where the type system rejects programs like
-\[
-\textsf{readFile} \curlyvee \textsf{readFile}
-\]
-But accepts and assigns types to programs such as
-\[
-\textsf{readFile} \curlyvee \textsf{readNet} : \IO_{\textsf{File} \cup \textsf{Net}} \ () \times ()
-\]
+\[ \textsf{readFile} \curlyvee \textsf{readFile} \]
+but accepts and assigns types to programs such as
+\[ \textsf{readFile} \curlyvee \textsf{readNet} : \IO_{\textsf{File} \cup \textsf{Net}} \
+  \square \times \square \]
 In short, we aim to create a type system that keeps tracks of the resources
 being used, so that the programmer doesn't have to. It \textbf{does not} aim to
 solve concurrency --- there will still be programs that have concurrency errors
@@ -246,10 +227,9 @@ valid programs, by ruling out those with blatant, concurrent resource access
 errors. 
 
 \section{Overview}
-
-This dissertation has been written in a style that should be accessible to those
-without prior knowledge of type theory, and partly serves as a tutorial in this
-regard.
+This dissertation has been written in a style that doesn't assume prior
+knowledge of type theory, and so it should double as a tutorial along our
+journey to create our resourceful type system.
 
 In Chapter~\ref{chapter:background} we will talk about the inspirations of the
 type system, namely separation logic, and how it parallels with our monadic

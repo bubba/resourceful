@@ -428,7 +428,7 @@ an expression whose type is also an $\IO$ monad, but with the two
 separate heaps joined. In the above example, it would be infered the
 type $\IO_{\textsf{File} \cup \textsf{Net}}$.
 
-All together these rules define the typing judgement, and are
+All together these rules define the typing relation, and are
 displayed in full in figure~\ref{fig:typingrules}. Let's look at some
 examples at how they can be used to derive types for various
 programs.
@@ -439,9 +439,9 @@ programs.
   \begin{mathpar}
     \boxed{\Gamma \vdash e : \tau} \\
     
-    \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
+    \inferrule*[Right=Var]{x : \sigma \in \Gamma \\ \sigma > \tau}{\Gamma \vdash x : \tau} \and
     \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
-    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
+    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . e : \tau \rightarrow
       \tau'} \and
     \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
     {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau} \and

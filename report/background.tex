@@ -2,39 +2,43 @@
 
 \section{Separation logic}\label{sec:separationologic}
 Much of the original inspiration for this work came from separation
-logic, and how it can be used to formalise properties of concurrent
-programs. Separation logic~\cite{ohearn2019,reynolds2002} is an
+logic. Separation logic~\cite{ohearn2019,reynolds2002} is an
 extension to Hoare logic, a system for formalising properties about
 imperative programs, and has been used to prove properties about
 resource access in concurrent programs~\cite{ohearn2007}. It is
-formalised through \emph{specifications}, which consist of some code
-that alongside a \emph{precondition} a \emph{postcondition}.
+formalised through \emph{specifications}, which comprise of some code
+ alongside a \emph{precondition} a \emph{postcondition}.
 \[
   {\color{gray} \{\textit{precondition}\}} \
   \textit{code} \
   {\color{gray} \{\textit{postcondition}\}}
 \]
 The preconditions and postconditions make assertions about what points
-to what inside the \textit{heap}. For example, in the example that
-O'Hearn gives, a cyclic list is constructed from two pointers.
+to what, inside the \textit{heap}. In the example that
+O'Hearn gives, a cyclic list is constructed from two pointers. The
+precondition asserts that $x$ and $y$ point to 0 initially, and then
+the postcondition asserts that they point to each other afterwards.
 \begin{gather*}
   {\color{gray} \{ x \mapsto 0 * y \mapsto 0 \} }\\
   [x] = y; \\
   [y] = x; \\
   {\color{gray} \{ x \mapsto y * y \mapsto x \} }
 \end{gather*}
-The code sets the value of $x$ is set to the location of $y$, and
+The code sets the value of $x$ to the location of $y$, and
 vice-versa. Separation logic extends Hoare logic with the notion of
 splitting the heap. In the example above, instead of asserting
-$x \mapsto y \wedge y \mapsto x$, the separation conjunction $*$ is used, which says
-``$x$ points to $y$ \textit{and separately} $y$ points to $x$''. The
-heap must be able to split into disjoint subheaps, such that
-$x \mapsto y$ holds in one and $y \mapsto x$ in the other. This means that
+$x \mapsto y \wedge y \mapsto x$, the separation conjunction $*$ is used which says
+``$x$ points to $y$ \emph{and separately} $y$ points to $x$''. The
+heap must be able to split into two disjoint subheaps, such that
+$x \mapsto y$ holds in one and $y \mapsto x$ in the other. As a result
 $x$ and $y$ cannot point to the same location in the heap.
 These preconditions and postconditions can be derived from so-called
-small axioms, which for an imperative language might contain an axiom
-for storing to the heap:
+small axioms. As an example, an imperative language might contain an axiom
+for writing to a pointer such as
 \[ {\color{gray} \{x \mapsto -\}} [x] = v {\color{gray} \{x \mapsto v\}} \]
+amongst others for primitive operations like reading, allocating and
+freeing pointers.
+
 The \textit{frame rule} allows a specification to be extended by
 adding extra predicates that do not mention any variables used by the
 code.
@@ -50,8 +54,9 @@ the predicates involving the heap are shrunk so that they only contain
 variables that the code modifies.
 
 There is also the \emph{concurrency rule} for reasoning about
-concurrency, which gives the precondition and postcondition needed for
-two programs that are run in parallel.
+running two programs side by side. It states that the preconditions
+and postconditions of the two programs must hold separately to each
+other.
 \[
   \infer{ {\color{gray} \{p_1\}} \ \emph{code}_1 \ {\color{gray} \{q_1\}}
     \\
@@ -63,19 +68,21 @@ We will see later on in Chapter~\ref{cha:evaluation} how the system we
 end up developing parallels with this. 
 
 Krishnaswami built upon separation logic with a higher-order ML like
-language\cite{krishnaswami2006} with types. It utilised monadic
-binding for sequencing, allowing imperative computation within an
-otherwise pure language. Unlike our system, this included separation
-logic predicates directly within the language. We will not work with
-predicates, and instead push all our guarantees into the type level.
+language\cite{krishnaswami2006} with types. Like our system, it
+utilised monadic binding for sequencing, allowing imperative
+computation within an otherwise pure language. Unlike our system, this
+included separation logic predicates directly within the language. We
+will not work with predicates, and instead push all our assertions
+into the type level.
 
 \section{Monads categorically}
 As the language we will develop in Chapter~\ref{chapter:system} is
 based around monads, it is a good idea to take a brief look at what
-exactly they are, and dip our toes into the cool waters of category
-theory. There is an infamous definition\footnote{\textsc{James Iry} A
-  Brief, Incomplete, and Mostly Wrong History of Programming
-  Languages} of a monad that goes along the lines of
+they are exactly from a mathematical standpoint, and dip our toes into
+the cool waters of category theory. There is an infamous
+definition\footnote{\textsc{James Iry} A Brief, Incomplete, and Mostly
+  Wrong History of Programming Languages} of a monad that goes along
+the lines of
 \begin{quote}
   \textsl{A monad is just a monoid in the category of endofunctors,
     what's the problem?}
@@ -111,7 +118,7 @@ category, to objects and morphisms in the same category. But what does
 that mean in Haskell? Well, since \mintinline{haskell}{Functor} maps
 types to types, we are mapping from \textsf{Hask} to \textsf{Hask} ---
 all \mintinline{haskell}{Functor}s in Haskell are endofunctors! They
-exist as type constructors with kind \mintinline{haskell}{* -> *}.
+exist as type constructors with the kind \mintinline{haskell}{* -> *}.
 
 A \textit{monad} is then defined as:
 \begin{enumerate}
@@ -140,7 +147,7 @@ join m = m >>= \x -> x
 m >>= f = join (fmap f m)
 \end{minted}
 
-The \textit{monoid in the category of endofunctors} bit then comes
+The ``monoid in the category of endofunctors'' bit then comes
 about because a monoid is defined as:
 \begin{enumerate}
 \item A set $X$
@@ -152,7 +159,7 @@ about because a monoid is defined as:
 A monoid is the same deal as a monad, except functor composition is
 replaced with the Cartesian product and the unit function is replaced
 with the identity element.  And if monoids allow chaining together
-elements, then monads in programming allow sequencing together
+elements, then monads in programming allow chaining together
 computation. In our system we will be using the more pragmatic Haskell
 definition of a monad that uses bind rather than join. But the
 fundamental idea of sequencing remains the same.
@@ -176,18 +183,17 @@ carried around a heap with a phantom type parameter:
 newtype SubIO (a :: [j]) b = SubIO (IO b)
   deriving (Functor, Applicative, Monad)
 \end{minted}
-
 We then defined a subclass of \mintinline{haskell}{Monad} that
-extended it with a sequencing operator and concurrent operator, both
-which merged the heap phantom type parameters together.
+extended it with a sequencing operator and concurrency operator, both
+which merged the heap parameters together.
 \begin{minted}{haskell}
 class Monad (m j) => HeapMonad (m :: [x] -> * -> *) j where
   (>>>=) :: m j a -> (a -> m k b) -> m (j ** k) b
   (|||) :: m j a -> m k b -> m (j ** k) b
   (|||) x f = x >>>= const f
 \end{minted}
-The \texttt{**} operator was a type family that merged
-together two heaps, and threw a type error if they overlapped.
+It merged the two heaps together through the \texttt{**} type family,
+which threw a type error if they overlapped.
 \begin{minted}{haskell}
 type family Overlap a b :: Bool where
   Overlap '[] b = 'False
@@ -220,8 +226,8 @@ fileOp f = let fp = symbolVal (Proxy :: Proxy filePath)
              in SubIO (f fp)
 \end{minted}
 All together, this meant that functions could be written with the
-familiar do syntax, and ran concurrently with
-\texttt{|||} --- but only if their heaps did not overlap.
+familiar do syntax, and even better run concurrently with
+\texttt{|||} --- provided their heaps didn't overlap.
 \begin{minted}{haskell}
 someIO = do
   writeFile @"foo.txt" "hello"
@@ -236,10 +242,10 @@ concExample = runSubIO $ someIO ||| someMoreIO "blah"
 --- this *should* type error
 -- badConcExample = runSubIO $ someIO ||| someIO
 \end{minted}
-However we soon found out that overlapping instances don't always
-throw a type error, as the phantom type parameter keeping track of the
-heap was evaluated \textbf{lazily}. There was a workaround that
-involved extracting the heap down to the term level and forcing
+However we ultimately discovered that overlapping instances don't
+always throw a type error, as the phantom type parameter keeping track
+of the heap was evaluated \textbf{lazily}. There was a workaround that
+involved lowering the heap down to the term level and forcing
 evaluation via \mintinline{haskell}{Data.Proxy} and
 \mintinline{haskell}{seq}, but we think there are most likely better
 ways to embed this within GHC's type system.
