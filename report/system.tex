@@ -1,10 +1,10 @@
 \chapter{A Formal Definition}\label{chapter:system}
 
-In this chapter we will formalize the idea of a language with
-``heaped'' IO monads. We will introduce a language and type system
-showcasing the basic properties, based off the Hindley-Damas-Milner
-type system that we saw in the previous chapter. This chapter aims to
-be as precise as possible, so some things may be redefined with more accuracy.
+In this chapter we will formalise our resource-tracking, monadic IO
+language, based on the Hindley-Damas-Milner type system that we saw
+in the previous chapter. Just like before we will define the syntax,
+static semantics and dynamic semantics, but to avoid ambiguity we will
+also redefine concepts from HDM in more detail.
 
 \section{Syntax}
 
@@ -15,51 +15,50 @@ be as precise as possible, so some things may be redefined with more accuracy.
 
 %\newcommand{\square}{\ensuremath{\raisebox{-0.35mm}{\square}}}
 
-
 \def\defaultHypSeparation{\hskip .05in}
 
-We begin by giving the grammar for our monadic language as shown in
-figure~\ref{fig:grammar}.  It is an extension of the lambda calculus
-with let-polymorphism.  We use $x$, $\lambda x . e$ and $e \ e'$ to refer to
-variable lookup, abstraction and application respectively, whilst we
-use the ML style $\letin{x = e}{e'}$ for polymorphically binding $e$
-to $x$ inside $e'$.
+We begin by giving the grammar as shown in
+figure~\ref{fig:grammar}. The expression language is an extension of
+the lambda calculus with let polymorphism. As before we use $x$,
+$\lambda x . e$ and $e \ e'$ to refer to variable lookup, abstraction and
+application respectively, and $\letin{x = e}{e'}$ for polymorphically
+binding $e$ to $x$ inside $e'$.
 
-There is also a product type, $\tau \times \tau'$, which is the same as the tuple
-\texttt{(a, b)} in Haskell. New product types can be introduced with
-$e \times e'$, and can similarly be eliminated with the projection
-expressions $\pi_1 e$ and $\pi_2 e$.
+Our language also contains product types, $\tau \times \tau'$, which are the same
+as tuples \texttt{(a, b)} in Haskell. New product types can be
+introduced with $e \times e'$, and can similarly be eliminated with the
+projection expressions $\pi_1 \ e$ and $\pi_2 \ e$. $\square$ is the unit type
+(\mintinline{haskell}{()} in Haskell), and has the eponymous
+constructor $\square$.
 
 More interestingly we have the monadic additions. Unlike
 Krishnaswami~\cite{krishnaswami2006} we do not separate the language
-into two expression and computation languages. $\lift{e}$, lifts a
-regular expression into the $\IO$ monad (\texttt{return} in Haskell), and
-$e \bind e'$ is the standard monadic sequencing or binding operation.
+into expression and computation languages. $\lift{e}$, lifts a regular
+expression into the $\IO$ monad (\mintinline{haskell}{return} in
+Haskell), and $e \bind e'$ is the standard monadic sequencing or
+binding operation.
 
-Our language also has heaps $\rho$ and resources $r$, which are different from the
-notion of heaps in separation logic. Resources represent something
-that we want to keep track of in the type and prevent from being
-accessed concurrently, for example a file system or database. We
-provide a couple of placeholder resources to start off with.
+Resources $r$ represent something that we want to keep track of and
+prevent from being accessed concurrently, for example a file system or
+database. The resources we chose for the grammar are such examples.
 
-These can then be used to build up a heap, which is constructed from
-resources and merging other heaps. It is used to tag the resources
-that a computation in an $\IO$ monad might be accessing. There is also
-the notion of a \textsf{World} heap which encapsulates all possible
-resources and sub-heaps. It can be thought of as the default
-\texttt{IO} monad in Haskell, where everything acting on the real
-world is treated sequentially.
+Heaps $\rho$ are then formed from resources. They differ from the notion
+of heaps in separation logic, and are constructed from either single
+resources or by merging other heaps.  They are used to tag the
+resources that a computation in an $\IO$ monad might be
+accessing. There is also the notion of a \textsf{World} heap which
+encapsulates all possible resources and sub-heaps. It can be thought
+of as the ordinary \mintinline{haskell}{IO} monad in Haskell, where
+the outside world is one indivisible resource causing everything to be
+executed sequentially.
 
 $\use{r}{e}$, pronounced \textit{e using r}, lifts a value into the
-$\IO$ monad similarly to $\lift{e}$, but it uses the resource $r$ in
-the process, starting a new heap with that resource. Unique to our
-language is the $e \curlyvee e'$ operator. It joins two monadic computations
-together into one that uses both resources, returning a new heap made
-by merging $e$ and $e'$s heaps --- provided that they do not overlap and
-are well formed (Well formedness will be defined later on).
-
-Note that for our type schemes, we may omit the bindings and write
-$\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as in the context.
+$\IO$ monad similarly to $\lift{e}$, but creates a new heap with the
+resource $r$ and tags the monad with it. Novel to our language is the
+$e \curlyvee e'$ operator. It joins two monadic computations together into one
+that uses both their resources, returning a new heap made by merging
+$e$ and $e'$s heaps --- provided that they do not overlap and are well
+formed. Heap well formedness will be defined later on.
 
 \begin{figure}
 \begin{grammar}
@@ -84,15 +83,40 @@ $\forall \alpha . \alpha$ as $\alpha$ in places where it is unambiguous, such as
 \caption{The grammar for our resourceful language.}\label{fig:grammar}
 \end{figure}
 
+\emph{Free type variables} are defined on types, type schemes and contexts as
+follows:
+\begin{align*}
+  \ftv(\square) &= \emptyset \\
+  \ftv(\alpha) &= \{ \alpha \} \\
+  \ftv(\tau \rightarrow \tau') &= \ftv(\tau) \cup \ftv(\tau') \\
+  \ftv(\IO_\rho \tau) &= \IO_\rho \ftv(\tau) \\
+  \ftv(\forall \alpha_1 , \ldots , \alpha_n . \tau) &= \ftv(\tau) - \{ \alpha_1 , \ldots, \alpha_n \} \\
+  \ftv(\Gamma) &= \bigcup_{x : \sigma \in \Gamma} \ftv(\sigma)
+\end{align*}
+\begin{samepage}
+\emph{Free variables} are defined on terms --- be careful not to mix these up
+with free type variables!
+\[
+\begin{aligned}
+  \fv(x) &= \{ x \} & \fv(\lambda x . e) &= \fv(e) \setminus \{ x \} \\
+  \fv(e \ e') &= \fv(e) \cup \fv(e') & \fv(\letin{x = e}{e'}) &= \fv(e) \cup
+                                    (\fv(e') \setminus \{ x \}) \\
+  \fv(\lift{e}) &= \fv(e) & \fv(e \bind e') &= \fv(e) \cup \fv(e') \\
+  \fv(\square) &= \emptyset & \fv(\use{r}{e}) &= \fv(e) \\
+  \fv(e_1 \times e_2) &= \fv(e_1) \cup \fv(e_2) & \fv(\pi_i e) &= \fv{(e)}_{i = 1,
+                                          2} \\
+  \fv(e_1 \curlyvee e_2) &= \fv(e_1) \cup \fv(e_2)
+\end{aligned}
+\]
+\end{samepage}
+
 \subsection{Substitution}
 Substitution may seem self-explanatory, but it is important we define
-it crystal clear. It plays a vital role in proving properties
-about our system, and there exists subtle differences with how it is
-defined on terms, types and type schemes.
-
-Substitution on types is defined as usual, but extended to include the
-new types in our system. That is, a substitution is a map from type
-variables to types, written in the form $[\tau/\alpha]$ for a single type.
+it crystal clear. It plays a vital role in proving properties about
+our system, and there exists subtle differences with how it is defined
+on terms, types and type schemes. A substitution is a map from type
+variables to types, written as $\tau'[\tau/\alpha]$ to replace the type the type
+$\tau$ for the type variable $\alpha$ in the type $\tau'$.
 \begin{align*}
   \square [\tau/\alpha] &= \square \\
   \alpha' [\tau/\alpha] &=
@@ -121,36 +145,36 @@ that this only substitutes \emph{free} type variables.
 
 It should not be confused with instantiation, where the \emph{bound}
 type variables $\forall \alpha_1 , \ldots , \alpha_n$ are substituted inside the type of a
-type scheme. Instantiation is not a function though: instead it is
+type scheme. Instantiation is not a function though, it is
 a relation $\sigma > \tau$ in which we say $\sigma$ can be instantiated to $\tau$.
 \begin{mathpar}
   \boxed{\sigma > \tau} \\
   \infer{\dom(s) = \{\alpha_1 , \ldots, \alpha_n\} \\ \tau'[s] = \tau}{\forall \alpha_1 , \ldots , \alpha_n
     . \tau' > \tau}
 \end{mathpar}
-The domain of a substitution $\operatorname{dom}(s)$ is the set of
-type variables that it will replace,
-i.e.
-$\dom([\tau_1/\alpha,\tau_2/\beta]) = \{\alpha, \beta\}$. This relation can be
-read as, if there exists a substitution $s$ that substitutes exactly
-all the bound type variables in the type scheme
-$\forall \alpha_1, \ldots, \alpha_n . \tau'$ to give the type $\tau$, then $\forall \alpha_1, \ldots, \alpha_n . \tau' >
-\tau$.
+The domain of a substitution, $\operatorname{dom}(s)$, is the set of
+type variables that it will replace, for example:
+\[ \dom([\tau_1/\alpha,\tau_2/\beta]) = \{\alpha, \beta\} \]
+Instantiation can then be read as, if
+there exists a substitution $s$ that substitutes exactly all the bound
+type variables in the type scheme
+$\forall \alpha_1, \ldots, \alpha_n . \tau'$ to give the type $\tau$, then
+$\forall \alpha_1, \ldots, \alpha_n . \tau' > \tau$.
 
 Furthermore we define the relation $\sigma > \sigma'$ on type schemes as well,
-where for any two type schemes $\sigma$ and $\sigma'$,
-$\sigma > \sigma'$ if for all $\tau$, $\sigma' > \tau \rightarrow \sigma > \tau$.
+and say that $\sigma$ \emph{is more general than} $\sigma'$ if for all
+$\tau$, $\sigma' > \tau \rightarrow \sigma > \tau$.
 
-We then extend this to define substitution on contexts, not
-instantiation. Substitution on contexts only substitutes \emph{free}
-type variables.
+Substitution (not instantiation) is also defined on
+contexts. Substitution on contexts only substitutes \emph{free} type
+variables.
 \begin{align*}
   \centerdot[\tau/\alpha] = \centerdot \\
   (\Gamma , x : \sigma) [\tau/\alpha] &= \Gamma[\tau/\alpha] , x : \sigma[\tau/\alpha]
 \end{align*}
-Substitution is also defined on terms, replacing term variables
-instead of type variables.
 
+There also exist term-level substitutions which map variables to
+other terms, and can be applied as follows:
 \begin{align*}
   \square [v/\alpha] &= \square \\
   \alpha' [v/\alpha] &=
@@ -186,15 +210,15 @@ such as $\lambda x . x$ and $(y \ x)$. We know that the $x$ inside the first
 expression is distinct from the $x$ in the second expression, but when
 working with proofs we will need to show this somehow. We will use the
 Barendregt variable convention~\cite{barendregt1984} to deal with
-this: If we wanted to show that the $x$ inside ${\lambda x . x}$ is
-different from the $x$ in $(y \ x)$, we could use \emph{alpha
+this: If we want to show that the $x$ inside ${\lambda x . x}$ is
+different from the $x$ in $(y \ x)$, we can use \emph{alpha
   conversion} to rename $x$ to $z$ and get ${\lambda z . z}$. This new
 expression is in fact equivalent to ${\lambda x . x}$, and we can always
 choose a new unique name to avoid collisions with any \emph{free
   variables}. The Barendregt variable convention says that whenever we
 have a bound variable (an $x$ inside a $\lambda x . e$ or
-$\letin{x=e'}{e}$), we just assume that we have performed alpha
-conversion on it so that the variable name is indeed unique.
+$\letin{x=e'}{e}$), we can just assume that we have performed alpha
+conversion on it so that the variable name is unique.
 
 \section{Static Semantics}
 Our static semantics begin with the syntax-directed
@@ -208,51 +232,19 @@ rules of the Hindley-Damas-Milner system for the typing relation $\Gamma \vdash 
   {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau}
 \end{mathpar}
 
-% Note that in the syntax-directed rules, the typing judgement assigns
-% types to terms, not type schemes~\cite[p.15]{tofte1988}. Instantiation occurs
-% directly within the \textsc{Var} rule, and generalisation occurs
-% implicitly in $\overline{\Gamma}$.
-
 Like before, $\overline{\Gamma}$ is defined as
 \[ \overline{\Gamma}(\tau) = \forall \alpha_1 \ldots \alpha_n . \tau \
 \textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \ftv(\tau) \setminus \ftv(\Gamma) \]
-
-Free type variables are defined on types, type schemes and contexts as
-follows:
-\begin{align*}
-  \ftv(\square) &= \emptyset \\
-  \ftv(\alpha) &= \{ \alpha \} \\
-  \ftv(\tau \rightarrow \tau') &= \ftv(\tau) \cup \ftv(\tau') \\
-  \ftv(\IO_\rho \tau) &= \IO_\rho \ftv(\tau) \\
-  \ftv(\forall \alpha_1 , \ldots , \alpha_n . \tau) &= \ftv(\tau) - \{ \alpha_1 , \ldots, \alpha_n \} \\
-  \ftv(\Gamma) &= \bigcup_{x : \sigma \in \Gamma} \ftv(\sigma)
-\end{align*}
-
-Free variables are defined on terms --- be careful not to mix these up
-with free type variables!
-\[
-\begin{aligned}
-  \fv(x) &= \{ x \} & \fv(\lambda x . e) &= \fv(e) \setminus \{ x \} \\
-  \fv(e \ e') &= \fv(e) \cup \fv(e') & \fv(\letin{x = e}{e'}) &= \fv(e) \cup
-                                    (\fv(e') \setminus \{ x \}) \\
-  \fv(\lift{e}) &= \fv(e) & \fv(e \bind e') &= \fv(e) \cup \fv(e') \\
-  \fv(\square) &= \emptyset & \fv(\use{r}{e}) &= \fv(e) \\
-  \fv(e_1 \times e_2) &= \fv(e_1) \cup \fv(e_2) & \fv(\pi_i e) &= \fv{(e)}_{i = 1,
-                                          2} \\
-  \fv(e_1 \curlyvee e_2) &= \fv(e_1) \cup \fv(e_2)
-\end{aligned}
-\]
   
-We also introduce the typing rule for $\square$ expressions, to give us a
-concrete type, as well as a rule for products which are introduced
-through $e \times e'$.
+The typing rule for $\square$ expressions introduces the monomorphic type,
+and the rule for products introduces $e \times e'$.
 \begin{mathpar}
   \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \and
   \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
     {\Gamma \vdash e \times e' : \tau \times \tau'}
 \end{mathpar}
-Product types also have two eliminators available for them, projecting
-out the inner type.
+Product types also have two eliminators, which project out the inner
+type.
 \begin{mathpar}
   \infer*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 e : \tau} \and
   \infer*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 e : \tau'}
@@ -260,7 +252,7 @@ out the inner type.
 
 Now we introduce the monadic parts of the language. Our language only
 has one type of monad, the $\IO$ monad, which is parameterised by both
-its \emph{heap} $\rho$ and its encapsulated type. Monadic values are
+its \emph{heap} $\rho$ and its encapsulated type. Monadic values can be
 introduced into the language with $\lift{e}$, which lifts a pure term into
 \textbf{any} \emph{well formed} heap. 
 \begin{mathpar}
@@ -268,17 +260,17 @@ introduced into the language with $\lift{e}$, which lifts a pure term into
 \end{mathpar}
 We need to be careful what heaps we allow terms to be lifted into, as
 the entire point of this system is to avoid heaps containing duplicate
-resources. For example, it would be all to easy to just introduce an
-expression of $\IO_{\textsf{File} \cup \textsf{File}} \tau$ with
-\textsc{Lift}, if it were not for the premise $\textsf{ok} \ \rho$.
+resources. It would be all too easy to introduce a nonsensical type
+like $\IO_{\textsf{File} \cup \textsf{File}} \tau$ with \textsc{Lift}, if it
+were not for the premise $\textsf{ok} \ \rho$.
 
 $\textsf{ok} \ \rho$ is a new relation we define in
-figure~\ref{fig:heapwellformedness} to establish what heaps we
-consider to be \textit{well formed}, in a similar vein to
+Figure~\ref{fig:heapwellformedness} to establish what heaps we
+consider to be well formed, in a similar vein to
 Krishnaswami~\cite{krishnaswami2006}. All heaps consisting of a single
-resource are well formed, and all heaps made by unioning two other well
-formed heaps \textit{that are distinct} --- i.e.\ do not share any of the
-same resources --- are well formed.
+resource are well formed, as well as heaps made by merging two other
+well formed heaps \textit{that are distinct}, i.e.\ they do not share
+any of the same resources.
 \begin{figure}
   \centering
   \begin{mathpar}
@@ -295,9 +287,9 @@ same resources --- are well formed.
 \end{figure}
 
 Whilst \textsc{Lift} lets us construct monads in any heap, we will
-eventually want to have some constructors for $\IO$monads using
+eventually want to have constructors for $\IO$ monads that use
 specific resources. When first designing the system, we used
-placeholder expressions for fixed resources:
+placeholder functions that just used fixed resources:
 \begin{mathpar}
   \infer{ }{\Gamma \vdash \mathsf{readFile} : \IO_{\mathsf{File}} \square} \and
   \infer{ }{\Gamma \vdash \mathsf{readNetwork} : \IO_{\mathsf{Network}} \square}
@@ -310,13 +302,12 @@ consisting of the resource $r$.
 \begin{mathpar}
   \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r e}
 \end{mathpar}
-Note that it is defined with a single resource, not a heap. A heap
-with just one resource is always well formed, so there is no need
-for a $\textsf{ok} \ r$ premise in this judgement.
-\textsc{Use} is meant to be used to annotate terms that use resources that
-should not be accessed concurrently, whilst on the other hand
-\textsc{Lift} is for bringing pure expressions into a monadic
-computation.
+Note that it only uses a single resource, not any arbitrary heap. A
+heap with just one resource is always well formed, so there is no need
+for an $\textsf{ok} \ r$ premise.  \textsc{Use} is meant to be used to
+annotate terms with that a computation needs for itself, whilst on the
+other hand \textsc{Lift} is for bringing pure expressions into a
+monadic computation.
 
 Once we have an $\IO$ value, we can sequence computation by binding
 it with a function that returns another $\IO$.
@@ -327,18 +318,17 @@ it with a function that returns another $\IO$.
 Note that the types of the two $\IO$s must use the same
 resources. However, we want expressions such as
 \[ \use{\textsf{File}}{\square} \bind \lambda x . \use{\textsf{Net}}{\square} \]
-to be well typed. In particular, we want the above expression to be of
+to also be well typed. In particular, we want the above expression to be of
 type $\IO_{\textsf{File} \cup \textsf{Net}} \square$. But if \textsc{Bind}
-requires the resources to be the same, we must first somehow ``cast''
-$\textsf{readFile}$ and $\textsf{readNet}$ to this type.
-
-Thus serves the purpose of the \textsc{Sub} (subsumption) rule.
+requires the heaps to be the same, we must first somehow ``cast''
+$\textsf{readFile}$ and $\textsf{readNet}$ to the same type.
+This is the purpose of the \textsc{Sub} (subsumption) rule:
 \begin{mathpar}
-  \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
+  \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_{\rho'} \tau \\ \rho' \subtyp \rho \\
     \textsf{ok} \ \rho}
-  {\Gamma \vdash e : \IO_{\rho'} \tau}
+  {\Gamma \vdash e : \IO_\rho \tau}
 \end{mathpar}
-It allows something of type $\IO_\rho \tau$ monad to be typed as $\IO_{\rho'} \tau$, provided
+It lets something of type $\IO_{\rho'} \tau$ become a $\IO_\rho \tau$, provided
 that the heap $\rho$ is a \textit{subheap} of $\rho'$. The subheap
 rules for heaps, shown in figure~\ref{fig:subheap}, define the
 $\subtyp$ relation.
@@ -346,14 +336,13 @@ $\subtyp$ relation.
 \begin{figure}
 
 \begin{mathpar}
-\boxed{\rho \subtyp \rho'} \\
+\boxed{\rho' \subtyp \rho} \\
   
-\inferrule*[Right=Top]{ }{\rho \subtyp \textsf{World}} \and
+\inferrule*[Right=Top]{ }{\textsf{World} \subtyp \rho} \and
 \inferrule*[Right=Refl]{ }{\rho \subtyp \rho} \and
-\inferrule*[Right=UnionL]{\rho \subtyp \rho'}{\rho \subtyp \rho' \cup \rho''} \and
+\inferrule*[Right=UnionL]{\rho' \subtyp \rho}{\rho' \cup \rho'' \subtyp \rho} \and
 \hskip 1em
-\inferrule*[Right=UnionR]{\rho \subtyp \rho'}{\rho \subtyp \rho'' \cup \rho'}
-
+\inferrule*[Right=UnionR]{\rho' \subtyp \rho}{\rho'' \cup \rho' \subtyp \rho}
 \end{mathpar}
 
 \caption{Subheap rules}\label{fig:subheap}
@@ -383,31 +372,28 @@ If one views this relation as an ordering, then we have
 $\textsf{World}$ defined as the least upper bound --- this represents
 using all possible resources, and as mentioned earlier
 $\IO_{\textsf{World}}$ can be thought of as the $IO$ monad in Haskell,
-where sequencing interacts with the state of the entire world.
+where sequencing interacts with the state of the entire world.  In a
+sense this could be viewed as a form of subtyping, but by constraining
+it to just resources and not actual types, we avoid the extra overhead
+and complexity subtyping would normally give us in the presence of
+type inference~\cite{dolan2017}.
 
-The subheaping relation is both reflexive (by definition), and transitive.
+The subheaping relation is both reflexive (by definition), and
+transitive.
 \begin{theorem}
-  For all $a$, $b$, $c$, if $a \subtyp b$ and $b \subtyp c$ then $a
-  \subtyp c$.
+  For all $a$, $b$, $c$, if $c \subtyp b$ and $b \subtyp a$ then $c
+  \subtyp a$.
 \end{theorem}
 \begin{proof}
-  By induction on $b \subtyp c$. See
+  By induction on $c \subtyp b$. See
   proof~\ref{proof:subheaptransitive} in the appendix.
 \end{proof}
 
-By constraining subtyping to only resources and not actual types, we
-avoid the extra overhead and complexity subtyping would normally give
-us~\cite{dolan2017}.
-
-The union of resources, for example,
-$\textsf{Net} \cup \textsf{File}$, allows us to reason about using more
-than one resource simultaneously. In fact, the purpose of this type
-system is to help reason about using multiple resources in a safe
-manner, by rejecting programs that use the same resource twice
-simultaneously. In this light, the \textsc{Conc} rule is then the
-heart and soul of this type system, by combining together heaps and
-maintaining the invariant that the resources in the heap are all
-unique.
+The purpose of this type system is to allow programs to be run
+concurrently, but reject the ones that concurrently access the same
+resource. In this regard, the \textsc{Conc} rule is the heart and soul
+of the system. It takes two monadic expressions, merges their heaps
+and returns a product of their two inner types, inside $\IO$.
 \begin{mathpar}
   \infer*[Right=Conc]{
     \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
@@ -415,25 +401,18 @@ unique.
     \textsf{ok} \ \rho_1 \cup \rho_2}
   {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2}
 \end{mathpar}
-The premises include that the new merged heap must be well formed, as we do not
+The premises ensure that the new merged heap must be well formed, as we do not
 want to allow programs that try to use the same resource concurrently,
 such as
 \[ \use{\textsf{File}}{\square} \curlyvee \use{\textsf{File}}{\square} \]
 We do however, want to allow programs that run two expressions that do
-not share any resources, like
-\[ \use{\textsf{File}}{\square} \curlyvee \use{\textsf{Net}}{\square} \]
-
-The result of running two separate $\IO$ actions concurrently produces
-an expression whose type is also an $\IO$ monad, but with the two
-separate heaps joined. In the above example, it would be infered the
-type $\IO_{\textsf{File} \cup \textsf{Net}}$.
+not share any resources:
+\[ \use{\textsf{File}}{\square} \curlyvee \use{\textsf{Net}}{\square} : \IO_{\textsf{File} \cup \textsf{Net}} \]
 
 All together these rules define the typing relation, and are
-displayed in full in figure~\ref{fig:typingrules}. Let's look at some
-examples at how they can be used to derive types for various
-programs.
-
-
+displayed in full in Figure~\ref{fig:typingrules}. To give a better
+idea of how they are used in practice, we will look at some examples
+of various programs and their types.
 
 \begin{figure}
   \begin{mathpar}
@@ -466,10 +445,10 @@ programs.
       \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
       \textsf{ok} \ \rho_1 \cup \rho_2}
     {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2} \and
-    
-    \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
+
+    \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_{\rho'} \tau \\ \rho' \subtyp \rho \\
       \textsf{ok} \ \rho}
-    {\Gamma \vdash e : \IO_{\rho'} \tau}
+    {\Gamma \vdash e : \IO_\rho \tau}
 
   \end{mathpar}
 
@@ -480,10 +459,11 @@ programs.
 \subsubsection{Monadic binding}
 Here we show a proof tree for the expression
 \[\letin{x = \lambda y . \lift{\square}}{(x \ \square) \bind \lambda z . \llbracket z
-  \rrbracket_{\textsf{File}}}\]
-We have a use of the lift operator, from which we can then infer
-must be a heap of \textsf{File}, because of the use operator
-restricting it later down the line.
+    \rrbracket_{\textsf{File}}}\]
+The lift operator in $\lambda y . \lift{\square}$ can lift into any
+heap. But the smallest heap we can use for this overall program is
+\textsf{File}, which is needed by $\lambda z . \use{\textsf{File}}{z}$. So
+when we choose a heap to lift $\square$ into, we lift it into \textsf{File}.
 \begin{mathpar}
   \mprset {sep=1em}
   \infer{
@@ -528,9 +508,9 @@ restricting it later down the line.
 
 \subsubsection{Let polymorphism}
 This example doesn't contain any resourceful elements, but is just an
-example of how let polymorphism allows the same variable lookup to be
-inferred different types on each call site. Note how the premises in
-$\mathbf{(1)}$ and $\mathbf{(2)}$ all infer $x$ to have different types.
+example of how let polymorphism allows the same variable to be given
+different types at each call site. Note how the premises in
+$\mathbf{(1)}$ and $\mathbf{(2)}$ assign $x$ different types.
 \begin{mathpar}
   % app
   \infer{
@@ -561,7 +541,7 @@ $\mathbf{(1)}$ and $\mathbf{(2)}$ all infer $x$ to have different types.
 \end{mathpar}
 
 \subsubsection{Concurrency}
-Here is our first example of accessing two resources concurrently --
+Here is our first example of accessing two resources concurrently ---
 with a bit of imagination one can think of this as reading a file
 from a disk whilst simultaneously fetching data over the network.
 \begin{mathpar}
@@ -592,9 +572,9 @@ from a disk whilst simultaneously fetching data over the network.
 
 \subsubsection{Subsumption}
 % \begin{minipage}{\textwidth}
-Assuming there is a function inside our context called
-\textsf{writeFile} with the type, $\square \rightarrow \IO_{\textsf{File}} \square$, we can
-subsume its heap to be part of a larger heap, namely
+Assume there is a function inside our context called
+\textsf{writeFile} with the type $\square \rightarrow \IO_{\textsf{File}} \square$. We can
+subsume its heap to be part of a larger heap, like
 $\textsf{File} \cup \textsf{Net}$. We will show this with the expression
 \[ \llbracket \square \rrbracket_{\textsf{File}} \curlyvee \llbracket \square \rrbracket_{\textsf{Net}}
 \bind
@@ -642,43 +622,37 @@ $\textsf{File} \cup \textsf{Net}$. We will show this with the expression
 % \end{minipage}
 
 \section{Dynamic semantics}
-Dynamic semantics model how the program actually executes at
-runtime. It plays a crucial part in how we prove that the type system
-is sound, as we can only guarantee that our type system ensures
-error-free programs if we model how the program runs.
-
-As shown in Chapter~\ref{chapter:background}, the original work
-carried out in the Hindley-Damas-Milner systems were based on
-denotational semantics. In our type system, we will use operational
+As shown in Chapter~\ref{chapter:background}, the dynamic semantics in
+the original Hindley-Damas-Milner system was based on denotational
+semantics. In our type system, we will use operational
 semantics. Operational semantics are similar to what we have seen
 before in the definition of the static semantics. We define a bunch of
-inference rules, and from these build up proofs. Tofte~\cite{tofte1988}
-had the idea of using operational semantics for not for the
-typing rules, but also for the dynamic semantics. We choose this
-approach over denotational semantics as it unifies our approach to
-modelling and proving, and to quote Tofte: \textit{``it seems a bit
-unfortunate that we should have to understand domain theory to be able
-to investigate whether a type inference system admits faulty
-programs''}.
+inference rules, and from these build up
+proofs. Tofte~\cite{tofte1988} had the idea of using operational
+semantics for not just the typing rules, but also for the dynamic
+semantics. We choose this approach over denotational semantics as it
+unifies our approach to types and evaluation, and as Tofte said,
+\textsl{``it seems a bit unfortunate that we should have to understand
+  domain theory to be able to investigate whether a type inference
+  system admits faulty programs''}.
 
 \subsection{Values}
-Before we can talk about how we evaluate a program, we need to
-define what constitutes a finished evaluation. That is, what
-terms are a result of a completed computation.
+Before we can talk about how we evaluate a program, we need to define
+what constitutes a fully evaluated program. That is, what terms are a
+result of a completed computation. We define a unary relation called
+\textsf{value}, and give rules describing what terms can be considered
+values in Figure~\ref{fig:values}.
 
-We define a value property, and give rules describing what terms can
-be considered values in figure~\ref{fig:values}. For example, we
-cannot evaluate the $\square$ type any further, therefore all $\square$s
-are considered values. The same goes for product types, but only if
-both inner components are values themselves. $\square \times \square$ is a
-finished value, but $f \ e \times \square$ might still have evaluation left to
-do on the right hand side.
-A lambda on its own is a value too ---
-without being applied to an argument it cannot be evaluated any
-further. The computation inside of it is suspended.
-In a similar fashion a lifted computation cannot be computed any
-further \textit{on its own}. We will see later how binding can run
-this computation, but by itself it will not evaluate to anything.
+For example, we cannot evaluate the unit type any further, therefore
+all $\square$s are considered values. The same goes for product types, but
+only if both inner components are values themselves:
+$\square \times \square$ is a finished value, but
+$f \ e \times \square$ might still have evaluation left to do. A lambda on its
+own is a value too. Without being applied to an argument it cannot be
+evaluated any further: The computation inside of it is suspended. In a
+similar fashion a lifted computation cannot be computed any further
+\textit{on its own}. We will see later how binding can run this
+computation, but by itself it will not evaluate to anything.
 
 \begin{figure}
   \begin{mathpar}
@@ -693,52 +667,50 @@ this computation, but by itself it will not evaluate to anything.
 \end{figure}
 
 \subsection{Small-step semantics}
+The approach to operational semantics we will be taking is
+\emph{small-step operational semantics}. In small-step operational
+semantics we define a step relation $a \leadsto b$ which says that in one
+``step'', $a$ \textit{reduces to} $b$. $b$ might then go onto reduce
+further if it is able to, or it could be a finished value. So
+reduction can be thought of as evaluation of a program, bit by
+bit. Small-step semantics differs from big-step semantics, where the
+relation $a \Downarrow b$ says that at the end of the day, $a$ will reduce to
+$b$, and $b$ will not reduce any further.
 
-Specifically, we will be using small-step operational semantics. In
-small-step operational semantics we define a step relation
-$a \leadsto b$ which says that in one ``step'', $a$ \textit{reduces to}
-$b$. $b$ might then go onto reduce further if it is able to, or it
-could be its final value. Reduction can be thought of as
-evaluation. Small-step semantics differs from big-step semantics,
-where a relation $a \Downarrow b$ says that at the end of the day, $a$ will
-reduce to $b$, and $b$ will not reduce any further.
-
-
-As an example, if an expression $e_1$ reduces to $e_1'$, i.e. $e_1 \leadsto
-e_1'$, then we want the $e_1$ in the application $e_1 \ e_2$ to reduces
+As an example, if an expression $e_1$ reduces to $e_1'$, i.e.\ $e_1 \leadsto
+e_1'$, then we want the application $e_1 \ e_2$ to reduce
 as well. We can write this as
 \begin{mathpar}
   \inferrule{e_1 \leadsto e_1'}{e_1 \ e_2 \leadsto e_1' \ e_2}
 \end{mathpar}
 
-We call this type of reduction which takes smaller reductions and
-updates it within a bigger structure \xi-reduction. There are
-\xi-reduction for other expressions with structure inside, namely
+We call this type of reduction rule which takes smaller reductions and
+updates it within a bigger structure, \xi-reduction. There are
+\xi-reductions for other expressions with structure inside, namely
 product types, the concurrent operator and the bind operator.
 
-Another
-type of reduction rule is \beta-reduction, which comes from the lambda
-calculus. When we apply a term to a function, we substitute the bound
-variable inside the lambda with the argument. A \beta-reduction rule
-defines this.
+Another type of reduction rule is \beta-reduction, which comes from the
+lambda calculus. When we apply an argument to an abstraction, we
+substitute the bound variable inside the abstraction with the
+argument. The \beta-reduction rule defines this.
 \begin{mathpar}
-  \inferrule{\textsf{value} \ e_2}{ (\lambda x . e_1) e_2 \leadsto e_1 [ e_2 / x ]}
+  \inferrule{\textsf{value} \ e_2}{ (\lambda x . e_1) \ e_2 \leadsto e_1 [ e_2 / x ]}
 \end{mathpar}
 
-It is important to note the premise that the argument being applied to
-the lambda must be a value. This enforces a strict evaluation order,
-since in order for the term to be a value it must be completely
-reduced. A lazily evaluated semantics might forgo this extra
-requirement, so that the argument can be reduced after substitution.
+It is important to note the premise here that states the argument
+being applied must be a value. This enforces a strict evaluation
+order, since in order for the argument to be a value it must be
+completely reduced. A lazily evaluated semantics might forgo this
+extra requirement, so that the argument can be reduced after
+substitution.
 
 As mentioned earlier, lifted expressions $\lift{e}$ are suspended much
-like lambdas, and as such are values since they cannot reduce any
-further \textit{on their own}. However, with the bind operator, the
-value inside them can be extracted out and fed into a function.
+like lambdas, and so are values since they cannot reduce any
+further \emph{on their own}. However, with the bind operator, the
+value inside them can be extracted out and fed into an abstraction.
 \begin{mathpar}
   \inferrule{ }{\lift{e} \bind e' \leadsto e' \ e}
 \end{mathpar}
-
 Unlike the semantic rule for \beta-reduction, there is no premise
 enforcing that $\lift{e}$ is a value, since all lifted terms are
 values anyway.
@@ -748,48 +720,46 @@ $\use{\rho}{e}$, one might be tempted to just reduce this to a $\lift{e}$.
 \begin{mathpar}
   \infer{ }{\use{r}{e} \leadsto \lift{e}}
 \end{mathpar}
-
 And we could then also define the reduction for concurrency like so:
 \begin{mathpar}
 \inferrule{ }{\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket}
 \end{mathpar}
-
 However, the intermediate $\lift{e}$ can be confusing. The purpose of
 the lift operator is to lift a pure value into any possible resource
-bound monad. When we see a lift, we think of the typing judgement that
-allows it to fit any heap, when in fact a use should restrict what
-heaps it can go into. For these reasons, we instead define its
-reduction identically to lift.
+bound monad. When we see a lift, we think of the typing judgement
+\textsc{lift} that allows it to fit any heap, when in fact a use
+should restrict what heaps it can go into. For these reasons, we
+instead define its reduction identically to lift.
 \begin{mathpar}
   \inferrule{ }{\use{r}{e} \bind e' \leadsto e' \ e}
 \end{mathpar}
-
 Concurrency is then defined as chaining together two binds, and
 returning the lifted product of the two results.
 \begin{mathpar}
   \inferrule{ }{v \curlyvee w \leadsto
     v \bind \lambda v . (w \bind \lambda w . \lift{v \times w})}
 \end{mathpar}
-
 This might seem like the opposite of concurrency --- executing the
 computation in sequence --- but because our monad does not have any
 state (see Section~\ref{section:modellingstate}),
-${v \bind \lambda v . (w \bind (\lambda w . \lift{v \times w}))}$ is identical to
-$w \bind \lambda w . (v \bind (\lambda v . \lift{v \times w}))$. In fact the previous
+\begin{samepage}
+\[v \bind \lambda v . (w \bind (\lambda w . \lift{v \times w}))\]
+is identical to
+\[w \bind \lambda w . (v \bind (\lambda v . \lift{v \times w}))\]
+\end{samepage}
+In fact the previous
 definition for concurrency as
-$\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w\rrbracket$ will have the same reduction steps at
-the end of the day. In an actual implementation in a programming
-language, the concurrent operator should be replaced with something
-actually concurrent.
+$\lift{v} \curlyvee \lift{w} \leadsto \llbracket v \times w \rrbracket$ will have the same reduction steps at
+the end of the day. In a real-world programming language
+implementation, the evaluation would actually be implemented concurrently.
 
-Although the $v \curlyvee w$ might evaluate to two separate $\bind$s, their
-static semantics are different. Namely, given
-$\Gamma \vdash \lift{v} : \IO_\rho \tau$ then,
+Although the $v \curlyvee w$ might evaluate to two separate $\bind$s, the
+static semantics of concurrency and binding are different. For example, given
+$\Gamma \vdash \lift{v} : \IO_\rho \tau$ we are allowed to bind $lift{v}$ with itself:
 \[
 \Gamma \vdash \lift{v} \bind \lambda v . (\lift{v} \bind (\lambda v . \lift{v \times v})) : \IO_\rho (\tau \times \tau)
 \]
-
-For the concurrent operator, this is a type error, since the
+But with the concurrent operator, this is a type error, since the
 premise $\textsf{ok} \ \rho \cup \rho$ does not hold: There is no type in any context
 that can be given to $v \curlyvee v$.
 
@@ -828,21 +798,25 @@ that can be given to $v \curlyvee v$.
 \subsection{The reflexive and transitive closure}
 
 We can go a \textit{step} further and define $\twoheadrightarrow$ as the reflexive,
-transitive closure of $\leadsto$. What does that mean? If $\leadsto$ is a relation
-on two terms, then the transitive closure $\twoheadrightarrow$ is a new relation that
-contains $\leadsto$ and is transitive, i.e.\ if
-$a \twoheadrightarrow b$ and $b \twoheadrightarrow c$, then
-$a \twoheadrightarrow c$.  A reflexive transitive closure extends this so that for any
-$a$, $a \twoheadrightarrow a$.
+transitive closure of $\leadsto$. What does that mean? If $\leadsto$ is a binary
+relation of two terms, then the transitive closure
+$\twoheadrightarrow$ is a new relation that maintains all the relations of
+$\leadsto$ and is transitive, i.e.\ if $a \twoheadrightarrow b$ and
+$b \twoheadrightarrow c$, then $a \twoheadrightarrow c$.  A reflexive transitive closure extends this so
+that for any $a$, $a \twoheadrightarrow a$.
 
 Intuitively speaking, if the small-step inference rule $a \leadsto b$ says
 that $a$ reduces to $b$ in exactly one step, then
 $a \twoheadrightarrow b$ says $a$ reduces to $b$ in zero or more steps. Instead of
-reducing one step at a time, it can go all the way. For example, if we
+reducing one step at a time, it can go all the way.
+
+\begin{samepage}
+  For example, if we
 have the expression ${(\lambda x . x \ \square) \ (\lambda y . y)}$ then have the
 following relations:
 \[ (\lambda x . x \ \square) \ (\lambda y . y) \leadsto (\lambda y . y) \ \square \leadsto \square \]
 \[ (\lambda x . x \ \square) \ (\lambda y . y) \twoheadrightarrow \square\]
+\end{samepage}
 We do not use this relation to prove any properties about our system,
 but it sheds light on how our expression language eventually reduces
 to a value in the end.
@@ -879,3 +853,5 @@ to a value in the end.
 %%% TeX-engine: luatex
 %%% TeX-command-extra-options: "-shell-escape"
 %%% End:
+
+% LocalWords:  monadic HDM monomorphic Krishnaswami unary

@@ -1,6 +1,7 @@
-module Examples where
+module Resourceful.Examples where
 
-open import Resourceful
+open import Resourceful.Semantics.Static
+open import Resourceful.Properties
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
@@ -9,8 +10,8 @@ _ = ⊢⋎ (⊢use ⊢□) (⊢use ⊢□) (OkS OkZ OkZ (DHZ λ ()))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO (` File ∪ ` Net) □
 _ = let ok = OkS OkZ OkZ (DHZ λ ())
-        in ⊢>>= (⊢sub (⊢use ⊢□) (≥:∪ˡ ≥:Refl) ok)
-                (⊢ƛ (⊢sub (⊢use ⊢□) (≥:∪ʳ ≥:Refl) ok))
+        in ⊢>>= (⊢sub (⊢use ⊢□) (≥:∪ˡ ≥:refl) ok)
+                (⊢ƛ (⊢sub (⊢use ⊢□) (≥:∪ʳ ≥:refl) ok))
 
 _ : ∅ ⊢ use File □ >>= ƛ "x" ⇒ use Net □ ⦂ IO World □
 _ = ⊢>>= (⊢sub (⊢use ⊢□) (≥:World) OkWorld) (⊢ƛ (⊢sub (⊢use ⊢□) ≥:World OkWorld))
@@ -54,7 +55,7 @@ _ : ∅ , "writeFile" ⦂ ` (□ ⇒ IO (` File) □)
 _ = ⊢>>= (⊢⋎ (⊢use ⊢□) (⊢use ⊢□) okFN)
          (⊢ƛ (⊢sub (⊢· (⊢` (S Z (λ ())) (Inst SZ refl refl))
                          (⊢π₁ (⊢` Z (Inst SZ refl refl))))
-                     (≥:∪ˡ ≥:Refl)
+                     (≥:∪ˡ ≥:refl)
                      okFN))
   where okFN : Ok (` File ∪ ` Net)
         okFN = OkS OkZ OkZ (DHZ (λ ()))

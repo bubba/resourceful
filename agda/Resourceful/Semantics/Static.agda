@@ -110,34 +110,34 @@ data Ok : Heap → Set where
 -- heap subtyping
 infix 5 _≥:_
 data _≥:_ : Heap → Heap → Set where
-  ≥:World : ∀ {ρ} → ρ ≥: World
-  ≥:Refl : ∀ {ρ} → ρ ≥: ρ
+  ≥:World : ∀ {ρ} → World ≥: ρ
+  ≥:refl : ∀ {ρ} → ρ ≥: ρ
   ≥:∪ˡ : ∀ {ρ ρ' ρ''}
-       → ρ ≥: ρ'
+       → ρ' ≥: ρ
          ------------
-       → ρ ≥: ρ' ∪ ρ''
+       → ρ' ∪ ρ'' ≥: ρ
   ≥:∪ʳ : ∀ {ρ ρ' ρ''}
-       → ρ ≥: ρ'
+       → ρ' ≥: ρ
          ------------
-       → ρ ≥: ρ'' ∪ ρ'
+       → ρ'' ∪ ρ' ≥: ρ
 
-≥:-trans : ∀ {a b c} → a ≥: b → b ≥: c → a ≥: c
-≥:-trans a≥:b ≥:World = ≥:World
-≥:-trans a≥:b ≥:Refl = a≥:b
-≥:-trans a≥:b (≥:∪ˡ b≥:c) = ≥:∪ˡ (≥:-trans a≥:b b≥:c)
-≥:-trans a≥:b (≥:∪ʳ b≥:c) = ≥:∪ʳ (≥:-trans a≥:b b≥:c)
+≥:-trans : ∀ {a b c} → c ≥: b → b ≥: a → c ≥: a
+≥:-trans ≥:World b≥:a = ≥:World
+≥:-trans ≥:refl b≥:a = b≥:a
+≥:-trans (≥:∪ˡ c≥:b) b≥:a = ≥:∪ˡ (≥:-trans c≥:b b≥:a)
+≥:-trans (≥:∪ʳ c≥:b) b≥:a = ≥:∪ʳ (≥:-trans c≥:b b≥:a)
 
-_ : ` Net ≥: World
+_ : World ≥: ` Net
 _ = ≥:World
-_ : ` Net ≥: ` Net ∪ ` File
-_ = ≥:∪ˡ ≥:Refl
+_ : ` Net ∪ ` File ≥: ` Net
+_ = ≥:∪ˡ ≥:refl
 
 ∩-≥: : ∀ {ρ ρ' ρ''}
      → ρ ∩ ρ'' =∅    
-     → ρ' ≥: ρ''
+     → ρ'' ≥: ρ'
      → ρ ∩ ρ' =∅
 ∩-≥: {ρ} a ≥:World = ⊥-elim (worldDistinct {ρ} (distinct-sym a))
-∩-≥: a ≥:Refl = a
+∩-≥: a ≥:refl = a
 ∩-≥: a (≥:∪ʳ b) = let z = distinct-∪ʳ a
                        in ∩-≥: z b
 ∩-≥: a (≥:∪ˡ b) = let z = distinct-∪ˡ a in ∩-≥: z b
@@ -406,11 +406,11 @@ data _⊢_⦂_ : Context → Term → Type → Set where
      → Γ ⊢ e₁ ⋎ e₂ ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
 
   ⊢sub : ∀ {Γ e τ ρ ρ'}
-         → Γ ⊢ e ⦂ IO ρ τ
-         → ρ ≥: ρ'
-         → Ok ρ'
-           --------------
          → Γ ⊢ e ⦂ IO ρ' τ
+         → ρ ≥: ρ'
+         → Ok ρ
+           --------------
+         → Γ ⊢ e ⦂ IO ρ τ
 
 
 _ : ∅ ⊢ ƛ "x" ⇒ □ ⦂ ( □ ⇒ □ )

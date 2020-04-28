@@ -1,35 +1,40 @@
+\[
+
+\frac{x : \tau
+\]
+%
 \begin{mathpar}
-  \boxed{\Gamma \vdash e : \tau} \\
+%   \boxed{\Gamma \vdash e : \tau} \\
     
-    \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
-    \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
-    \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
-      \tau'} \and
-    \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
-    {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau} \and
-    % \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
-    % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
-    % e_3 : \tau} \and
+%     \inferrule*[Right=Var]{x : \tau' \in \Gamma \\ \tau' > \tau}{\Gamma \vdash x : \tau} \and
+%     \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \and
+%     \inferrule*[Right=Abs]{\Gamma,x : \tau \vdash e : \tau'} {\Gamma \vdash \lambda x . \ e : \tau \rightarrow
+%       \tau'} \and
+%     \inferrule*[Right=Let]{\Gamma \vdash e' : \tau' \\ \Gamma,x : \overline{\Gamma}(\tau') \vdash e : \tau}
+%     {\Gamma \vdash \mathsf{let} \ x = e' \ \mathsf{in} \ e : \tau} \and
+%     % \inferrule*[Right=If]{\Gamma \vdash e_1 : \mathbf{Bool} \\ \Gamma \vdash e_2 : \tau \\ \Gamma \vdash e_3 : \tau}
+%     % {\Gamma \vdash \mathsf{if} \ e_1 \ \mathsf{then} \ e_2 \ \mathsf{else} \
+%     % e_3 : \tau} \and
 
-    \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \\
-    \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
-    {\Gamma \vdash e \times e' : \tau \times \tau'} \and
+%     \inferrule*[Right=Unit]{ }{\Gamma \vdash \square : \square} \\
+%     \inferrule*[Right=Product]{\Gamma \vdash e : \tau \\ \Gamma \vdash e' : \tau'}
+%     {\Gamma \vdash e \times e' : \tau \times \tau'} \and
 
-    \inferrule*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 : \tau} \and     
-    \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \\
+%     \inferrule*[Right=Proj1]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_1 : \tau} \and     
+%     \inferrule*[Right=Proj2]{\Gamma \vdash e : \tau \times \tau'}{\Gamma \vdash \pi_2 : \tau'} \\
 
-    \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} :
-      \IO_\rho \tau} \and
-    \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r \tau} \\
-    \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
-      \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau} \\
-    \infer*[Right=Conc]{
-      \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
-      \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
-      \textsf{ok} \ \rho_1 \cup \rho_2}
-    {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2} \and
+%     \infer*[Right=Lift]{\Gamma \vdash e : \tau \\ \textsf{ok} \ \rho}{\Gamma \vdash \lift{e} :
+%       \IO_\rho \tau} \and
+%     \infer*[Right=Use]{\Gamma \vdash e : \tau}{\Gamma \vdash \use{r}{e} : \IO_r \tau} \\
+%     \inferrule*[Right=Bind]{\Gamma \vdash e : \IO_\rho \tau' \\ \Gamma \vdash e' : \tau' \rightarrow \IO_\rho
+%       \tau}{\Gamma \vdash e \bind e' : \IO_\rho \tau} \\
+%     \infer*[Right=Conc]{
+%       \Gamma \vdash e_1 : \IO_{\rho_1} \tau_1 \\
+%       \Gamma \vdash e_2 : \IO_{\rho_2} \tau_2 \\
+%       \textsf{ok} \ \rho_1 \cup \rho_2}
+%     {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2} \and
     
-    \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
-      \textsf{ok} \ \rho}
-    {\Gamma \vdash e : \IO_{\rho'} \tau}
-    \end{mathpar}
+%     \inferrule*[Right=Sub]{\Gamma \vdash e : \IO_\rho \tau \\ \rho \subtyp \rho' \\
+%       \textsf{ok} \ \rho}
+%     {\Gamma \vdash e : \IO_{\rho'} \tau}
+%   \end{mathpar}

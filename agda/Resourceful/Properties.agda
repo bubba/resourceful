@@ -64,7 +64,7 @@ data Canonical_⦂_ : Term → Type → Set where
       → Canonical (e₁ × e₂) ⦂ τ₁ × τ₂
 
   C-use : ∀ {e τ r ρ}
-        → ` r ≥: ρ
+        → ρ ≥: ` r
         → ∅ ⊢ e ⦂ τ
           ----------------
         → Canonical use r e ⦂ IO ρ τ
@@ -83,7 +83,7 @@ canonical (⊢ƛ ⊢e) V-ƛ = C-ƛ ⊢e
 canonical (⊢□) V-□ = C-□
 canonical (⊢⟦⟧ ⊢e _) V-⟦⟧ = C-⟦⟧ ⊢e
 canonical (⊢× ⊢e₁ ⊢e₂) (V-× _ _) = C-× ⊢e₁ ⊢e₂
-canonical (⊢use ⊢e) V-use = C-use ≥:Refl ⊢e
+canonical (⊢use ⊢e) V-use = C-use ≥:refl ⊢e
 
 canonical (⊢sub ⊢e x _) V-ƛ = ⊥-elim (f ⊢e)
   where
@@ -100,7 +100,7 @@ canonical (⊢sub ⊢e x _) (V-× y y₁) = ⊥-elim (f ⊢e)
   f (⊢sub ⊢e x _) = f ⊢e
 
 canonical (⊢sub ⊢e ρ≥:ρ' _) V-use with canonical ⊢e V-use
-... | C-use r≥:ρ ⊢e' = C-use (≥:-trans r≥:ρ ρ≥:ρ') ⊢e'
+... | C-use ρ'≥:r ⊢e' = C-use (≥:-trans ρ≥:ρ' ρ'≥:r) ⊢e'
 
 data Progress (e : Term) : Set where
   step : ∀ {e'}
@@ -587,9 +587,9 @@ preservation (⊢>>= ⊢u ⊢e') β->>=-use = ⊢· ⊢e' (f ⊢u)
 preservation (⊢⋎ ⊢e₁ ⊢e₂ ok) β-⋎ =
   let ⊢`v = ⊢` (S Z (λ ())) >self 
       ⊢`w = ⊢` Z >self
-      ⊢>>=inner = ⊢>>= (⊢sub (weaken ⊢e₂) (≥:∪ʳ ≥:Refl) ok)
+      ⊢>>=inner = ⊢>>= (⊢sub (weaken ⊢e₂) (≥:∪ʳ ≥:refl) ok)
                        (⊢ƛ (⊢⟦⟧ (⊢× ⊢`v ⊢`w) ok))
-  in ⊢>>= (⊢sub ⊢e₁ (≥:∪ˡ ≥:Refl) ok) (⊢ƛ ⊢>>=inner)
+  in ⊢>>= (⊢sub ⊢e₁ (≥:∪ˡ ≥:refl) ok) (⊢ƛ ⊢>>=inner)
 
 preservation (⊢sub ⊢e ρ≥:ρ' ok) e↝e' = ⊢sub (preservation ⊢e e↝e') ρ≥:ρ' ok
 

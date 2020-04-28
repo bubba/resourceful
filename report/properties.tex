@@ -5,10 +5,10 @@ will prove a number of lemmas and theorems which will eventually show
 that the type system is sound.
 
 Before we begin, we need to show a couple of properties about contexts
-that we crop up later on in our proofs. The first states that if we
-have two variables in the context with the same names but different
-type schemes, then we can ignore the first one as it is overshadowed
-by the second --- any reference to $x$ will result in $x : \sigma'$.
+that crop up later on in our proofs. The first states that if we have
+two variables in the context with the same names but different type
+schemes, then we can ignore the first one as it is overshadowed by the
+second --- any reference to $x$ will result in $x : \sigma'$.
 \begin{lemma}[Drop]\label{lem:drop}
   If $\Gamma , x : \sigma, x : \sigma' \vdash e : \tau$, then $\Gamma , x : \sigma' \vdash e : \tau$
 \end{lemma}
@@ -57,9 +57,9 @@ close function.
 
 Now we prove the generalisation theorem, which states that if a type
 scheme inside the context is an instantiation of another type scheme,
-then we can use the more general type scheme and preserve how things
-are typed. This is an adaptation of a lemma from Wright and
-Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
+then we can use the more general type scheme and preserve how
+expressions are typed. This is an adaptation of a lemma from Wright
+and Felleisen~\cite[Lemma 4.6]{wright1994}, which is in turn an
 adaptation of a lemma from Damas and Milner.
 
 \begin{theorem}[Generalisation]\label{lem:generalisation}
@@ -90,10 +90,11 @@ adaptation of a lemma from Damas and Milner.
     get $\Gamma , x : \sigma , y : \sigma'' \vdash e : \tau$ and so $\Gamma , x : \sigma \vdash \lambda y . e :
     \tau$.
   \item[\rm\textsc{Let}]
-    For $\letin{y = e'}{e}$, we have $\Gamma , x : \sigma' \vdash e' : \tau'$ and $\Gamma , x :
-    \sigma' , y : \overline{\Gamma , x : \sigma'}(\tau') \vdash e : \tau$, and we aim to show
-    $\Gamma , x : \sigma \vdash \letin{y=e'}{e} : \tau$.
-    
+    For $\letin{y = e'}{e}$, we have
+    $\Gamma , x : \sigma' \vdash e' : \tau'$ and
+    $\Gamma , x :
+    \sigma' , y : \overline{\Gamma , x : \sigma'}(\tau') \vdash e : \tau$ and we aim to show
+    \[\Gamma , x : \sigma \vdash \letin{y=e'}{e} : \tau\]
     First off, we need to convert the $y : \overline{\Gamma , x : \sigma'}(\tau')$ to a
     $y : \overline{\Gamma, x : \sigma}(\tau')$ somehow. But it can be shown that if $\sigma >
     \sigma'$, then $\overline{\Gamma , x : \sigma}(\tau) > \overline{\Gamma , x : \sigma'}(\tau)$ due
@@ -348,7 +349,7 @@ proved within the system is valid. In the type theory realm, a type
 system is considered to be sound if and only if, for every typing
 judgement we can produce for an expression in a context, it evaluates
 to some member of the set of the type from the typing judgement --- or
-as Milner put it, \textit{``well-typed programs can't go
+as Milner put it, \textsl{``well-typed programs can't go
   wrong''}~\cite{milner1978}[§3.7].
 \[\Gamma \vdash e : \tau \rightarrow \Gamma \Vdash e : \tau\]
 We saw how this was proved with denotational semantics in

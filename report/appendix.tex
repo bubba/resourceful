@@ -99,21 +99,21 @@ given a type environment, expression and type.
 
 \section{Transitivity of the subheap relation}\label{proof:subheaptransitive}
 \begin{proof}
-  We want to show $a \subtyp c$. Proceed with induction on $b \subtyp c$.
+  We want to show $c \subtyp a$. Proceed with induction on $c \subtyp b$.
   \begin{description}
   \item[\rm\textsc{Top}]
-    $c$ must be \textsf{World}, so from \textsc{Top} we have $a
-    \subtyp c$.
+    $c$ must be \textsf{World}, so from \textsc{Top} we have $c
+    \subtyp a$.
   \item[\rm\textsc{Refl}] By definition of \textsc{Refl}, $b =
-    c$, and so we get $a \subtyp c$ from $a \subtyp b$.
+    c$, and so we get $c \subtyp a$ from $b \subtyp a$.
   \item[\rm\textsc{UnionL}] $c$ is of the form $\rho' \cup \rho''$, and
-    from the premise we have $b \subtyp \rho'$. Use the induction
-    hypothesis with $a \subtyp b$ and $b \subtyp \rho'$ to get $a \subtyp
-    \rho'$, and then \textsc{UnionL} gives us $a \subtyp \rho' \cup \rho''$.
+    from the premise we have $\rho' \subtyp b$. Use the induction
+    hypothesis with $b \subtyp a$ and $\rho' \subtyp b$ to get $\rho' \subtyp
+    a$, and then \textsc{UnionL} gives us $\rho' \cup \rho'' \subtyp a$.
   \item[\rm\textsc{UnionR}]  $c$ is of the form $\rho'' \cup \rho'$, and
-    from the premise we have $b \subtyp \rho'$. Use the induction
-    hypothesis with $a \subtyp b$ and $b \subtyp \rho'$ to get $a \subtyp
-    \rho'$, and then \textsc{UnionR} gives us $a \subtyp \rho'' \cup \rho'$.
+    from the premise we have $\rho'' \subtyp b$. Use the induction
+    hypothesis with $b \subtyp a$ and $\rho'' \subtyp b$ to get $\rho''
+    \subtyp a$, and then \textsc{UnionR} gives us $\rho'' \cup \rho' \subtyp a$.
   \end{description}
 \end{proof}
 

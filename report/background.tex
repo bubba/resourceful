@@ -76,10 +76,10 @@ will not work with predicates, and instead push all our assertions
 into the type level.
 
 \section{Monads categorically}
-As the language we will develop in Chapter~\ref{chapter:system} is
-based around monads, it is a good idea to take a brief look at what
-they are exactly from a mathematical standpoint, and dip our toes into
-the cool waters of category theory. There is an infamous
+As the language we will develop in Chapter~\ref{chapter:system}
+revolves around monads at its core, it is a good idea to take a brief
+look at what exactly they are from a mathematical standpoint, and dip
+our toes into the cool waters of category theory. There is an infamous
 definition\footnote{\textsc{James Iry} A Brief, Incomplete, and Mostly
   Wrong History of Programming Languages} of a monad that goes along
 the lines of
@@ -253,8 +253,8 @@ type system.
 \section{Hindley-Damas-Milner}
 One of our aims whilst developing this type system was to see how well
 it integrates with existing functional programming languages,
-specifically those in the ML family. Therefore we based our system off
-of the Hindley-Damas-Milner (HDM) type
+specifically those in the ML family. Therefore we based our system on
+the Hindley-Damas-Milner (HDM) type
 system~\cite{damas1982}. Originally designed to formalise the type
 system of ML, it is one of the first formalisations of a polymorphic
 type system. It was heavily influential at the time and still
@@ -276,22 +276,23 @@ language in which you can apply abstractions.
 
   <context $\Gamma$> ::= $\centerdot$ | $\Gamma, x : \sigma$
 \end{grammar}
-Expressions are an extension of the venerable lambda calculus, with the
-addition of a new let expression that binds an expression to a
-variable. As we will see later, this is notably different from
-abstraction as it provides the gateway to polymorphism.
+\emph{Expressions} are an extension of the venerable lambda calculus, with
+the addition of a new let expression that binds an expression to a
+variable. This is notably different from abstraction as it allows for
+polymorphism, which we will see later.
 
-Types are either unit types, type variables or function types. However
-expressions are not assigned types directly, instead they are given
-type schemes which quantify over type variables. The distinction
-between the two is necessary so that quantifiers can only
-appear at the top level. 
+\emph{Types} are either unit types, type variables or function
+types. However expressions are not assigned types directly, instead
+they are given \emph{type schemes} which quantify over type
+variables. The distinction between the two is necessary so that
+quantifiers can only appear at the top level.
 
-A context is a linked list for looking up the type schemes of
-variables. Whenever we need to work out the type of a variable
-expression like $x$, we traverse the context to find its type scheme.
+A \emph{context} is a map from variables to type schemes, represented
+as a kind of linked list. Whenever we need to work out the type of a
+variable expression like $x$, we traverse the context to find its type
+scheme.
 
-There is also a notion of \emph{free type variables}, which are type
+There is also the notion of \emph{free type variables}, which are type
 variables \emph{inside a type scheme} which have not been bound
 (quantified over).
 \begin{align*}
@@ -303,9 +304,8 @@ variables \emph{inside a type scheme} which have not been bound
 \subsection{Static semantics}
 
 A type system describes how we assign \emph{valid} types to our
-expressions. Most of the time, it's through a typing relation like this
-\[ \Gamma \vdash e : \tau \]
-You can read this as ``\textit{In the context
+expressions. Most of the time, it's through a typing relation like
+\[ \Gamma \vdash e : \tau \] You can read this as ``\textit{In the context
   $\Gamma$, $e$ has the type $\tau$}''. This is a relation between a context,
 an expression and a type, in the same way that $a \leq b$ is a relation
 between two numbers. With relations we can form \textit{judgements},
@@ -313,10 +313,11 @@ such as ${1 \leq 2}$, or
 ${\Gamma \vdash \lambda x . (y \ x) : \alpha \rightarrow \tau}$.  These are just statements that we can
 make --- they might be true, they might be false. Is $42 \leq 19$? Does
 ${\Gamma \vdash z : \beta}$? I don't know, you tell me. We need something else to be
-able to tell whether or not they make sense: whether or not they are
-\textit{well typed}. So there are \emph{typing rules} that allow us to
-prove that these typing judgements are indeed well typed, and that the
-expressions can have the type that they claim to have.
+able to tell whether or not they make sense, so we have \emph{typing
+  rules} that dictate what typing judgements we can prove.  A typing
+judgement that we can prove tells us that the expression in it is
+\textit{well typed}, and that it does indeed have the type it
+claims to have.
 \begin{mathpar}
   \inferrule*[Right=Var]{x : \sigma \in \Gamma \\ \sigma > \tau}{\Gamma \vdash x : \tau} \and
   \inferrule*[Right=App]{\Gamma \vdash e : \tau' \rightarrow \tau \\ \Gamma \vdash e' : \tau'}{\Gamma \vdash e \ e' : \tau} \\
@@ -329,9 +330,9 @@ These rules consist of some \emph{premises} above a line, and a
 judgements, that we have been able to prove.
 The gist of these rules is that if you have proof of all the premises
 above, then you can infer the conclusion at the bottom. So for example, you
-can read \textsc{App} as \textsl{``If $e$ has the function type $\tau' \rightarrow \tau$
+can read \textsc{App} as \textsl{``If $e$ has the type $\tau' \rightarrow \tau$
   in $\Gamma$ and $e'$ has the type $\tau'$ also in $\Gamma$, then $e'$ applied to
-  $e$ has the type $\tau$ in $\Gamma$ too.''}.
+  $e$ has the type $\tau$ in $\Gamma$.''}.
 
 \textsc{App} is one of the four typing rules in the syntax-directed
 HDM type system, and tells us what happens to the types when we apply
@@ -340,23 +341,23 @@ an argument to a function. Let's take a look at what the others mean.
 says if $e$ has the type $\tau$ in the context $\Gamma$, \textit{extended}
 with $x$ having the type scheme $\tau'$, then $\lambda x.e$ has the type ${\tau' \rightarrow
 \tau}$ in $\Gamma$. In other words, if $e$ can have type $\tau$ provided it has
-access to $x : \tau'$, then we can make a lambda out of it.
+access to $x : \tau'$, then we can make an abstraction out of it.
 
 If we have a variable expression $x$, then \textsc{Var} tells us how
 we can get the type for it. First, we need to make sure $x$ exists in
 the context $\Gamma$. It will have some type scheme $\sigma$, but we can't
 directly assign that to an expression --- the typing relation assigns
-types to terms, not type schemes. Instead, we need to instantiate it
-to a type with $\sigma > \tau$. This instantiation relation says that if we
-have a type scheme $\forall \alpha_1\ldots\alpha_n . \tau'$, then there exists a mapping of
-type variables to types
-${\alpha_1\mapsto\tau_1,\ldots,\alpha_n\mapsto\tau_n}$ which we can apply to those bound type variables
-in $\tau'$ to give us $\tau$.
+types to terms, not type schemes. Instead, $\sigma > \tau$ says there needs to
+be a type $\tau$ that $\sigma$ can be \emph{instantiated} to. This
+instantiation relation says that if $\sigma$ is a type scheme
+$\forall \alpha_1\ldots\alpha_n . \tau'$, then there exists a mapping of type variables to
+types ${\alpha_1\mapsto\tau_1,\ldots,\alpha_n\mapsto\tau_n}$ which we can apply to those bound type
+variables in $\tau'$ to give us $\tau$.
 
 As it turns out, these mappings from type
 variables to types are really common, and they are called
 \emph{substitutions}.  The whole rule then means, if we can look up a
-type scheme $\sigma$ for $x$, and then instantiate to some type
+type scheme $\sigma$ for $x$, and then instantiate it to some type
 $\tau$, then we can infer that $x$ has the type $\tau$ in $\Gamma$.
 
 The \textsc{Let} rule introduces polymorphism to the language. That
@@ -366,8 +367,10 @@ the identity function
 What type should it have? It could be used both as a
 $\mathsf{Int} \rightarrow \mathsf{Int}$. But the reality is that we don't care
 about the underlying type, and want it to work on \emph{anything}.
-\[ \Gamma \vdash \lambda x . x : \alpha \rightarrow \alpha \] Now with type variables instead, we have
-nicely abstracted over the concrete types. Assuming we have a context
+\[ \Gamma \vdash \lambda x . x : \alpha \rightarrow \alpha \]
+With type variables instead, we have abstracted over the concrete
+types.
+Assuming we have a context
 like $\Gamma = \centerdot , a : \mathsf{Int}$, we might try to use it multiple
 times, each with different types, by passing it in as an argument to
 abstraction.
@@ -381,24 +384,25 @@ because $\alpha$ is not quantified over!
 Instead, we need to pass around the identity function as ${y : \forall \alpha . \alpha
 \rightarrow \alpha}$. With a let expression, we can instead say
 \[ \Gamma \vdash \letin{y = \lambda x . x}{(y \ y) \ (y \ a)} : \mathsf{Int} \]
-If we look at the first premise for \textsc{Let}, we can show that
-${\Gamma \vdash \lambda x . x : \alpha \rightarrow \alpha}$. In the second premise however, we put it into
+If we look at the first premise for \textsc{Let}, we have proof that
+${\Gamma \vdash \lambda x . x : \alpha \rightarrow \alpha}$. In the second premise, we put it into
 the context as $y : \overline{\Gamma}(\alpha \rightarrow \alpha)$. $\overline{\Gamma}(\alpha \rightarrow \alpha)$ is the
 close function, which is defined as
 \[ \overline{\Gamma}(\tau) = \forall \alpha_1 \ldots \alpha_n . \tau \
 \textsf{where} \ \{ \alpha_1, \ldots, \alpha_n \} = \ftv(\tau) \setminus \ftv(\Gamma) \]
 This will take the dangling free type variables in our type and create a
-new type scheme that binds them by quantifying over them.
+new type scheme that binds them by quantifying over them: It
+\emph{closes} over free type variables.
 \[ \overline{\Gamma}(\alpha \rightarrow \alpha) = \forall \alpha . \alpha \rightarrow \alpha \]
-And now that we have it quantified, \textsc{Var} is able to instantiate $y$
+And now that the type variable $\alpha$ is quantified, \textsc{Var} is able to instantiate $y$
 to \emph{both} an
 ${(\alpha \rightarrow \alpha) \rightarrow (\alpha \rightarrow \alpha)}$ and an ${\mathsf{Int} \rightarrow \mathsf{Int}}$.
 
 \subsubsection{Syntax-Directed}
 Note that we have been using the syntax-directed rules: a more modern
 treatment of the original system. In the syntax-directed rules, the
-typing relation assigns types to terms, not type
-schemes~\cite[p.15]{tofte1988} as in~\cite{damas1982}. The original
+typing relation assigns types to terms~\cite[p.15]{tofte1988}, not type
+schemes as in~\cite{damas1982}. The original
 system had six rules:
 \begin{mathpar}
   \inferrule*[Right=Taut]{x : \sigma \in \Gamma}{\Gamma \vdash x : \sigma} \and
@@ -421,20 +425,19 @@ means that \emph{the shape of the proof is identical to the shape of
 \subsection{Dynamic Semantics}
 
 You might have noticed that the previous section was titled
-\textit{Static Semantics}. Whenever we created the
-typing relations and the typing rules, we assigned a sense of meaning
-to these types. For example, something of $\tau \rightarrow \tau$ is going to be
-a function, because our \textsc{Abs} rule dictates so. These semantics
-given to our program are known \emph{statically}. Without knowing what
-any of our programs evaluate to, we can work out their types.
+\textit{Static Semantics}. Whenever we defined the typing relation and
+the typing rules, we assigned a sense of meaning to these types. For
+example, something of type $\tau' \rightarrow \tau$ is going to be a function, because
+our \textsc{Abs} rule dictates so. These semantics are known
+\emph{statically}. Without knowing what any of our programs evaluate
+to, we can work out their types.
 
 Usually want to be able to show that these static semantics are
-\emph{sound}, which in essence means if something statically has a
-type $\tau$, it actually evaluates to something of type
-$\tau$\footnote{Type soundness is discussed in more detail in
-  Section~\ref{sec:type-soundness}}. But to show this, we first need
-to actually define how things are evaluated. This is called the
-\emph{dynamic semantics} of a language.
+\emph{sound}, which in essence means if a program has a type $\tau$, it
+actually evaluates to something of type $\tau$\footnote{Type soundness is
+  discussed in more detail in Section~\ref{sec:type-soundness}}. But
+to show this, we first need to define what it means to evaluate a
+program. This is called the \emph{dynamic semantics} of a language.
 
 There are multiple ways to define the dynamic semantics. In the
 original work, Milner and Damas defined a \emph{denotational}
@@ -446,7 +449,7 @@ important part is that once the dynamic semantics are in place, it is
 possible to define semantic entailment:
 \[ \Gamma \vDash e : \tau \]
 Which can be read as, \textsl{``In the context $\Gamma$, $e$ evaluates to a
-  value in $\tau$''}. Semantic soundness then boils down to showing that
+  value in $\tau$''}. Soundness then boils down to showing that
 if $e$ has type $\tau$, $e$ does actually evaluate to a value in $\tau$.
 \[ \Gamma \vdash e : \tau \rightarrow \Gamma \vDash e : \tau \]
 

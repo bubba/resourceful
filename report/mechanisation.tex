@@ -108,16 +108,16 @@ a heap is a subheap of another heap. This data type is parameterised
 over two heaps, which appear in the type.
 \begin{minted}[samepage]{agda}
 data _≥:_ : Heap → Heap → Set where
-  ≥:World : ∀ {ρ} → ρ ≥: World
-  ≥:Refl : ∀ {ρ} → ρ ≥: ρ
+  ≥:World : ∀ {ρ} → World ≥: ρ
+  ≥:refl : ∀ {ρ} → ρ ≥: ρ
   ≥:∪ˡ : ∀ {ρ ρ' ρ''}
-       → ρ ≥: ρ'
+       → ρ' ≥: ρ
          ------------
-       → ρ ≥: ρ' ∪ ρ''
+       → ρ' ∪ ρ'' ≥: ρ
   ≥:∪ʳ : ∀ {ρ ρ' ρ''}
-       → ρ ≥: ρ'
+       → ρ' ≥: ρ
          ------------
-       → ρ ≥: ρ'' ∪ ρ'
+       → ρ'' ∪ ρ' ≥: ρ
 \end{minted}
 If we wanted to show that $\textsf{Net} \subtyp \textsf{Net} \cup
 \textsf{File}$, we follow the same steps we would carry out in a proof
@@ -264,11 +264,11 @@ data _⊢_⦂_ : Context → Term → Type → Set where
      → Γ ⊢ e₁ ⋎ e₂ ⦂ IO (ρ₁ ∪ ρ₂) (τ₁ × τ₂)
 
   ⊢sub : ∀ {Γ e τ ρ ρ'}
-         → Γ ⊢ e ⦂ IO ρ τ
+         → Γ ⊢ e ⦂ IO ρ' τ
          → ρ ≥: ρ'
          → Ok ρ'
            --------------
-         → Γ ⊢ e ⦂ IO ρ' τ
+         → Γ ⊢ e ⦂ IO ρ τ
 \end{minted}
 \end{multicols}
 \caption{The typing rules as they are defined in Agda.}\label{lst:typingrules}
