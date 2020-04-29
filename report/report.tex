@@ -101,12 +101,13 @@ effects: And the order in which they are carried out is important.
 So when it comes to side effects in a language with referential transparency,
 the language must model the sequence in which effects are carried out. One of
 the most successful approaches has been to capture the state of the outside
-universe, and have functions with side effects write to that state. This way, if
-writing to \texttt{stdout} causes some particles to be perturbed on a display
-monitor, then we can track that by saying the state of the universe has changed,
-and that it matters what order it changed in. We don't actually track what
-particles are there, where they might be or what their current charge is. All we
-need to know is that the universe is slightly different than what it was before.
+world, and have functions with side effects that write to that state. This
+way, if writing to \texttt{stdout} causes some particles to be perturbed on a
+display monitor, then we can track that by saying the state of the world has
+changed, and that it matters what order it changed. We don't actually track
+what particles are there, where they might be or what their current charge
+is. All we need to know is that the world is slightly different than what it
+was before.
 
 Concurrent Clean models this by threading the world in and out of
 functions. Uniqueness types guarantee that the same world is only used once, so
@@ -114,20 +115,19 @@ that the programmer doesn't create an alternative timeline by duplicating it.
 \begin{minted}[breaklines]{clean}
 readFile :: !String !*World -> (!MaybeError FileError String, !*World)
 \end{minted}
+
 Haskell also treats the world as a state, but without the uniquness guarantee.
 Any function that interacts with the world returns a function, which returns a
 new version of the World alongside the function result.\footnote{The actual
   definition in GHC is \\ \mintinline{haskell}{newtype IO a = IO (State#
     RealWorld -> (# State# RealWorld, a #))}}
-
 \mint{haskell}|type IO a = World -> (World, a)|
-
 How Haskell ensures that an old world isn't erroneously used is by hiding the
 updating of the state from the user, tucking it away into a \textit{monad}. This
 idea of using monads to sequence together stateful computations was first
 introduced by Peyton Jones and
 Wadler~\cite{peytonjones1993}\cite{wadler1995}. The programmer no longer needs
-to keep track of the state of the universe. They can keep their imperative code
+to keep track of the state of the world. They can keep their imperative code
 imperative, and their pure code pure. This marriage of monads and IO is one of
 the crown jewels of functional language research to come out of Haskell.
 \begin{minted}{haskell}
