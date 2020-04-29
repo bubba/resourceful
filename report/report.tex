@@ -24,6 +24,9 @@
 \newunicodechar{⋎}{{\mathsymbolfont{\curlyvee}}}
 \newunicodechar{∷}{{\mathsymbolfont{∷}}}
 
+\newif\ifdeclaration
+\declarationtrue
+
 \begin{document}
 
 \newcommand{\llbracket}{[\![}
@@ -54,7 +57,7 @@
       Presented to the University of Dublin, Trinity College \\
       In Partial Fulfilment of the Requirements for the Degree of \\
       \vskip 0.2in
-      {\bf Master of Science in Computer Science}
+      {\bf Masters in Computer Science}
     }
 
     \vfill
@@ -64,6 +67,24 @@
   Glenn Strong
 
 \end{titlepage}
+
+\ifdeclaration
+% {\Large \bf \uppercase{Declaration}}
+\chapter*{Declaration}
+
+I hereby declare that this project is entirely my own work and that it has not
+been submitted as an exercise for a degree at this or any other university.
+
+\begin{flushleft}
+  \vskip 2cm
+  Luke Lau \\
+  \smallskip
+  April 2020
+\end{flushleft}
+
+
+\pagebreak
+\fi
 
 \tableofcontents
 
@@ -101,10 +122,10 @@ new version of the World alongside the function result.\footnote{The actual
 
 \mint{haskell}|type IO a = World -> (World, a)|
 
-How Haskell ensures that an old world isn't erroneously used instead of a
-fresh new one is by hiding the updating of the state from the user, tucking it
-away into a \textit{monad}. This idea of using monads to sequence together
-stateful computations was first introduced by Peyton Jones and
+How Haskell ensures that an old world isn't erroneously used is by hiding the
+updating of the state from the user, tucking it away into a \textit{monad}. This
+idea of using monads to sequence together stateful computations was first
+introduced by Peyton Jones and
 Wadler~\cite{peytonjones1993}\cite{wadler1995}. The programmer no longer needs
 to keep track of the state of the universe. They can keep their imperative code
 imperative, and their pure code pure. This marriage of monads and IO is one of
@@ -258,17 +279,26 @@ areas of further work that would be interesting to explore.
 \include{evaluation}
 
 \chapter{Conclusion}
-We have presented a pragmatic approach to reasoning about concurrency within a
-type system. We build upon the Hindley-Damas-Milner type system, incorporating
-the idea of using monads for modelling effects, and extend it with our
-resourceful constructs. We can prove it retains type soundness, and in the
-process of doing so we have also created a framework for mechanising the proof
-of HDM's soundness within Agda.
+We have presented a pragmatic approach to reasoning about concurrent access of
+resources within a type system. We build upon the Hindley-Damas-Milner type
+system, incorporating the idea of modelling effects with monads, and extend it
+with our resourceful constructs. We can prove it retains type soundness, and in
+the process of doing so we have also created a framework for mechanising the
+proof of HDM's soundness within Agda.
+Furthermore, what we have built here serves an excellent basis for future
+work. There are many different approaches yet to explore that could extend the
+system in interesting directions.
 
-The system is simple, but it occupies a point in the design space that fits well
-into existing functional programming languages, and would provide immediate
-utility in keeping track of concurrent resourcefulness. Furthermore, there are
-many different interesting directions the system can be extended in.
+By allowing heaps to be merged and subsumed into using more resources than
+necessary, we draw parallels to the local reasoning of separation logic's frame
+rule. The frame rule is what allows separation logic to scale well, and so we also
+have good reason to believe that our system will scale for the same reasons.
+
+And although it is simple, the system occupies a point in the design space that
+fits well into existing functional programming languages, providing a lot of
+utility for very little complexity. Concurrent programming is a notoriously
+difficult task, so a type system that can help whittle down cases of concurrent
+resource access means its one less thing the programmer needs to worry about.
 
 \bibliographystyle{acm}
 \bibliography{report}

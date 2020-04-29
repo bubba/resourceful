@@ -1,4 +1,4 @@
-\chapter{Evaluation and Further Work}\label{cha:evaluation}
+\chapter{Evaluation and further work}\label{cha:evaluation}
 
 \section{Separation logic}
 In Section~\ref{sec:separationologic} we briefly touched separation logic,
@@ -18,7 +18,7 @@ merged, under the condition that they do not overlap:
   \infer{\textsf{ok} \ \rho \\ \textsf{ok} \ \rho' \\ \rho\cap\rho'=\emptyset}
   {\textsf{ok} \ \rho\cup\rho'}
 \]
-This mirrors the idea of separation logic, that we only need to worry
+This mirrors the idea in separation logic that we only need to worry
 about the variables relevant to our code, or in our terminology, the
 resources relevant to our type. So our subsumption rule, \textsc{Sub}, that lets
 heaps get promoted to a larger heap, ends up being our version of the
@@ -41,7 +41,7 @@ separating conjunction $*$ is our union $\cup$.
   {\Gamma \vdash e_1 \curlyvee e_2 : \IO_{\rho_1 \cup \rho_2} \ \tau_1 \times \tau_2}
 \]
 
-\section{Heap well formedness}
+\section{Well formed heaps}
 We have proved the system defined in Chapter~\ref{chapter:system} is
 sound, and moreover we can show that every concurrent expression has a
 well formed heap --- that is a resource is not used more than once in the
@@ -89,8 +89,8 @@ to pass into this lambda. Because of this I believe that Conjecture~\ref{conject
 provable, but only when the context only contains well formed type
 schemes, and hence why it only applies for the empty context.
 
-We can extend this to include a relation for well-formed contexts and
-well-formed types, and use this in our definition. 
+We can extend this to include a relation for well formed contexts and
+well formed types, and use this in our definition. 
 
 \begin{mathpar}
   \boxed{\textsf{ok} \ \Gamma} \\
@@ -119,11 +119,10 @@ conjecture.
 \begin{lemma}
   If $\textsf{ok} \ \sigma$ and $\sigma > \tau$, then $\textsf{ok} \ \tau$
 \end{lemma}
-
-This introduces a notion of ``well-typed types'' and adds quite a bit
+This idea of well formed types adds quite a bit
 of extra overhead to the system, so it is left as further work.
 
-\section{Let-polymorphism}
+\section{Let polymorphism}
 All this theory was motivated by a very practical cause: to provide
 some simple concurrency guarantees at the type level in a programming
 language. Thus the intention is that some of this may eventually make
@@ -256,15 +255,14 @@ are merged --- something that separation logic could be used for.
 One of the main contributions of the Hindley-Damas-Milner system was
 the inclusion of a type inference algorithm,
 Algorithm~W~\cite{milner1978}. A type system on its own only lets us
-ascertain that a program is well-typed, given that we supply it a
-program and a type. But the design of Hindley-Damas-milner made it
+ascertain that a program is well-typed, given that we supply it an
+expression and a type. But the design of Hindley-Damas-milner made it
 possible for the type to be inferred algorithmically, from the program
-alone. More impressively, this algorithm also always inferred the most
-\emph{principal type}: the most general, polymorphic type a program
-could have.  Algorithm~W freed ML programmers from having to
-explicitly write type annotations, and is one of its most iconic
-features. Naturally, we should explore extending Algorithm~W to handle
-our new resourceful types.
+alone. Algorithm W also always infers the \emph{principal type}: the
+most general, polymorphic type an expression could have.  Algorithm~W
+freed ML programmers from having to explicitly write type annotations,
+and is one of its most iconic features. Naturally, we should explore
+extending Algorithm~W to handle our new resourceful types.
 
 \section{Heap polymorphism}
 It would be convenient if we were able to have expressions like the
@@ -291,7 +289,7 @@ Then in the definition of substitution, whenever a mapping from a heap
 variable to heap is encountered we would apply the substitution.
 \begin{align*}
   (\IO_{\rho'} \tau)[h/\rho] &= \IO_{\rho'[h/\rho]} \tau \\
-  r[h/\rho] &= r  && \textsf{Definining substitution on heaps now} \\
+  r[h/\rho] &= r \\
   (\rho_1 \cup \rho_2)[h/\rho] &= \rho_1[h/\rho] \cup \rho_2[h/\rho] \\
   \textsf{World}[h/\rho] &= \textsf{World} \\
   h'[h/\rho] &=
@@ -304,42 +302,42 @@ variable to heap is encountered we would apply the substitution.
 \section{Dependently typed resources}
 So far our resources have just been simple static placeholders that
 represented system resources, for example the filesystem and the
-network. This is just for the sake of argument: these resources can be
+network. This is just for the sake of argument: resources can be
 as general or as specific as is needed for the programmer's use
 case.
 
 Suppose a programmer wanted to perform multiple concurrent
 operations on various files. A resource representing the entire
-filesystem will be too coarse-grained for this purpose. Instead they
+filesystem would be too coarse-grained for this purpose. Instead they
 might want to have a separate resource for each file.
 \setlength{\grammarindent}{2em}
 \begin{grammar} \centering
   <resource $r$> ::= \textsf{foo.txt} | \textsf{bar.txt} | \textsf{baz.txt} \ldots
 \end{grammar}
 But this is very static. If the programmer writes some code that
-operates on a new file, then these predefined resources need to have
-it appended. And what if they don't know what files they will be
-touching at typecheck time? Instead, it would be much more natural if
-the programmer could write programs like this
+operates on a new file, then the new file would need to be appended to
+the list of these predefined resources. And what if they don't know
+what files they will be touching at typecheck time? Instead, it would
+be much more natural if the programmer could write programs like
 \begin{align*}
   \textsf{readFile} \ \textsf{``foo.txt''} &: \IO_{\textsf{foo.txt}} \textsf{String} \\
   \textsf{writeFile} \ \textsf{``bar.txt''} &: \textsf{String} \rightarrow
   \IO_{\textsf{bar.txt}} \square
 \end{align*}
-And have the file automatically \emph{lifted} from the expression and
+and have the file automatically \emph{lifted} from the expression and
 into the heap of the type. This is a job for \textbf{dependent
   types}: having the type depend on the term. However in our system, our resources and types are not unified. In a
 dependently typed lambda calculus, the $\Pi$ rule substitutes values into
 types like so\footnote{$\Gamma \vdash \tau : \star$ is a judgement saying that $\tau$ is a
   type in some universe.}
 \begin{mathpar}
-  \infer{\Gamma \vdash (\Pi x : \tau' . \tau) : \star \\ \Gamma , x : \tau' \vdash e : \tau}
-  {\Gamma \vdash \lambda x . e : (\Pi x : \tau' . \tau)} \\
-  \infer{\Gamma \vdash e : (\Pi x : \tau' . \tau) \\ e' : \tau'}
+  \infer{\Gamma \vdash \Pi (x : \tau') . \tau : \star \\ \Gamma , x : \tau' \vdash e : \tau}
+  {\Gamma \vdash \lambda x . e : \Pi (x : \tau') . \tau} \\
+  \infer{\Gamma \vdash e : \Pi (x : \tau') . \tau \\ e' : \tau'}
   {\Gamma \vdash e \ e' : \tau[e'/\tau']}
 \end{mathpar}
 We would need to combine the syntaxes for resources and types together
-for this rule, or fleshing out types to include type constructors
+for this rule, or flesh out types to include type constructors
 through which resources and heaps could be embedded in.
 Alternatively, we could be lazy and avoid this by making it dependent
 only in the heap. We could introduce a type of lambda for
@@ -363,9 +361,8 @@ represent the same resource. Does the typechecker here know that $x=y$?
   &\letin{y = x}{\textsf{writeFile} \ y \ \textsf{``hello''}}
 \end{flalign*}
 
-\section{Casting Heaps}
-One practical question to consider is what will this look like in a
-real-world programming language. We have only been passing about the
+\section{Casting heaps}
+ We have only been passing about the
 primitive unit type, but realistically we are going to want to have
 functions that actually have functionality, like the aforementioned
 \[\textsf{readFile} : \textsf{String} \rightarrow \IO_\rho \textsf{String}\]
@@ -377,18 +374,16 @@ monad. Remember that plain $\IO$ is equivalent to
 $\IO_{\textsf{World}}$:
 \[\textsf{readFile'} : \textsf{String} \rightarrow \IO_{\textsf{World}}
   \textsf{String} \]
-
-How do we bring this into a $\textsf{File}$ heap? If it were a pure
-computation, then we could have just used the use operator:
+How do we bring the $\IO$ monad into a $\textsf{File}$ heap?
+If it were a pure computation, then we could have just used the use operator:
 \[\lambda s \rightarrow \use{\textsf{File}}{\textsf{readFile'} \ s }\]
-
 But it's a monadic computation, so we would end up with a doubly
 nested monad like
-${\IO_{\textsf{File}} (\IO_{\textsf{World}} \textsf{String})}$. Can
-we subsume it? No! Because \textsf{World} is at the top of the
+${\IO_{\textsf{File}} (\IO_{\textsf{World}} \textsf{String})}$. Can we
+subsume it? No! Because \textsf{World} is at the top of the
 sub-heap chain. It already uses all possible resources, and we can't
-claim that it uses less than what it actually does! The type is
-overly cautious in this case.
+claim that it uses less than what it actually does! The type is overly
+cautious in this case.
 
 In an ideal world, standard library functions would built up from a
 handful of built-ins for extremely low level primitives, that keep
@@ -397,7 +392,7 @@ together, we could subsume them to keep track of higher-level
 resources. For example, after opening several file descriptors, we
 could say we are using them to access a database. But practically, we
 are going to have to port functions that use the full
-$\IO_{\textsf{World}}$ monad to a monad that uses only the resources
+$\IO_{\textsf{World}}$ monad to, a monad that uses only the resources
 that we \emph{know} the function is accessing.
 
 Haskell's \texttt{base} library contains the
@@ -407,7 +402,7 @@ provides an escape mechanism for library authors to tell the type
 checker that something really doesn't have any side effects, and is
 safe to use as such. If we are to allow library authors to annotate
 their heaps correctly, one such solution would be to provide an
-``unsafe'' function like this, except instead of discarding the $\IO$
+unsafe function like this, except instead of discarding the $\IO$
 part, it would discard heap annotations.
 \[ \textsf{unsafeCastHeap} : \IO_\rho \alpha \rightarrow \IO_{\rho'} \alpha \]
 
@@ -417,7 +412,7 @@ library authors, only when they know that a function accesses a
 specific set of resources, and only those resources.
 
 Another more radical approach to this would be to flip \textsf{World}
-on its head: Introduce a notion of an ``empty'' heap which uses no
+on its head: Introduce a notion of an ``empty'' heap which contains no
 resources, and as such is distinct from all other heaps. Existing code
 in a plain $\IO$ monad would have this empty heap by default, and when a
 library author wants to tag resources a function might use, they would

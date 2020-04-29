@@ -1,4 +1,4 @@
-\chapter{A Formal Definition}\label{chapter:system}
+\chapter{The Resourceful System}\label{chapter:system}
 
 In this chapter we will formalise our resource-tracking, monadic IO
 language, based on the Hindley-Damas-Milner type system that we saw
@@ -203,7 +203,7 @@ other terms, and can be applied as follows:
   (e_1 \curlyvee e_2) [v/\alpha] &= e_1[v/\alpha] \curlyvee e_2 [v/\alpha]
 \end{align*}
 
-\subsection{Barendregt's Variable Convention}
+\subsection{Barendregt's variable convention}
 
 Sometimes, we will end up in a scenario with two separate expressions
 such as $\lambda x . x$ and $(y \ x)$. We know that the $x$ inside the first
@@ -220,7 +220,7 @@ have a bound variable (an $x$ inside a $\lambda x . e$ or
 $\letin{x=e'}{e}$), we can just assume that we have performed alpha
 conversion on it so that the variable name is unique.
 
-\section{Static Semantics}
+\section{Static semantics}
 Our static semantics begin with the syntax-directed
 rules of the Hindley-Damas-Milner system for the typing relation $\Gamma \vdash e : \tau$.
 

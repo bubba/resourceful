@@ -1,7 +1,5 @@
 \appendix
-\chapter{} % needed to get section numbering?
-
-\section{Denotational Semantics of Hindley-Damas-Milner}\label{sec:denot-semant-hindl}
+\chapter{Denotational Semantics of Hindley-Damas-Milner}\label{sec:denot-semant-hindl} 
 
 The \emph{semantic domain} of the expression language defines the
 possible values an expression can have. It is a \emph{complete partial
@@ -97,6 +95,8 @@ given a type environment, expression and type.
   \Gamma \vDash e : \tau \iff \forall \psi \forall \eta \ \eta:_\psi \Gamma \rightarrow \mathcal{E} \llbracket e \rrbracket \eta :_\psi \tau
 \]
 
+\chapter{Proofs}
+
 \section{Transitivity of the subheap relation}\label{proof:subheaptransitive}
 \begin{proof}
   We want to show $c \subtyp a$. Proceed with induction on $c \subtyp b$.
@@ -121,7 +121,6 @@ given a type environment, expression and type.
 \begin{lemma}\label{lem:unwrapLift}
   If $\Gamma \vdash \lift{e} : \IO_\rho \tau$, then $\Gamma \vdash e : \tau$.
 \end{lemma}
-
 \begin{proof}
   This might seem obvious, but because of subsumption we need to
   unwravel for the proof for it first. Begin with induction on $\Gamma \vdash
@@ -141,4 +140,19 @@ given a type environment, expression and type.
   Identical to that of Lemma~\ref{lem:unwrapLift}, except we handle
   the case \textsc{Use} instead of \textsc{Lift}.
 \end{proof}
+
+% \section{Well Formed Types Lemmas}\label{sec:well-formed-types}
+% \begin{lemma}
+%   If $\textsf{ok} \ \tau$ then for any substitution $s$, $\textsf{ok} \ \tau[s]$
+% \end{lemma}
+% \begin{proof}
+%   Begin with induction on $\tau$.
+%   \begin{description}
+%   \item[$\tau \rightarrow \tau'$] 
+%   \end{description}
+% \end{proof}
+
+\begin{lemma}
+  If $\textsf{ok} \ \sigma$ and $\sigma > \tau$, then $\textsf{ok} \ \tau$
+\end{lemma}
 % LocalWords:  denotational Hindley Damas Milner cpo lub
