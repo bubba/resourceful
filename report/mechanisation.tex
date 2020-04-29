@@ -1,43 +1,43 @@
-\chapter{Mechanisation}\label{cha:mechanisation}
+\chapter{Mechanisation in Agda}\label{cha:mechanisation}
 In this chapter, we will look at how the proofs in
 Chapter~\ref{cha:properties} were mechanically formalised --- in other
 words, proved within a proof assistant.  The proofs were mechanised
 within Agda~\cite{norell2009}, a dependently typed programming
 language with an ML syntax, similar to that of Haskell's. It can be
-used for general purpose programming, but because it is rooted in
+used for general purpose programming, but since it is rooted in
 Martin-Löf intuitionistic type theory~\cite{martin-lof1984}, it can
-also be used as a proof assistant.
+also be used as a prove formal properties.
 
-Like many other proof assistants, the way we prove properties within
-Agda is by writing programs that satisfy types. It takes advantage of
-the Curry-Howard correspondence, which says that propositions are
-analogous to types, and proofs are analogous to programs that fulfil
-that type. We first create types that represent our
-propositions. Then we can then prove our propositions by constructing
-a value for the program that satisfies the type, hence intuitionistic
-logic is also known as constructive logic.
+Properties are proven in Agda by writing programs that satisfy
+types. This approach takes advantage of the Curry-Howard
+correspondence, which is that propositions are analogous to types, and
+proofs are analogous to programs that fulfil that type. We first
+create types that represent our propositions. Then we can then prove
+our propositions by constructing a value for the program that
+satisfies the type --- hence why intuitionistic logic is also known as
+constructive logic.
 
 As a brief example, a proposition of the form
 $\forall a. a \rightarrow b$, translates into a program of type \mintinline{agda}{∀ a → b}. If you read the proposition as ``\textit{if a, then b}'', then
 you can read the type as ``\textit{given any proof of a, then I can
   construct a proof of b}''. And that is indeed what the program
-should do: it is a function that takes an argument of $a$, and returns
+should do: It is a function that takes an argument of $a$, and returns
 something of type $b$.
 
-The vast majority of the work in mechanising was in writing the proofs
-related to polymorphism in the Hindley-Damas-Milner system, not the
-resourceful parts. The contemporary syntactic version of
-Hindley-Damas-Milner (what we are using here) has been successfully
-formalised in Coq~\cite{dubois2000}, and a formalisation for System F
-was recently created in Agda~\cite{chapman2019}. However as it stands,
-we are not aware of any formalizations of Hindley-Damas-Milner within
-Agda. Regardless, the techniques and approaches here are similar, and
-we base much of the proofs off of the proofs in~\cite{wright1994}.
+The vast majority of the work in mechanising was in the proofs related
+to polymorphism in the Hindley-Damas-Milner system, not the
+resourceful parts. The syntax-directed Hindley-Damas-Milner system has
+been successfully formalised in Coq~\cite{dubois2000}, and a
+formalisation for System F was recently created in
+Agda~\cite{chapman2019}. However as it stands, we are not aware of any
+formalizations of Hindley-Damas-Milner within Agda. Regardless, the
+techniques and approaches here are similar, and we base much of the
+work on the proofs in~\cite{wright1994}.
 
 \section{Definitions}
 The framework within Agda for working with the type system is built
-upon the formalisation of the simply typed lambda calculus by Kokke et
-al.~\cite{kokke2020} It begins with the grammar, shown in
+upon the formalisation of the simply typed lambda calculus in Agda by
+Kokke et al.~\cite{kokke2020} It begins with the grammar, shown in
 Listing~\ref{lst:grammar}.
 
 \setminted{fontsize=\small,samepage}
@@ -80,15 +80,15 @@ data TypeScheme : Set where
 \end{minted}
 \end{multicols}
 \caption{Grammar definitions. Note that some of the notation (e.g.~$\forall$) had to be substituted due to
-being reserved within Agda.}\label{lst:grammar}
+overlaps with keywords in Agda.}\label{lst:grammar}
 \end{listing}
 
 For relations, such as the heap well-formed relation
-$\textsf{ok} \ \rho$, we define a new data type. The well-formed relation
-is a relation on a heap, and so the data type is parameterised over
-it. Furthermore, the rules directly correspond to data constructors ---
-constructing one of these means we have constructed a proof that the
-heap is well typed.
+$\textsf{ok} \ \rho$, we use a pattern of defining a new data type. The
+type then acts as a proposition that the relation holds, and creating
+an instance of the data type constitutes as providing proof.
+Furthermore, the constructors for the data type directly correspond to
+the rules for the relation.
 \begin{minted}{agda}
 data Ok : Heap → Set where
   OkZ : ∀ {r}
@@ -103,9 +103,10 @@ data Ok : Heap → Set where
   OkWorld : --------
             Ok World
 \end{minted}
-As another example, we also define a data type to represent proof that
-a heap is a subheap of another heap. This data type is parameterised
-over two heaps, which appear in the type.
+We also define a data type to represent proof that a heap is a subheap
+of another heap. Since subheaping is a binary relation over two heaps,
+the data type is also parameterised over two heaps, which appear in
+the type.
 \begin{minted}[samepage]{agda}
 data _≥:_ : Heap → Heap → Set where
   ≥:World : ∀ {ρ} → World ≥: ρ
@@ -119,15 +120,16 @@ data _≥:_ : Heap → Heap → Set where
          ------------
        → ρ'' ∪ ρ' ≥: ρ
 \end{minted}
-If we wanted to show that $\textsf{Net} \subtyp \textsf{Net} \cup
-\textsf{File}$, we follow the same steps we would carry out in a proof
-tree in order to construct a value that inhabits the type \mintinline{agda}{` Net ≥: ` Net ∪ ` File}.
+If we wanted to show that
+$\textsf{Net} \cup \textsf{File} \subtyp \textsf{Net}$, we would follow
+the same steps that we would carry out in a proof tree, in order to
+construct a value that inhabits the type \mintinline{agda}{` Net ∪ ` File ≥: ` Net}.
 \begin{listing}[H]
   \centering
   \begin{minipage}{0.5\linewidth}
     \begin{minted}{agda}
-_ : ` Net ≥: ` Net ∪ ` File
-_ = ≥:∪ʳ ≥:Refl
+_ : ` Net ∪ ` File ≥: ` Net
+_ = ≥:∪ˡ ≥:refl
     \end{minted}
   \end{minipage}%
   \begin{minipage}{0.5\linewidth}
@@ -135,7 +137,7 @@ _ = ≥:∪ʳ ≥:Refl
       \infer*[Left=UnionL]{
         \infer*[Left=Refl]{ }{\textsf{\textsf{Net} \subtyp \textsf{Net}}}
       }
-      {\textsf{Net} \subtyp \textsf{Net} \cup \textsf{File}}
+      {\textsf{Net} \cup \textsf{File} \subtyp \textsf{Net}}
     \]
   \end{minipage}
 \end{listing}
@@ -166,7 +168,22 @@ _ = ⊢ƛ (⊢` Z (Inst SZ refl refl))
     \]
   \end{minipage}
 \end{listing}
-The small-step relation is defined in a similar way:
+Where \mintinline{agda}{Inst SZ refl refl} is proof that the type
+scheme $\alpha$ can be instantiated to the type $\alpha$ (by not instantiating
+anything type variables at all).
+\begin{minted}{agda}
+data _>_ : TypeScheme → Type → Set where
+  Inst : ∀ {σ τ}
+    → (s : Substitution)
+    → subDomain s ≡ TSvars σ
+    → subT s (TStype σ) ≡ τ
+    -------------------
+    → σ > τ
+\end{minted}
+
+\begin{samepage}
+The small-step relation is defined in a similar way to the typing
+relation.
 \begin{minted}{agda}
 data _↝_ : Term → Term → Set where
   ξ-·₁ : ∀ {e₁ e₂ e₁'}
@@ -185,6 +202,7 @@ data _↝_ : Term → Term → Set where
       → (ƛ x ⇒ e) · e' ↝ e [ x := e' ]
   -- and so on ...
 \end{minted}
+\end{samepage}
 
 
 \begin{listing}
@@ -266,7 +284,7 @@ data _⊢_⦂_ : Context → Term → Type → Set where
   ⊢sub : ∀ {Γ e τ ρ ρ'}
          → Γ ⊢ e ⦂ IO ρ' τ
          → ρ ≥: ρ'
-         → Ok ρ'
+         → Ok ρ
            --------------
          → Γ ⊢ e ⦂ IO ρ τ
 \end{minted}
@@ -275,14 +293,14 @@ data _⊢_⦂_ : Context → Term → Type → Set where
 \end{listing}
 \section{Type schemes and type variables}
 One of the main design decisions made early on was how to represent
-type schemes within Agda. Quantified type variables in type schemes are often
+type schemes. Quantified type variables in type schemes are often
 represented as a sequence
 $\forall \alpha_1,\ldots,\alpha_n \cdot \tau$. This expands out to
-$\forall \alpha_1 \cdot \cdots \cdot \forall \alpha_n \cdot \tau$ in the end, and is how type schemes are
-ultimately defined in Agda, but we need to be able to reason about it
-in sequence format for some of the proofs. A helper function
-\texttt{VV} was created for this reason. It allows for type schemes
-to be created and manipulated in terms of lists.
+$\forall \alpha_1 \cdot \forall \ldots \cdot \forall \alpha_n \cdot \tau$ in the end, and is how type schemes are
+ultimately defined in the grammar. But we need to be able to reason
+about type variables in the sequence format for some of the proofs. A
+helper function \texttt{VV} was created for this reason. It allows for
+type schemes to be created and manipulated in terms of lists.
 \begin{minted}{agda}
 VV : List Id → Type → TypeScheme
 VV (α ∷ αs) τ = V α · (VV αs τ)
@@ -357,7 +375,7 @@ progress : ∀ {e τ}
 There are number of properties that are postulated throughout, and
 these should eventually be proven at some point. Postulations do not
 require any proofs and are just assumed by Agda to be true, so they
-should are used sparingly here. They are mainly used in cases where we
+are used sparingly here. They are mainly used in cases where we
 know something to be true that is usually needed to prove another
 property, but the proof for them is large and non-trivial.
 
@@ -377,3 +395,5 @@ just make the postulation
 \begin{minted}{agda}
 postulate x∉FVv : x ∉ FV v
 \end{minted}
+
+% LocalWords:  unary

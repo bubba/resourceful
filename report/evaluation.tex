@@ -1,8 +1,8 @@
 \chapter{Evaluation and Further Work}\label{cha:evaluation}
 
 \section{Separation logic}
-In Section~\ref{sec:separationologic} we looked at separation logic,
-and now that we have defined our system we can look at some parallels
+In Section~\ref{sec:separationologic} we briefly touched separation logic,
+but now that we have defined our system we can look at some parallels
 between them. Take the frame rule again, which allows additional
 predicates to be inferred in a specification, under the condition that
 the code does not use any of the variables in the predicate.
@@ -22,7 +22,7 @@ This mirrors the idea of separation logic, that we only need to worry
 about the variables relevant to our code, or in our terminology, the
 resources relevant to our type. So our subsumption rule, \textsc{Sub}, that lets
 heaps get promoted to a larger heap, ends up being our version of the
-frame rule. And the concurrency rule from separation logic:
+frame rule. And the concurrency rule from separation logic
 \[
   \infer{ {\color{gray} \{p_1\}} \ \emph{code}_1 \ {\color{gray} \{q_1\}}
     \\
@@ -44,14 +44,14 @@ separating conjunction $*$ is our union $\cup$.
 \section{Heap well formedness}
 We have proved the system defined in Chapter~\ref{chapter:system} is
 sound, and moreover we can show that every concurrent expression has a
-well typed heap --- that is a resource is not used more than once in the
+well formed heap --- that is a resource is not used more than once in the
 heap, and thus not accessed concurrently.
 
 \begin{theorem}[Concurrent heap is well formed]\label{theorem:conc}
-  If $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$, then $\textsf{ok} \ \rho$
+  If $\Gamma \vdash e_1 \curlyvee e_2 : \IO_\rho \tau$, then $\textsf{ok} \ \rho$
 \end{theorem}
 \begin{proof}
-  By induction on the possible proofs for $\Gamma \vdash e_1 \curlyvee e_2 : IO_\rho \tau$.
+  By induction on the possible proofs for $\Gamma \vdash e_1 \curlyvee e_2 : \IO_\rho \tau$.
   \begin{description}
   \item[\rm\textsc{Conc}]
     We need to show $\textsf{ok} \ \rho_1 \cup \rho_2$, and from the premises we have $\textsf{ok} \ \rho_1 \cup \rho_2$.
@@ -59,9 +59,10 @@ heap, and thus not accessed concurrently.
     We need to show $\textsf{ok} \ \rho'$ and from the premises, we also have $\textsf{ok} \ \rho'$. 
   \end{description}
 \end{proof}
-As you can see, this is straightforward to prove. Perhaps it is too
-straightforward. What we would really like to prove is for all terms
-$e$:
+As you can see, this just follows from the definition of the
+concurrency and subsumption rules.
+What we would really like to prove is that \emph{all} monadic
+expressions have well formed heaps.
 \newtheorem{conjecture}{Conjecture}
 \begin{conjecture}\label{conjecture:strongconc}
   If $\centerdot \vdash e : \IO_\rho \tau$, then $\textsf{ok} \ \rho$
@@ -81,8 +82,7 @@ shown with the identity function.
 }
 {\centerdot \vdash \lambda x . x : \IO_{\textsf{File} \cup \textsf{File}} \tau \rightarrow \IO_{\textsf{File} \cup \textsf{File}} \tau}
 \]
-
-It acts as a mechanism to generate types with malformed heaps, such as
+\textsc{Abs} acts as a mechanism to generate types with malformed heaps, such as
 an $\IO$ monad that contains two \textsf{File}s in its heap.  In
 reality this is not an issue, as there is no way to construct a value
 to pass into this lambda. Because of this I believe that Conjecture~\ref{conjecture:strongconc} is still
